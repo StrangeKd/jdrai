@@ -1,18 +1,14 @@
 {
   "version": "4.4.0",
-  "installed_at": "2026-02-03T15:11:32.557Z",
+  "installed_at": "2026-02-04T14:46:59.600Z",
   "install_type": "full",
   "agent": null,
   "ide_setup": null,
   "ides_setup": [
-    "cursor"
+    "cursor",
+    "claude-code"
   ],
   "files": [
-    {
-      "path": ".bmad-core/install-manifest.yml",
-      "hash": "52bc1cff97b0ba43",
-      "modified": false
-    },
     {
       "path": ".bmad-core/bmad-core-config.yml",
       "hash": "82ed4160979472f0",
