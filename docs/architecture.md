@@ -17,9 +17,10 @@ N/A - Projet greenfield, aucun starter template utilisé.
 
 ### 1.2 Change Log
 
-| Date       | Version | Description      | Auteur    |
-| :--------- | :------ | :--------------- | :-------- |
-| 2026-02-05 | 1.0     | Version initiale | Architect |
+| Date       | Version | Description                                 | Auteur    |
+| :--------- | :------ | :------------------------------------------ | :-------- |
+| 2026-02-05 | 1.0     | Version initiale                            | Architect |
+| 2026-02-05 | 1.1     | Auth: Better Auth + abstraction AuthService | Architect |
 
 ---
 
@@ -27,7 +28,7 @@ N/A - Projet greenfield, aucun starter template utilisé.
 
 ### 2.1 Résumé Technique
 
-JDRAI adopte une **architecture monorepo fullstack** avec séparation claire entre l'API Express et le frontend React SPA. Le backend gère l'authentification JWT, la persistance PostgreSQL via Drizzle ORM, et l'intégration multi-provider LLM pour le MJ IA. Le frontend utilise TanStack Router pour le routing type-safe et TanStack Query pour la gestion du cache serveur. Les types sont partagés via un package interne, garantissant la cohérence des contrats API sans coupler le frontend à l'ORM.
+JDRAI adopte une **architecture monorepo fullstack** avec séparation claire entre l'API Express et le frontend React SPA. Le backend gère l'authentification via Better Auth (avec abstraction AuthService pour limiter le lock-in), la persistance PostgreSQL via Drizzle ORM, et l'intégration multi-provider LLM pour le MJ IA. Le frontend utilise TanStack Router pour le routing type-safe et TanStack Query pour la gestion du cache serveur. Les types sont partagés via un package interne, garantissant la cohérence des contrats API sans coupler le frontend à l'ORM.
 
 ### 2.2 Plateforme et Infrastructure
 
@@ -99,28 +100,28 @@ flowchart TB
 
 ### 3.1 Table des Technologies
 
-| Catégorie              | Technologie       | Version | Rôle                 | Justification                      |
-| :--------------------- | :---------------- | :------ | :------------------- | :--------------------------------- |
-| **Monorepo**           | Turborepo         | ^2.x    | Orchestration builds | Cache, parallélisation, DX         |
-| **Package Manager**    | pnpm              | ^9.x    | Gestion dépendances  | Workspaces natifs, performance     |
-| **Langage**            | TypeScript        | ^5.x    | Typage               | Sécurité, DX, partage de types     |
-| **Frontend Framework** | React             | ^18.x   | UI                   | Écosystème, TanStack compat        |
-| **Build Tool**         | Vite              | ^5.x    | Bundling frontend    | HMR rapide, ESM natif              |
-| **Routing**            | TanStack Router   | ^1.x    | Navigation type-safe | Type inference, file-based         |
-| **Data Fetching**      | TanStack Query    | ^5.x    | Cache serveur        | Stale-while-revalidate, mutations  |
-| **UI Components**      | shadcn/ui         | latest  | Design system        | Accessible, customizable, Tailwind |
-| **Styling**            | Tailwind CSS      | ^3.x    | Utilitaires CSS      | Productivité, bundle optimisé      |
-| **Formulaires**        | React Hook Form   | ^7.x    | Gestion forms        | Performance, validation            |
-| **Validation**         | Zod               | ^3.x    | Schémas runtime      | Inférence TS, partage front/back   |
-| **Backend Framework**  | Express           | ^4.x    | API HTTP             | Maturité, middleware ecosystem     |
-| **ORM**                | Drizzle           | ^0.30+  | Accès BDD            | Type-safe, SQL-like, léger         |
-| **Schema Gen**         | drizzle-zod       | ^0.5+   | Génération Zod       | Sync schémas DB/validation         |
-| **Base de données**    | PostgreSQL        | 16.x    | Persistance          | ACID, JSONB, performances          |
-| **Auth**               | Passport.js + JWT | latest  | Authentification     | Stratégies flexibles               |
-| **Temps réel**         | Socket.io         | ^4.x    | WebSocket            | Rooms, reconnexion auto            |
-| **Tests Unit**         | Vitest            | ^1.x    | Tests rapides        | Vite compat, ESM natif             |
-| **Tests E2E**          | Playwright        | ^1.x    | Tests navigateur     | Multi-browser, fiable              |
-| **Linting**            | ESLint + Prettier | latest  | Qualité code         | Standards, formatting              |
+| Catégorie              | Technologie       | Version | Rôle                 | Justification                              |
+| :--------------------- | :---------------- | :------ | :------------------- | :----------------------------------------- |
+| **Monorepo**           | Turborepo         | ^2.x    | Orchestration builds | Cache, parallélisation, DX                 |
+| **Package Manager**    | pnpm              | ^9.x    | Gestion dépendances  | Workspaces natifs, performance             |
+| **Langage**            | TypeScript        | ^5.x    | Typage               | Sécurité, DX, partage de types             |
+| **Frontend Framework** | React             | ^18.x   | UI                   | Écosystème, TanStack compat                |
+| **Build Tool**         | Vite              | ^5.x    | Bundling frontend    | HMR rapide, ESM natif                      |
+| **Routing**            | TanStack Router   | ^1.x    | Navigation type-safe | Type inference, file-based                 |
+| **Data Fetching**      | TanStack Query    | ^5.x    | Cache serveur        | Stale-while-revalidate, mutations          |
+| **UI Components**      | shadcn/ui         | latest  | Design system        | Accessible, customizable, Tailwind         |
+| **Styling**            | Tailwind CSS      | ^3.x    | Utilitaires CSS      | Productivité, bundle optimisé              |
+| **Formulaires**        | React Hook Form   | ^7.x    | Gestion forms        | Performance, validation                    |
+| **Validation**         | Zod               | ^3.x    | Schémas runtime      | Inférence TS, partage front/back           |
+| **Backend Framework**  | Express           | ^4.x    | API HTTP             | Maturité, middleware ecosystem             |
+| **ORM**                | Drizzle           | ^0.30+  | Accès BDD            | Type-safe, SQL-like, léger                 |
+| **Schema Gen**         | drizzle-zod       | ^0.5+   | Génération Zod       | Sync schémas DB/validation                 |
+| **Base de données**    | PostgreSQL        | 16.x    | Persistance          | ACID, JSONB, performances                  |
+| **Auth**               | Better Auth       | ^1.x    | Authentification     | Drizzle natif, TypeScript-first, YC backed |
+| **Temps réel**         | Socket.io         | ^4.x    | WebSocket            | Rooms, reconnexion auto                    |
+| **Tests Unit**         | Vitest            | ^1.x    | Tests rapides        | Vite compat, ESM natif                     |
+| **Tests E2E**          | Playwright        | ^1.x    | Tests navigateur     | Multi-browser, fiable                      |
+| **Linting**            | ESLint + Prettier | latest  | Qualité code         | Standards, formatting                      |
 
 ---
 
@@ -353,16 +354,21 @@ export interface GameStateDTO {
 
 **Base URL:** `https://api.jdrai.com/v1`
 
-#### Auth
+#### Auth (Better Auth - `/api/auth/*`)
 
-| Méthode | Endpoint                | Description      |
-| ------- | ----------------------- | ---------------- |
-| POST    | `/auth/register`        | Inscription      |
-| POST    | `/auth/login`           | Connexion        |
-| POST    | `/auth/refresh`         | Rafraîchir token |
-| POST    | `/auth/logout`          | Déconnexion      |
-| POST    | `/auth/forgot-password` | Demande reset    |
-| POST    | `/auth/reset-password`  | Reset password   |
+> Les endpoints auth sont générés automatiquement par Better Auth via `toNodeHandler(auth)`.
+> Référence : [API Concepts](https://www.better-auth.com/docs/concepts/api) | [Email/Password](https://www.better-auth.com/docs/authentication/email-password)
+
+| Méthode | Endpoint                    | Description             |
+| ------- | --------------------------- | ----------------------- |
+| POST    | `/api/auth/sign-up/email`   | Inscription             |
+| POST    | `/api/auth/sign-in/email`   | Connexion               |
+| POST    | `/api/auth/sign-out`        | Déconnexion             |
+| GET     | `/api/auth/session`         | Récupérer session       |
+| POST    | `/api/auth/forget-password` | Demande reset (plugin)  |
+| POST    | `/api/auth/reset-password`  | Reset password (plugin) |
+
+> **Note** : Les endpoints `forget-password` et `reset-password` nécessitent une configuration email. D'autres endpoints sont ajoutés par les plugins (OAuth, MFA, etc.).
 
 #### Users
 
@@ -671,50 +677,109 @@ export const Route = createFileRoute("/_authenticated")({
 });
 ```
 
-### 8.2 State Management
+### 8.2 Client Auth (Better Auth)
+
+```typescript
+// apps/web/src/lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+
+// Hooks exportés
+export const { signIn, signUp, signOut, useSession, getSession } = authClient;
+```
+
+```typescript
+// apps/web/src/hooks/useAuth.ts
+import { useSession, signIn, signUp, signOut } from "@/lib/auth-client";
+import { useNavigate } from "@tanstack/react-router";
+
+export function useAuth() {
+  const { data: session, isPending, error } = useSession();
+  const navigate = useNavigate();
+
+  const login = async (email: string, password: string) => {
+    const result = await signIn.email({ email, password });
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  };
+
+  const register = async (email: string, password: string, username: string) => {
+    const result = await signUp.email({
+      email,
+      password,
+      name: username,
+      username,
+    });
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  };
+
+  const logout = async () => {
+    await signOut();
+    navigate({ to: "/auth/login" });
+  };
+
+  return {
+    user: session?.user ?? null,
+    session: session?.session ?? null,
+    isAuthenticated: !!session?.user,
+    isLoading: isPending,
+    error,
+    login,
+    register,
+    logout,
+  };
+}
+```
+
+### 8.3 State Management
 
 **Approche hybride :**
 
 - **Server State** : TanStack Query (aventures, messages, données API)
-- **Client State** : Zustand ou Context (auth, UI state)
+- **Auth State** : Better Auth (sessions gérées via cookies httpOnly)
+- **UI State** : Zustand (préférences locales, UI transient)
 
 ```typescript
-// apps/web/src/stores/auth.store.ts
+// apps/web/src/stores/ui.store.ts
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-interface AuthStore {
-  user: UserDTO | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
-  setAuth: (user: UserDTO, token: string) => void;
-  logout: () => void;
+interface UIStore {
+  sidebarOpen: boolean;
+  theme: "light" | "dark" | "system";
+  toggleSidebar: () => void;
+  setTheme: (theme: UIStore["theme"]) => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
-  setAuth: (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
-  logout: () => set({ user: null, accessToken: null, isAuthenticated: false }),
-}));
+export const useUIStore = create<UIStore>()(
+  persist(
+    (set) => ({
+      sidebarOpen: true,
+      theme: "system",
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      setTheme: (theme) => set({ theme }),
+    }),
+    { name: "jdrai-ui" },
+  ),
+);
 ```
 
-### 8.3 API Client
+### 8.4 API Client
 
 ```typescript
 // apps/web/src/services/api.ts
-import { useAuthStore } from "@/stores/auth.store";
-
 const API_BASE = import.meta.env.VITE_API_URL;
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const { accessToken } = useAuthStore.getState();
-
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
+    credentials: "include", // Important: envoie les cookies de session
     headers: {
       "Content-Type": "application/json",
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       ...options.headers,
     },
   });
@@ -733,6 +798,61 @@ export const api = {
   patch: <T>(endpoint: string, data: unknown) => fetchApi<T>(endpoint, { method: "PATCH", body: JSON.stringify(data) }),
   delete: <T>(endpoint: string) => fetchApi<T>(endpoint, { method: "DELETE" }),
 };
+```
+
+### 8.5 Intégration TanStack Query + Auth
+
+```typescript
+// apps/web/src/routes/__root.tsx
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { QueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+
+interface RouterContext {
+  queryClient: QueryClient;
+  auth: ReturnType<typeof useAuth>;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: RootLayout,
+});
+
+function RootLayout() {
+  return (
+    <>
+      <Outlet />
+      {import.meta.env.DEV && <TanStackRouterDevtools />}
+    </>
+  );
+}
+```
+
+```typescript
+// apps/web/src/main.tsx
+import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { routeTree } from "./routeTree.gen";
+import { useAuth } from "./hooks/useAuth";
+
+const queryClient = new QueryClient();
+
+const router = createRouter({
+  routeTree,
+  context: {
+    queryClient,
+    auth: undefined!, // Sera injecté par AuthProvider
+  },
+});
+
+function App() {
+  const auth = useAuth();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} context={{ queryClient, auth }} />
+    </QueryClientProvider>
+  );
+}
 ```
 
 ---
@@ -774,76 +894,270 @@ export const users = pgTable("users", {
 });
 ```
 
-### 9.2 Module Pattern
+### 9.2 Architecture Auth (Better Auth + Abstraction)
+
+#### 9.2.1 Abstraction AuthService
+
+L'abstraction permet de découpler la logique métier de l'implémentation Better Auth, facilitant une migration future si nécessaire.
 
 ```typescript
-// apps/api/src/modules/auth/auth.controller.ts
-import { Request, Response, NextFunction } from "express";
-import { AuthService } from "./auth.service";
-import { userLoginSchema, userCreateSchema } from "@jdrai/shared";
+// apps/api/src/modules/auth/auth.interface.ts
+import { UserDTO, UserCreateInput, UserLoginInput } from "@jdrai/shared";
 
-export class AuthController {
-  constructor(private authService: AuthService) {}
-
-  register = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = userCreateSchema.parse(req.body);
-      const result = await this.authService.register(data);
-      res.status(201).json({ success: true, data: result });
-    } catch (error) {
-      next(error);
-    }
+export interface AuthResult {
+  user: UserDTO;
+  session: {
+    id: string;
+    expiresAt: Date;
   };
+}
 
-  login = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = userLoginSchema.parse(req.body);
-      const result = await this.authService.login(data);
-
-      // Set refresh token as httpOnly cookie
-      res.cookie("refreshToken", result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      res.json({
-        success: true,
-        data: { user: result.user, accessToken: result.accessToken },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+export interface IAuthService {
+  register(data: UserCreateInput): Promise<AuthResult>;
+  login(data: UserLoginInput): Promise<AuthResult>;
+  logout(sessionId: string): Promise<void>;
+  validateSession(sessionToken: string): Promise<{ user: UserDTO; session: Session } | null>;
+  refreshSession(sessionToken: string): Promise<AuthResult | null>;
+  getUser(userId: string): Promise<UserDTO | null>;
+  updateUser(userId: string, data: Partial<UserDTO>): Promise<UserDTO>;
+  requestPasswordReset(email: string): Promise<void>;
+  resetPassword(token: string, newPassword: string): Promise<void>;
 }
 ```
 
-### 9.3 Middleware d'Authentification
+#### 9.2.2 Configuration Better Auth
+
+```typescript
+// apps/api/src/lib/auth.ts
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "../db";
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+  }),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false, // MVP: désactivé, activer en P2
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 jours
+    updateAge: 60 * 60 * 24, // Refresh si > 1 jour
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5, // 5 minutes
+    },
+  },
+  user: {
+    additionalFields: {
+      username: {
+        type: "string",
+        required: true,
+      },
+      role: {
+        type: "string",
+        defaultValue: "user",
+      },
+      onboardingCompleted: {
+        type: "boolean",
+        defaultValue: false,
+      },
+    },
+  },
+  trustedOrigins: [process.env.FRONTEND_URL!],
+});
+
+// Export du type pour le client
+export type Auth = typeof auth;
+```
+
+#### 9.2.3 Implémentation AuthService
+
+```typescript
+// apps/api/src/modules/auth/auth.service.ts
+import { auth } from "../../lib/auth";
+import { IAuthService, AuthResult } from "./auth.interface";
+import { UserDTO, UserCreateInput, UserLoginInput } from "@jdrai/shared";
+
+export class BetterAuthService implements IAuthService {
+  async register(data: UserCreateInput): Promise<AuthResult> {
+    const result = await auth.api.signUpEmail({
+      body: {
+        email: data.email,
+        password: data.password,
+        name: data.username,
+        username: data.username,
+      },
+    });
+
+    if (!result.user) {
+      throw new Error("Registration failed");
+    }
+
+    return {
+      user: this.mapToUserDTO(result.user),
+      session: {
+        id: result.session.id,
+        expiresAt: new Date(result.session.expiresAt),
+      },
+    };
+  }
+
+  async login(data: UserLoginInput): Promise<AuthResult> {
+    const result = await auth.api.signInEmail({
+      body: {
+        email: data.email,
+        password: data.password,
+      },
+    });
+
+    if (!result.user) {
+      throw new Error("Invalid credentials");
+    }
+
+    return {
+      user: this.mapToUserDTO(result.user),
+      session: {
+        id: result.session.id,
+        expiresAt: new Date(result.session.expiresAt),
+      },
+    };
+  }
+
+  async logout(sessionId: string): Promise<void> {
+    await auth.api.signOut({
+      headers: { "x-session-id": sessionId },
+    });
+  }
+
+  async validateSession(sessionToken: string) {
+    const session = await auth.api.getSession({
+      headers: { cookie: `better-auth.session_token=${sessionToken}` },
+    });
+
+    if (!session?.user) return null;
+
+    return {
+      user: this.mapToUserDTO(session.user),
+      session: session.session,
+    };
+  }
+
+  private mapToUserDTO(user: any): UserDTO {
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username || user.name,
+      role: user.role || "user",
+      onboardingCompleted: user.onboardingCompleted || false,
+      createdAt: user.createdAt,
+    };
+  }
+
+  // ... autres méthodes
+}
+
+// Export singleton
+export const authService: IAuthService = new BetterAuthService();
+```
+
+### 9.3 Intégration Express
+
+```typescript
+// apps/api/src/index.ts
+import express from "express";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth";
+import { requireAuth } from "./middleware/auth.middleware";
+
+const app = express();
+
+// Better Auth handler - DOIT être avant express.json()
+app.all("/api/auth/*", toNodeHandler(auth));
+
+// Middleware JSON pour les autres routes
+app.use(express.json());
+
+// Routes protégées
+app.use("/api/v1/adventures", requireAuth, adventuresRouter);
+app.use("/api/v1/meta-character", requireAuth, metaCharacterRouter);
+
+app.listen(3000);
+```
+
+### 9.4 Middleware d'Authentification
 
 ```typescript
 // apps/api/src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
-import passport from "passport";
+import { auth } from "../lib/auth";
 import { UserDTO } from "@jdrai/shared";
 
 declare global {
   namespace Express {
-    interface User extends UserDTO {}
+    interface Request {
+      user?: UserDTO;
+      session?: { id: string; expiresAt: Date };
+    }
   }
 }
 
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  passport.authenticate("jwt", { session: false }, (err, user) => {
-    if (err || !user) {
+export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const session = await auth.api.getSession({
+      headers: req.headers as any,
+    });
+
+    if (!session?.user) {
       return res.status(401).json({
         success: false,
         error: { code: "UNAUTHORIZED", message: "Authentication required" },
       });
     }
-    req.user = user;
+
+    req.user = {
+      id: session.user.id,
+      email: session.user.email,
+      username: session.user.username || session.user.name,
+      role: session.user.role || "user",
+      onboardingCompleted: session.user.onboardingCompleted || false,
+      createdAt: session.user.createdAt,
+    };
+    req.session = session.session;
+
     next();
-  })(req, res, next);
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "Invalid session" },
+    });
+  }
+};
+
+// Middleware optionnel (session présente mais pas obligatoire)
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const session = await auth.api.getSession({
+      headers: req.headers as any,
+    });
+
+    if (session?.user) {
+      req.user = {
+        id: session.user.id,
+        email: session.user.email,
+        username: session.user.username || session.user.name,
+        role: session.user.role || "user",
+        onboardingCompleted: session.user.onboardingCompleted || false,
+        createdAt: session.user.createdAt,
+      };
+      req.session = session.session;
+    }
+  } catch {
+    // Session invalide, on continue sans user
+  }
+
+  next();
 };
 ```
 
@@ -996,17 +1310,17 @@ pnpm shared:generate
 # Database
 DATABASE_URL=postgresql://jdrai:jdrai@localhost:5432/jdrai
 
-# JWT
-JWT_SECRET=your-super-secret-key-change-in-production
-JWT_ACCESS_EXPIRATION=15m
-JWT_REFRESH_EXPIRATION=7d
+# Better Auth
+BETTER_AUTH_SECRET=your-super-secret-key-min-32-chars-change-in-production
+BETTER_AUTH_URL=http://localhost:3000
 
 # API
 API_PORT=3000
 API_URL=http://localhost:3000
 
 # Frontend
-VITE_API_URL=http://localhost:3000/v1
+FRONTEND_URL=http://localhost:5173
+VITE_API_URL=http://localhost:3000
 
 # LLM Providers
 OPENAI_API_KEY=sk-...
@@ -1064,22 +1378,23 @@ volumes:
 
 ### 13.1 Frontend
 
-| Mesure         | Implémentation                                      |
-| -------------- | --------------------------------------------------- |
-| XSS Prevention | React échappe par défaut, CSP headers               |
-| Token Storage  | Access token en mémoire, refresh en httpOnly cookie |
-| HTTPS          | Obligatoire en production                           |
+| Mesure          | Implémentation                                            |
+| --------------- | --------------------------------------------------------- |
+| XSS Prevention  | React échappe par défaut, CSP headers                     |
+| Session Storage | Cookies httpOnly gérés par Better Auth (pas de JS access) |
+| HTTPS           | Obligatoire en production                                 |
+| CSRF            | Better Auth gère la protection CSRF automatiquement       |
 
 ### 13.2 Backend
 
-| Mesure           | Implémentation                     |
-| ---------------- | ---------------------------------- |
-| Input Validation | Zod sur tous les endpoints         |
-| SQL Injection    | Drizzle ORM (requêtes paramétrées) |
-| Rate Limiting    | express-rate-limit par IP/user     |
-| CORS             | Whitelist origines autorisées      |
-| Password Hashing | bcrypt (cost factor 12)            |
-| JWT              | Rotation tokens, blacklist refresh |
+| Mesure           | Implémentation                           |
+| ---------------- | ---------------------------------------- |
+| Input Validation | Zod sur tous les endpoints               |
+| SQL Injection    | Drizzle ORM (requêtes paramétrées)       |
+| Rate Limiting    | express-rate-limit par IP/user           |
+| CORS             | Whitelist origines autorisées            |
+| Password Hashing | Better Auth (Argon2 par défaut)          |
+| Sessions         | Better Auth (cookies httpOnly, rotation) |
 
 ### 13.3 Headers de Sécurité
 
