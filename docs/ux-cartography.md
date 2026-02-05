@@ -338,11 +338,21 @@ app.jdrai.com/
 
 ### 4.2 Écrans P2
 
-| #   | Écran                        | Route                        | Maquette existante           | Complexité |
-| --- | ---------------------------- | ---------------------------- | ---------------------------- | ---------- |
-| E13 | Profil méta-personnage       | `/profile`                   | `detail_chara.png` — adapter | Moyenne    |
-| E14 | Création personnage aventure | `/adventure/new` (étape 2)   | `create_chara.png` — adapter | Moyenne    |
-| E15 | Paramètres MJ                | (modale ou panneau dans E10) | Non                          | Moyenne    |
+| #   | Écran                        | Route                       | Maquette existante           | Complexité |
+| --- | ---------------------------- | --------------------------- | ---------------------------- | ---------- |
+| E13 | Profil méta-personnage       | `/profile`                  | `detail_chara.png` — adapter | Moyenne    |
+| E14 | Création personnage aventure | `/adventure/new` (étape 2)  | `create_chara.png` — adapter | Moyenne    |
+| E15 | Paramètres MJ                | (modal ou panneau dans E10) | Non                          | Moyenne    |
+
+> **Note sur E15 — Paramètres MJ en session :**
+> L'accès aux paramètres MJ sera possible **pendant** une session active (panneau latéral ou drawer), évitant au joueur de quitter et relancer une aventure. Cependant, les paramètres seront divisés en deux catégories :
+>
+> | Catégorie                  | Modifiable en session | Exemples                                                                                            |
+> | -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+> | **Ajustements légers**     | Oui                   | Ton (+ ou - humoristique), niveau de détail narratif (concis ↔ descriptif), longueur des réponses   |
+> | **Paramètres structurels** | Non (verrouillés)     | Difficulté, rigueur des règles — car ils impactent la cohérence narrative et l'équilibrage en cours |
+>
+> Les paramètres verrouillés afficheront un tooltip explicatif : _"Ce paramètre ne peut être modifié qu'au lancement d'une nouvelle aventure pour préserver la cohérence de votre session."_
 
 ### 4.3 Écrans à concevoir (priorité)
 
@@ -360,21 +370,22 @@ Par ordre de complexité et d'impact :
 
 ### 5.1 Composants globaux
 
-| Composant                | Usage                                      | Écrans                       |
-| ------------------------ | ------------------------------------------ | ---------------------------- |
-| **Sidebar**              | Navigation principale                      | Tous (sauf auth, onboarding) |
-| **Bottom Tab Bar**       | Navigation mobile                          | Tous (sauf auth, onboarding) |
-| **Logo JDRAI**           | Identité visuelle                          | Tous                         |
-| **Avatar utilisateur**   | Méta-personnage                            | Sidebar, Hub, Profil         |
-| **Bouton primaire**      | Action principale (parchemin + or)         | Tous                         |
-| **Bouton secondaire**    | Action secondaire                          | Tous                         |
-| **Bouton fantôme**       | Action tertiaire / navigation              | Tous                         |
-| **Carte (Card)**         | Conteneur générique                        | Hub, Historique, Listes      |
-| **Modale**               | Confirmations, paramètres                  | Divers                       |
-| **Toast / Notification** | Feedback système                           | Tous                         |
-| **Bandeau info**         | Rappel profil incomplet, aventure en pause | Hub                          |
-| **Loader / Skeleton**    | Chargement                                 | Tous                         |
-| **Barre de progression** | XP, avancement                             | Hub, Profil, Onboarding      |
+| Composant                | Usage                                                                                         | Écrans                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Sidebar**              | Navigation principale                                                                         | Tous (sauf auth, onboarding)                    |
+| **Bottom Tab Bar**       | Navigation mobile                                                                             | Tous (sauf auth, onboarding)                    |
+| **Logo JDRAI**           | Identité visuelle                                                                             | Tous                                            |
+| **Avatar utilisateur**   | Méta-personnage                                                                               | Sidebar, Hub, Profil                            |
+| **Bouton primaire**      | Action principale (parchemin + or)                                                            | Tous                                            |
+| **Bouton secondaire**    | Action secondaire                                                                             | Tous                                            |
+| **Bouton fantôme**       | Action tertiaire / navigation                                                                 | Tous                                            |
+| **Carte (Card)**         | Conteneur générique                                                                           | Hub, Historique, Listes                         |
+| **Modale**               | Confirmations, paramètres                                                                     | Divers                                          |
+| **Toast / Notification** | Feedback système                                                                              | Tous                                            |
+| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                    | Hub                                             |
+| **Loader / Skeleton**    | Chargement                                                                                    | Tous                                            |
+| **Barre de progression** | XP, avancement                                                                                | Hub, Profil, Onboarding                         |
+| **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [§7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
 
 ### 5.2 Composants Auth
 
@@ -448,15 +459,15 @@ Par ordre de complexité et d'impact :
 
 ### 6.1 Matrice des états par écran
 
-| Écran                      | Default                      | Loading                          | Empty                              | Error                                           | Success                            |
-| -------------------------- | ---------------------------- | -------------------------------- | ---------------------------------- | ----------------------------------------------- | ---------------------------------- |
-| **Login**                  | Formulaire vide              | Spinner sur bouton               | —                                  | Message erreur inline (identifiants incorrects) | Redirect vers Hub/Onboarding       |
-| **Register**               | Formulaire vide              | Spinner sur bouton               | —                                  | Erreurs validation inline                       | Redirect vers Onboarding           |
-| **Hub**                    | Méta-perso + aventures       | Skeletons cards                  | "Lancez votre première aventure !" | Toast erreur chargement                         | —                                  |
-| **Hub (profil incomplet)** | Bandeau rappel + fonctionnel | Idem                             | Idem                               | Idem                                            | —                                  |
-| **Session de jeu**         | Narration + choix            | "Le MJ réfléchit..." (animation) | —                                  | "Connexion perdue, reconnexion..." + retry auto | Action traitée, nouvelle narration |
-| **Lancement aventure**     | Formulaire paramètres        | Spinner génération               | —                                  | Erreur génération ("Réessayez")                 | Redirect vers session              |
-| **Écran de fin**           | Résumé + récompenses         | Skeleton résumé                  | —                                  | Toast erreur                                    | Récompenses attribuées             |
+| Écran                      | Default                      | Loading                                  | Empty                             | Error                                                 | Success                                  |
+| -------------------------- | ---------------------------- | ---------------------------------------- | --------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
+| **Login**                  | Formulaire vide              | Spinner sur bouton                       | —                                 | Message erreur inline (identifiants incorrects)       | Redirect vers Hub/Onboarding             |
+| **Register**               | Formulaire vide              | Spinner sur bouton                       | —                                 | Erreurs validation inline                             | Redirect vers Onboarding                 |
+| **Hub**                    | Méta-perso + aventures       | Skeletons cards + compagnon              | Compagnon : empty state engageant | Toast erreur + compagnon contextuel                   | —                                        |
+| **Hub (profil incomplet)** | Bandeau rappel + fonctionnel | Idem                                     | Idem                              | Idem                                                  | —                                        |
+| **Session de jeu**         | Narration + choix            | Compagnon : message d'attente thématique | —                                 | Compagnon : message d'erreur avec humour + retry auto | Action traitée, nouvelle narration       |
+| **Lancement aventure**     | Formulaire paramètres        | Spinner + compagnon contextuel           | —                                 | Compagnon : message d'erreur + retry                  | Redirect vers session                    |
+| **Écran de fin**           | Résumé + récompenses         | Skeleton résumé                          | —                                 | Toast erreur                                          | Compagnon : félicitations personnalisées |
 
 ### 6.2 Edge cases critiques
 
@@ -483,7 +494,49 @@ Par ordre de complexité et d'impact :
 4. **Mobile-first pour la session de jeu** : L'interaction chat/choix se prête naturellement au mobile. Concevoir d'abord pour mobile.
 5. **Gratification visible** : Chaque fin d'aventure doit donner un sentiment d'accomplissement (animations, récompenses, résumé).
 
-### 7.2 Points de vigilance
+### 7.2 Compagnon méta — Mascotte de l'interface
+
+**Concept :** Un personnage récurrent qui intervient **en dehors du jeu** (Hub, loading, erreurs, onboarding, succès) pour guider, commenter et divertir le joueur. Il ne remplace pas le MJ IA (qui reste le narrateur en session), mais agit comme un **compagnon de l'interface** — un fil conducteur humoristique qui humanise les moments techniques.
+
+**Inspirations :**
+
+- **Wheatley (Portal 2)** : guide sarcastique, brise le 4e mur, commente les situations avec humour noir
+- **Navi (Zelda)** : compagnon utile mais avec une personnalité propre
+- **Le Narrateur (Stanley Parable)** : commentaires méta sur les choix du joueur
+
+**Pistes de personnage :**
+
+| Option                    | Description                                                                                                                       | Ton                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Le Scribe**             | Un petit personnage encapuchonné qui "écrit" les aventures du joueur. Commente depuis son bureau encombré de parchemins.          | Sarcastique, lettré, légèrement las   |
+| **L'Artefact**            | Un objet magique sentient (grimoire, boule de cristal, dé géant). S'adresse au joueur comme s'il était prisonnier de l'interface. | Dramatique, théâtral, auto-dérision   |
+| **Le Gobelin de service** | Un petit gobelin "employé" de la plateforme. Fait tourner les rouages, s'excuse quand ça plante.                                  | Maladroit, attachant, humour physique |
+
+> **Note :** Le choix du personnage sera affiné en Phase 2 (wireframes). L'important ici est de valider le **principe** d'un compagnon méta récurrent.
+
+**Interventions types :**
+
+| Moment                       | Exemple d'intervention                                                                                                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Loading LLM**              | _"Le MJ fouille ses notes... il est un peu désorganisé."_                                                                                     |
+| **Erreur / timeout**         | _"Quelqu'un a renversé de l'encre sur le parchemin. On nettoie."_                                                                             |
+| **Onboarding**               | _"Bienvenue, aventurier ! Je serai votre guide... enfin, j'essaierai."_                                                                       |
+| **Première aventure lancée** | _"C'est parti ! ...Ne me regardez pas comme ça, c'est VOUS le héros."_                                                                        |
+| **Succès / récompense**      | _"Pas mal ! J'ai noté ça dans vos annales. Oui, vous avez des annales maintenant."_                                                           |
+| **Hub vide (empty state)**   | _"C'est trop calme... J'aime pas trop beaucoup ça... Je préfère quand c'est un peu trop plus moins calme... Et si on partait à l'aventure ?"_ |
+| **Session expirée**          | _"Vous vous êtes endormi à la taverne. Reconnectez-vous pour reprendre."_                                                                     |
+| **Double onglet**            | _"Je ne peux pas être à deux endroits à la fois ! Choisissez un onglet."_                                                                     |
+| **Retour après absence**     | _"Tiens, vous revoilà ! Votre aventure vous attend, chapitre 3."_                                                                             |
+
+**Règles de design du compagnon :**
+
+- **Jamais pendant le jeu** : en session, c'est le MJ IA qui parle. Le compagnon n'intervient pas pour ne pas briser l'immersion narrative.
+- **Jamais bloquant** : ses messages sont décoratifs/informatifs, jamais des modales qui exigent une action.
+- **Fréquence maîtrisée** : pas à chaque action. Il intervient sur les moments clés (transitions, attentes, erreurs, premiers usages).
+- **Désactivable** : option dans les paramètres pour les joueurs qui préfèrent une interface sobre.
+- **Évolutif** : ses répliques peuvent évoluer avec le niveau du méta-personnage (plus familier au fil du temps).
+
+### 7.3 Points de vigilance
 
 | Point                         | Risque                                     | Recommandation                                                                                                                             |
 | ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -493,7 +546,7 @@ Par ordre de complexité et d'impact :
 | **Onboarding trop long**      | Drop-off                                   | Viser < 5 min avant la première action de jeu. Le tutoriel EST le jeu, pas une intro avant le jeu.                                         |
 | **Hub vide au début**         | Première impression fade                   | Empty state engageant avec illustration et CTA fort                                                                                        |
 
-### 7.3 Accessibilité (WCAG 2.1 AA minimum)
+### 7.4 Accessibilité (WCAG 2.1 AA minimum)
 
 - Contraste suffisant malgré le thème sombre (ratio ≥ 4.5:1 pour le texte)
 - Navigation clavier complète (focus visible sur tous les interactifs)
@@ -502,7 +555,7 @@ Par ordre de complexité et d'impact :
 - Réduction de mouvement respectée (`prefers-reduced-motion`)
 - Alternatives textuelles pour toutes les illustrations
 
-### 7.4 Responsive
+### 7.5 Responsive
 
 | Breakpoint                | Layout                                                         |
 | ------------------------- | -------------------------------------------------------------- |
@@ -520,7 +573,9 @@ Ce document sert de **fondation** pour :
 2. **Phase 3** : Spécifications front-end et prompts de génération UI
 3. **PO** : Rédaction des user stories basées sur les flows et l'inventaire d'écrans
 
-**Priorité de wireframing recommandée :**
+**Priorité de conception UX (wireframes/maquettes) :**
+
+> **Important :** Cet ordre concerne uniquement la conception UX — il détermine dans quel ordre les écrans seront maquettés, en priorisant l'impact sur l'expérience utilisateur et les dépendances de design. L'ordre de **développement** sera défini par l'architecte et le PO lors de la rédaction des user stories.
 
 1. E10 — Session de jeu (coeur produit)
 2. E8 — Hub (point d'entrée)
