@@ -33,14 +33,16 @@
 | **Composants**  | Cartes en grille avec illustration + nom, formulaires sur fond parchemin    |
 | **Palette**     | Fond : brun foncé / noir — Contenu : beige / crème — Accents : or / ambre   |
 
-### 1.2 Maquettes existantes et adaptation
+### 1.2 Maquettes existantes — Statut et usage
 
-| Maquette           | Usage original      | Adaptation nouvelle version                                                                         |
-| ------------------ | ------------------- | --------------------------------------------------------------------------------------------------- |
-| `auth.png`         | Login / Register    | **Conservé** — Adapter les champs (ajouter pseudo à l'inscription)                                  |
-| `list_chara.png`   | Liste personnages   | **→ Hub principal** — Grille de cartes = aventures (en cours + terminées) + section méta-personnage |
-| `create_chara.png` | Création personnage | **→ Création personnage d'aventure** — Stats, race, classe. Réutilisable tel quel (P2)              |
-| `detail_chara.png` | Détail personnage   | **→ Détail méta-personnage** — Adapter pour progression, succès, cosmétiques                        |
+> **Avertissement :** Les maquettes ci-dessous datent de la toute première version du projet. Elles ne doivent **pas contraindre** la conception de la nouvelle UX/UI. Seule l'authentification est considérée comme une base fiable. Les autres écrans sont de l'**inspiration libre** — les concepts, layouts et composants seront repensés en Phase 2.
+
+| Maquette           | Usage original      | Statut nouvelle version                                                  | Remarque                                                                                                                                    |
+| ------------------ | ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth.png`         | Login / Register    | **Base fiable** — Adapter les champs (ajouter pseudo à l'inscription)    | Design validé, cohérent avec la direction artistique                                                                                        |
+| `list_chara.png`   | Liste personnages   | **Inspiration libre** — Reconcevoir pour le Hub                          | Layout grille et cartes intéressants, mais le Hub a des besoins très différents (méta-perso, aventures en cours, actions, historique)       |
+| `create_chara.png` | Création personnage | **Inspiration libre** — Reconcevoir pour la création personnage aventure | Le split layout et l'allocation de points sont de bonnes idées à explorer, mais le flow doit être repensé (presets, intégration onboarding) |
+| `detail_chara.png` | Détail personnage   | **Inspiration libre** — Reconcevoir pour le profil méta-personnage       | Le concept de détail avec stats est à revoir entièrement pour la progression, succès et cosmétiques                                         |
 
 ---
 
@@ -86,29 +88,41 @@
 │                   ┌───────────────────┐    ┌─────────┐        ┌──────┐   │
 │                   │ Nouvelle aventure │    │Reprendre│        │Histo-│   │
 │                   │                   │    │aventure │        │rique │   │
-│                   │ 1. Paramètres :   │    │en cours │        │      │   │
-│                   │    - Thème        │    └────┬────┘        └──────┘   │
-│                   │    - Durée        │         │                        │
-│                   │    - Difficulté   │         │                        │
-│                   │ OU Template       │         │                        │
-│                   │ OU Aléatoire      │         │                        │
-│                   │                   │         │                        │
-│                   │ 2. Création perso │         │                        │
-│                   │    d'aventure     │         │                        │
-│                   └────────┬──────────┘         │                        │
-│                            │                    │                        │
-│                            ▼                    ▼                        │
-│                   ┌──────────────────────────────────┐                   │
-│                   │       SESSION DE JEU             │                   │
-│                   │                                  │                   │
-│                   │  Narration MJ IA                 │                   │
-│                   │  + Choix suggérés (2-4)          │                   │
-│                   │  + Saisie libre                  │                   │
-│                   │  + Auto-save continu             │                   │
-│                   │                                  │                   │
-│                   │  [Quitter] → Sauvegarde auto     │                   │
-│                   │  [Fin aventure] → Récompenses    │                   │
-│                   └───────────────┬──────────────────┘                   │
+│                   │ Mode :            │    │en cours │        │      │   │
+│                   │ ┌──────┐┌───────┐ │    └────┬────┘        └──────┘   │
+│                   │ │ Solo ││Multi- │ │         │                        │
+│                   │ │      ││joueur │ │         │                        │
+│                   │ └──┬───┘└──┬────┘ │         │                        │
+│                   └────┼───────┼──────┘         │                        │
+│                        │       │                │                        │
+│          ┌─────────────┘       └──────────┐     │                        │
+│          ▼                                ▼     │                        │
+│  ┌────────────────────┐    ┌──────────────────┐ │                        │
+│  │ CONFIG SOLO        │    │ CONFIG MULTI (P3)│ │                        │
+│  │                    │    │                  │ │                        │
+│  │ 1. Paramètres :    │    │ 1. Créer partie  │ │                        │
+│  │    - Thème         │    │    (= config solo│ │                        │
+│  │    - Durée         │    │    + paramètres  │ │                        │
+│  │    - Difficulté    │    │    multi)        │ │                        │
+│  │ OU Template        │    │ OU               │ │                        │
+│  │ OU Aléatoire       │    │ 2. Rejoindre     │ │                        │
+│  │                    │    │    (code/lobby)  │ │                        │
+│  │ 2. Création perso  │    │                  │ │                        │
+│  │    d'aventure      │    │ 3. Création perso│ │                        │
+│  └────────┬───────────┘    └────────┬─────────┘ │                        │
+│           │                         │           │                        │
+│           ▼                         ▼           ▼                        │
+│  ┌──────────────────────────────────────────────────┐                    │
+│  │            SESSION DE JEU                        │                    │
+│  │                                                  │                    │
+│  │  Narration MJ IA                                 │                    │
+│  │  + Choix suggérés (2-4)                          │                    │
+│  │  + Saisie libre                                  │                    │
+│  │  + Auto-save continu                             │                    │
+│  │                                                  │                    │
+│  │  [Quitter] → Sauvegarde auto                     │                    │
+│  │  [Fin aventure] → Récompenses                    │                    │
+│  └──────────────────────────────────────────────────┘                    │
 │                                   │                                      │
 │                                   ▼                                      │
 │                   ┌──────────────────────────────────┐                   │
@@ -142,7 +156,7 @@
 │                                   │  2. Choix pseudo uniquement      │  │
 │                                   │  3. Personnage rapide :          │  │
 │                                   │     → Preset recommandé          │  │
-│                                   │     OU création rapide           │  │
+│                                   │     OU création manuelle         │  │
 │                                   └────────────────┬─────────────────┘  │
 │                                                    │                    │
 │                                                    ▼                    │
@@ -199,6 +213,125 @@ Login → "Mot de passe oublié ?" → Saisie email → Confirmation envoi
     → Email reçu → Lien reset → Nouveau mot de passe → Confirmation → Login
 ```
 
+### 2.5 Flow multijoueur — Lancement et accès (P3, anticipation UX)
+
+> **Note :** Le multijoueur est P3 dans la roadmap. Cette section anticipe les implications UX pour que l'architecture de l'information et les flows restent cohérents lors de l'implémentation future. Les questions ouvertes sont signalées pour le PM.
+
+#### 2.5.1 Créer une partie multijoueur
+
+```
+Hub → Nouvelle aventure → [Multijoueur]
+                              │
+                              ▼
+               ┌────────────────────────────────────┐
+               │  CONFIG MULTI                      │
+               │                                    │
+               │  1. Paramètres aventure            │
+               │     (identique au solo :           │
+               │     thème, durée, difficulté,      │
+               │     template ou aléatoire)         │
+               │                                    │
+               │  2. Paramètres multijoueur :       │
+               │     - Nombre de joueurs max        │
+               │     - Visibilité : Privée / Public │
+               │     - [Optionnel] Mot de passe     │
+               │                                    │
+               │  3. Création personnage            │
+               │     d'aventure (créateur)          │
+               └───────────────┬────────────────────┘
+                               │
+                               ▼
+               ┌───────────────────────────────────┐
+               │  SALLE D'ATTENTE                  │
+               │                                   │
+               │  Joueurs connectés : 1/4          │
+               │  Code d'invitation : ABCD-1234    │
+               │  [Copier le lien]                 │
+               │  [Partager]                       │
+               │                                   │
+               │  ┌────┐ ┌────┐ ┌────┐ ┌────┐      │
+               │  │ ✓  │ │ ?  │ │ ?  │ │ ?  │      │
+               │  │Toi │ │    │ │    │ │    │      │
+               │  └────┘ └────┘ └────┘ └────┘      │
+               │                                   │
+               │  [LANCER L'AVENTURE]              │
+               │  (actif quand ≥ 2 joueurs)        │
+               └───────────────┬───────────────────┘
+                               │
+                               ▼
+                        SESSION DE JEU
+```
+
+#### 2.5.2 Rejoindre une partie — Via code d'invitation
+
+```
+┌───────────────────────────────────────────────────┐
+│  REJOINDRE VIA CODE                               │
+│                                                   │
+│  Accès depuis :                                   │
+│  - Hub → "Rejoindre une partie" → Saisir code     │
+│  - OU lien direct (URL avec code intégré)         │
+│  - OU lien partagé (réseaux sociaux, messagerie)  │
+│                                                   │
+│  ┌────────────────────────────────┐               │
+│  │  Code : [________]  [Rejoindre]│               │
+│  └────────────────────────────────┘               │
+│                       │                           │
+│                       ▼                           │
+│            ┌──────────────────────┐               │
+│            │ Création personnage  │               │
+│            │ rapide (preset       │               │
+│            │ recommandé)          │               │
+│            └──────────┬───────────┘               │
+│                       │                           │
+│                       ▼                           │
+│              Salle d'attente                      │
+│              (en tant que joueur rejoint)         │
+└───────────────────────────────────────────────────┘
+```
+
+#### 2.5.3 Rejoindre une partie — Via lobby public
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  LOBBY PUBLIC                                            │
+│                                                          │
+│  Accès depuis : Hub → "Rejoindre une partie" → Lobby     │
+│                                                          │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │  Filtres : [Thème ▼] [Durée ▼] [Places dispo ▼]     │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                                                          │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │  🗡️ "Les Mines de Karak"                            │ │
+│  │  Thème : Heroic fantasy — Durée : Moyenne           │ │
+│  │  Joueurs : 2/4 — Créée par : Aldric                 │ │
+│  │  Difficulté : Équilibrée                            │ │
+│  │                                       [REJOINDRE]   │ │
+│  ├─────────────────────────────────────────────────────┤ │
+│  │  🌑 "L'Ombre du Néant"                              │ │
+│  │  Thème : Dark fantasy — Durée : Longue              │ │
+│  │  Joueurs : 1/3 — Créée par : Morrigan               │ │
+│  │  Difficulté : Difficile                             │ │
+│  │                                       [REJOINDRE]   │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                                                          │
+│  [Rafraîchir]                    Page 1/3 [< >]          │
+└──────────────────────────────────────────────────────────┘
+```
+
+#### 2.5.4 Questions ouvertes pour le PM
+
+> Les points ci-dessous impactent directement le design UX du multijoueur et doivent être tranchés avant la Phase 2 des wireframes multijoueur.
+
+| #   | Question                                                                               | Options identifiées                                                                                                                                  | Impact UX                                                                                                     |
+| --- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Q1  | **Modèle d'accès multijoueur** : Code d'invitation uniquement, ou lobby public aussi ? | A) Invitation seule — pas de lobby, plus simple, plus privé / B) Le créateur choisit privé (code) ou public (lobby) — plus social, plus discoverable | A = pas de lobby à concevoir. B = lobby + filtres + liste de parties + toggle visibilité dans la config multi |
+| Q3  | **Taille max du groupe**                                                               | À définir (2-4 ? 2-6 ?)                                                                                                                              | Impacte le design de la salle d'attente et l'interface de session (affichage joueurs)                         |
+| Q4  | **Peut-on rejoindre une partie déjà commencée ?**                                      | A) Non (salle d'attente obligatoire) / B) Oui (hot-join)                                                                                             | B = complexité UX significative (rattraper le contexte narratif, créer un perso en cours de route)            |
+| Q5  | **Sync vs Async**                                                                      | A) Temps réel uniquement / B) Mode asynchrone (tour par tour)                                                                                        | B = design radicalement différent, notifications, file d'attente d'actions                                    |
+| Q6  | **Interaction entre joueurs**                                                          | A) Chacun agit individuellement, le MJ synthétise / B) Chat entre joueurs + actions / C) Vote collectif sur les choix                                | Impacte le layout de la session de jeu (chat panel, votes, etc.)                                              |
+
 ---
 
 ## 3. Architecture de l'information
@@ -209,34 +342,39 @@ Login → "Mot de passe oublié ?" → Saisie email → Confirmation envoi
 app.jdrai.com/
 │
 ├── /auth
-│   ├── /login                   ← Connexion
-│   ├── /register                ← Inscription
-│   └── /reset-password          ← Réinitialisation MDP
-│       └── /reset-password/:token   ← Formulaire nouveau MDP
+│   ├── /login                          ← Connexion
+│   ├── /register                       ← Inscription
+│   └── /reset-password                 ← Réinitialisation MDP
+│       └── /reset-password/:token      ← Formulaire nouveau MDP
 │
 ├── /onboarding
-│   ├── /welcome                 ← Bienvenue + explication
-│   ├── /profile-setup           ← Création pseudo + bases
-│   └── /tutorial                ← Aventure tutoriel (= session de jeu guidée)
+│   ├── /welcome                        ← Bienvenue + explication
+│   ├── /profile-setup                  ← Création pseudo + bases
+│   └── /tutorial                       ← Aventure tutoriel (= session de jeu guidée)
 │
-├── /hub                         ← Page principale (après auth)
-│   ├── Section méta-personnage  ← Résumé profil, niveau, avatar
-│   ├── Section aventures        ← En cours + historique
-│   └── Actions : Nouvelle aventure, Reprendre, Voir profil
+├── /hub                                ← Page principale (après auth)
+│   ├── Section méta-personnage         ← Résumé profil, niveau, avatar
+│   ├── Section aventures               ← En cours + historique
+│   └── Actions : Nouvelle aventure, Rejoindre une partie, Reprendre, Voir profil
 │
-├── /profile                     ← Détail méta-personnage
-│   ├── Identité                 ← Nom, avatar, origine
-│   ├── Progression              ← Niveau, XP, succès
-│   └── Cosmétiques              ← Titres, badges, éléments visuels
+├── /profile                            ← Détail méta-personnage
+│   ├── Identité                        ← Nom, avatar, origine
+│   ├── Progression                     ← Niveau, XP, succès
+│   └── Cosmétiques                     ← Titres, badges, éléments visuels
 │
 ├── /adventure
-│   ├── /new                     ← Lancement nouvelle aventure
+│   ├── /new                            ← Lancement nouvelle aventure
+│   │   ├── Étape 0 : Choix du mode (Solo / Multijoueur)
 │   │   ├── Étape 1 : Paramètres (thème, durée, difficulté) OU template OU aléatoire
+│   │   ├── Étape 1bis (multi) : Paramètres multi (nb joueurs, visibilité)
 │   │   └── Étape 2 : Création personnage d'aventure
-│   ├── /:id                     ← Session de jeu active
-│   └── /:id/summary             ← Écran de fin / résumé
+│   ├── /:id                            ← Session de jeu active (solo ou multi)
+│   ├── /:id/lobby                      ← Salle d'attente multijoueur (P3)
+│   └── /:id/summary                    ← Écran de fin / résumé
 │
-└── /join/:inviteCode            ← Rejoindre via invitation (P3, mais route réservée)
+├── /join                               ← Rejoindre une partie (P3)
+│   ├── /join/:inviteCode               ← Via code d'invitation / lien partagé
+│   └── /join/lobby                     ← Lobby public (si activé, voir Q1/Q2 §2.5.4)
 ```
 
 ### 3.2 Navigation globale
@@ -287,11 +425,12 @@ app.jdrai.com/
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────────┐ │
 │  │  AVENTURE EN COURS (si applicable)                           │ │
-│  │  ┌─────────────────────────────────────────────┐             │ │
-│  │  │ 🔥 "La Crypte des Ombres"                   │             │ │
-│  │  │ Sauvegardée il y a 2h — Chapitre 3          │             │ │
-│  │  │                                [REPRENDRE]  │             │ │
-│  │  └─────────────────────────────────────────────┘             │ │
+│  │  ┌─────────────────────────────────────────────────┐         │ │
+│  │  │ 🔥 "La Crypte des Ombres"        [Voir toutes]  │         │ │
+│  │  │                                 (si applicable) │         │ │
+│  │  │ Sauvegardée il y a 2h — Chapitre 3              │         │ │
+│  │  │                                [REPRENDRE]      │         │ │
+│  │  └─────────────────────────────────────────────────┘         │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────────┐ │
@@ -302,6 +441,11 @@ app.jdrai.com/
 │  │  │  aventure    │  │  template    │  │  aléatoire   │        │ │
 │  │  │ (paramètres) │  │  (préfait)   │  │  (surprise)  │        │ │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘        │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐      │ │
+│  │  │  🤝 Rejoindre une partie (P3)                      │      │ │
+│  │  │  [Entrer un code]          [Parcourir le lobby]    │      │ │
+│  │  └────────────────────────────────────────────────────┘      │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────────┐ │
@@ -321,28 +465,28 @@ app.jdrai.com/
 
 ### 4.1 Écrans P1 (MVP)
 
-| #   | Écran                       | Route                         | Priorité | Maquette existante                          | Complexité      |
-| --- | --------------------------- | ----------------------------- | -------- | ------------------------------------------- | --------------- |
-| E1  | Login                       | `/auth/login`                 | P1       | `auth.png` (gauche) — adapter               | Faible          |
-| E2  | Register                    | `/auth/register`              | P1       | `auth.png` (droite) — adapter               | Faible          |
-| E3  | Reset password (demande)    | `/auth/reset-password`        | P1       | Non                                         | Faible          |
-| E4  | Reset password (formulaire) | `/auth/reset-password/:token` | P1       | Non                                         | Faible          |
-| E5  | Onboarding — Bienvenue      | `/onboarding/welcome`         | P1       | Non — **à concevoir**                       | Moyenne         |
-| E6  | Onboarding — Setup profil   | `/onboarding/profile-setup`   | P1       | Non — **à concevoir**                       | Moyenne         |
-| E7  | Onboarding — Tutoriel       | `/onboarding/tutorial`        | P1       | Non — **à concevoir** (= E10 en mode guidé) | Élevée          |
-| E8  | Hub                         | `/hub`                        | P1       | `list_chara.png` — adapter fortement        | Élevée          |
-| E9  | Lancement aventure          | `/adventure/new`              | P1       | Non — **à concevoir**                       | Moyenne         |
-| E10 | Session de jeu              | `/adventure/:id`              | P1       | Non — **à concevoir**                       | **Très élevée** |
-| E11 | Écran de fin                | `/adventure/:id/summary`      | P1       | Non — **à concevoir**                       | Moyenne         |
-| E12 | Sauvegarde/reprise          | (intégré au Hub E8)           | P1       | Non — intégré au Hub                        | Faible          |
+| #   | Écran                       | Route                         | Priorité | Maquette existante                                      | Complexité      |
+| --- | --------------------------- | ----------------------------- | -------- | ------------------------------------------------------- | --------------- |
+| E1  | Login                       | `/auth/login`                 | P1       | `auth.png` (gauche) — adapter                           | Faible          |
+| E2  | Register                    | `/auth/register`              | P1       | `auth.png` (droite) — adapter                           | Faible          |
+| E3  | Reset password (demande)    | `/auth/reset-password`        | P1       | Non                                                     | Faible          |
+| E4  | Reset password (formulaire) | `/auth/reset-password/:token` | P1       | Non                                                     | Faible          |
+| E5  | Onboarding — Bienvenue      | `/onboarding/welcome`         | P1       | Non — **à concevoir**                                   | Moyenne         |
+| E6  | Onboarding — Setup profil   | `/onboarding/profile-setup`   | P1       | Non — **à concevoir**                                   | Moyenne         |
+| E7  | Onboarding — Tutoriel       | `/onboarding/tutorial`        | P1       | Non — **à concevoir** (= E10 en mode guidé)             | Élevée          |
+| E8  | Hub                         | `/hub`                        | P1       | `list_chara.png` — inspiration libre, **à reconcevoir** | Élevée          |
+| E9  | Lancement aventure          | `/adventure/new`              | P1       | Non — **à concevoir**                                   | Moyenne         |
+| E10 | Session de jeu              | `/adventure/:id`              | P1       | Non — **à concevoir**                                   | **Très élevée** |
+| E11 | Écran de fin                | `/adventure/:id/summary`      | P1       | Non — **à concevoir**                                   | Moyenne         |
+| E12 | Sauvegarde/reprise          | (intégré au Hub E8)           | P1       | Non — intégré au Hub                                    | Faible          |
 
 ### 4.2 Écrans P2
 
-| #   | Écran                        | Route                       | Maquette existante           | Complexité |
-| --- | ---------------------------- | --------------------------- | ---------------------------- | ---------- |
-| E13 | Profil méta-personnage       | `/profile`                  | `detail_chara.png` — adapter | Moyenne    |
-| E14 | Création personnage aventure | `/adventure/new` (étape 2)  | `create_chara.png` — adapter | Moyenne    |
-| E15 | Paramètres MJ                | (modal ou panneau dans E10) | Non                          | Moyenne    |
+| #   | Écran                        | Route                       | Maquette existante                                        | Complexité |
+| --- | ---------------------------- | --------------------------- | --------------------------------------------------------- | ---------- |
+| E13 | Profil méta-personnage       | `/profile`                  | `detail_chara.png` — inspiration libre, **à reconcevoir** | Moyenne    |
+| E14 | Création personnage aventure | `/adventure/new` (étape 2)  | `create_chara.png` — inspiration libre, **à reconcevoir** | Moyenne    |
+| E15 | Paramètres MJ                | (modal ou panneau dans E10) | Non                                                       | Moyenne    |
 
 > **Note sur E15 — Paramètres MJ en session :**
 > L'accès aux paramètres MJ sera possible **pendant** une session active (panneau latéral ou drawer), évitant au joueur de quitter et relancer une aventure. Cependant, les paramètres seront divisés en deux catégories :
@@ -516,17 +660,17 @@ Par ordre de complexité et d'impact :
 
 **Interventions types :**
 
-| Moment                       | Exemple d'intervention                                                                                                                        |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Loading LLM**              | _"Le MJ fouille ses notes... il est un peu désorganisé."_                                                                                     |
-| **Erreur / timeout**         | _"Quelqu'un a renversé de l'encre sur le parchemin. On nettoie."_                                                                             |
-| **Onboarding**               | _"Bienvenue, aventurier ! Je serai votre guide... enfin, j'essaierai."_                                                                       |
-| **Première aventure lancée** | _"C'est parti ! ...Ne me regardez pas comme ça, c'est VOUS le héros."_                                                                        |
-| **Succès / récompense**      | _"Pas mal ! J'ai noté ça dans vos annales. Oui, vous avez des annales maintenant."_                                                           |
-| **Hub vide (empty state)**   | _"C'est trop calme... J'aime pas trop beaucoup ça... Je préfère quand c'est un peu trop plus moins calme... Et si on partait à l'aventure ?"_ |
-| **Session expirée**          | _"Vous vous êtes endormi à la taverne. Reconnectez-vous pour reprendre."_                                                                     |
-| **Double onglet**            | _"Je ne peux pas être à deux endroits à la fois ! Choisissez un onglet."_                                                                     |
-| **Retour après absence**     | _"Tiens, vous revoilà ! Votre aventure vous attend, chapitre 3."_                                                                             |
+| Moment                       | Exemple d'intervention                                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Loading LLM**              | _"Le MJ fouille ses notes... il est un peu désorganisé."_                                                                                                                                                                      |
+| **Erreur / timeout**         | _"Quelqu'un a renversé de l'encre sur le parchemin. On nettoie."_                                                                                                                                                              |
+| **Onboarding**               | _"Bienvenue, aventurier ! Je serai votre guide... enfin, j'essaierai."_                                                                                                                                                        |
+| **Première aventure lancée** | _"C'est parti ! ...Ne me regardez pas comme ça, c'est VOUS le héros."_                                                                                                                                                         |
+| **Succès / récompense**      | _"Pas mal ! J'ai noté ça dans vos annales. Oui, vous avez des annales maintenant."_                                                                                                                                            |
+| **Hub vide (empty state)**   | _"C'est trop calme... J'aime pas trop beaucoup ça... Je préfère quand c'est un peu trop plus moins calme... Et si on partait à l'aventure ?"_ Référence à Jamel Debbouze. Évaluer la pertinence de l'intégration de références |
+| **Session expirée**          | _"Vous vous êtes endormi à la taverne. Reconnectez-vous pour reprendre."_                                                                                                                                                      |
+| **Double onglet**            | _"Je ne peux pas être à deux endroits à la fois ! Choisissez un onglet."_                                                                                                                                                      |
+| **Retour après absence**     | _"Tiens, vous revoilà ! Votre aventure vous attend, chapitre 3."_                                                                                                                                                              |
 
 **Règles de design du compagnon :**
 
