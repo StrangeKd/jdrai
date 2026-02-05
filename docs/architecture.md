@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Date:** 2026-02-05
-**Statut:** Draft
+**Statut:** Reviewed - En attente de phase UX
 **Auteur:** Architect (BMAD Method)
 
 ---
@@ -145,7 +145,6 @@ erDiagram
     User {
         uuid id PK
         string email UK
-        string passwordHash
         string username
         enum role
         boolean onboardingCompleted
@@ -257,12 +256,6 @@ export interface UserCreateInput {
 export interface UserLoginInput {
   email: string;
   password: string;
-}
-
-export interface AuthResponse {
-  user: UserDTO;
-  accessToken: string;
-  refreshToken: string;
 }
 ```
 
@@ -391,14 +384,15 @@ export interface GameStateDTO {
 
 #### Adventures
 
-| Méthode | Endpoint                   | Description            |
-| ------- | -------------------------- | ---------------------- |
-| GET     | `/adventures`              | Liste aventures user   |
-| POST    | `/adventures`              | Créer aventure         |
-| GET     | `/adventures/:id`          | Détail aventure        |
-| PATCH   | `/adventures/:id`          | Modifier (pause, etc.) |
-| DELETE  | `/adventures/:id`          | Abandonner aventure    |
-| GET     | `/adventures/:id/messages` | Historique messages    |
+| Méthode | Endpoint                   | Description                         |
+| ------- | -------------------------- | ----------------------------------- |
+| GET     | `/adventures`              | Liste aventures user                |
+| POST    | `/adventures`              | Créer aventure                      |
+| GET     | `/adventures/:id`          | Détail aventure                     |
+| PATCH   | `/adventures/:id`          | Modifier (pause, abandon, settings) |
+| GET     | `/adventures/:id/messages` | Historique messages                 |
+
+> **Note** : L'abandon d'une aventure se fait via `PATCH` avec `{ status: "abandoned" }`, pas via `DELETE`. Une suppression physique n'est pas prévue pour conserver l'historique.
 
 #### Game (WebSocket + REST fallback)
 
@@ -435,11 +429,13 @@ interface ApiError {
 }
 ```
 
-### 5.3 Authentification
+### 5.3 Authentification (Better Auth)
 
-- **Access Token:** Header `Authorization: Bearer <token>`
-- **Expiration:** 15 minutes (access), 7 jours (refresh)
-- **Stockage frontend:** Access token en mémoire, refresh token en httpOnly cookie
+- **Méthode:** Sessions gérées par Better Auth via cookies httpOnly
+- **Durée session:** 7 jours (configurable), refresh automatique après 1 jour d'activité
+- **Transport:** Cookies httpOnly (pas de tokens exposés au JavaScript)
+- **CSRF:** Protection automatique par Better Auth
+- **Credentials:** Toutes les requêtes API doivent inclure `credentials: "include"`
 
 ---
 
@@ -461,7 +457,7 @@ apps/web/
 │   │   │   ├── register.tsx
 │   │   │   └── forgot-password.tsx
 │   │   ├── onboarding/
-│   │   └── index.tsx        # Landing/redirect
+│   │   └── index.tsx        # Redirect → /hub (auth) ou /auth/login
 │   ├── components/
 │   │   ├── ui/              # shadcn components
 │   │   ├── game/            # Composants session jeu
@@ -473,11 +469,10 @@ apps/web/
 │   │   └── useGameSession.ts
 │   ├── services/
 │   │   ├── api.ts           # Client API (fetch wrapper)
-│   │   ├── auth.service.ts
 │   │   ├── adventure.service.ts
 │   │   └── socket.service.ts
 │   ├── stores/
-│   │   └── auth.store.ts    # État auth (zustand ou context)
+│   │   └── ui.store.ts      # État UI (zustand)
 │   ├── lib/
 │   │   └── utils.ts
 │   └── main.tsx
@@ -495,8 +490,9 @@ apps/api/
 │   ├── app.ts               # Express app setup
 │   ├── config/
 │   │   ├── env.ts           # Variables d'environnement
-│   │   ├── database.ts      # Config Drizzle
-│   │   └── auth.ts          # Config JWT/Passport
+│   │   └── database.ts      # Config Drizzle
+│   ├── lib/
+│   │   └── auth.ts          # Config Better Auth
 │   ├── db/
 │   │   ├── schema/          # Schémas Drizzle
 │   │   │   ├── users.ts
@@ -508,10 +504,8 @@ apps/api/
 │   │   └── index.ts         # Export db client
 │   ├── modules/
 │   │   ├── auth/
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.service.ts
-│   │   │   ├── auth.routes.ts
-│   │   │   └── strategies/
+│   │   │   ├── auth.interface.ts  # Abstraction IAuthService
+│   │   │   └── auth.service.ts    # Implémentation Better Auth
 │   │   ├── users/
 │   │   ├── adventures/
 │   │   ├── game/
@@ -884,15 +878,17 @@ import { pgTable, uuid, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-
 
 export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
 
-export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  email: text("email").notNull().unique(),
+// Note: Better Auth crée automatiquement les tables `user`, `session`, et `account`
+// via son adapter Drizzle. Nous ajoutons uniquement les champs métier supplémentaires.
+// Voir: https://www.better-auth.com/docs/concepts/database#core-schema
+
+export const users = pgTable("user", {
+  // Champs gérés par Better Auth: id, email, emailVerified, name, image, createdAt, updatedAt
+  // Champs additionnels pour JDRAI:
+  id: text("id").primaryKey(), // Better Auth utilise text, pas uuid
   username: text("username").notNull(),
-  passwordHash: text("password_hash").notNull(),
   role: userRoleEnum("role").default("user").notNull(),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 ```
 
@@ -1194,7 +1190,8 @@ jdrai/
 │   └── docker-compose.yml
 ├── docs/
 │   ├── prd.md
-│   └── architecture.md
+│   ├── architecture.md
+│   └── future documentations...
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
@@ -1455,36 +1452,39 @@ import request from "supertest";
 import { app } from "../../src/app";
 import { db } from "../../src/db";
 
-describe("POST /v1/auth/register", () => {
+describe("POST /api/auth/sign-up/email", () => {
   it("should create a new user", async () => {
-    const response = await request(app).post("/v1/auth/register").send({
+    const response = await request(app).post("/api/auth/sign-up/email").send({
       email: "test@example.com",
+      name: "testuser",
       username: "testuser",
       password: "SecurePass123!",
     });
 
-    expect(response.status).toBe(201);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data.user.email).toBe("test@example.com");
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe("test@example.com");
+    // Vérifie que le cookie de session est défini
+    expect(response.headers["set-cookie"]).toBeDefined();
   });
 
   it("should reject duplicate email", async () => {
     // First registration
-    await request(app).post("/v1/auth/register").send({
+    await request(app).post("/api/auth/sign-up/email").send({
       email: "duplicate@example.com",
+      name: "user1",
       username: "user1",
       password: "SecurePass123!",
     });
 
     // Second registration with same email
-    const response = await request(app).post("/v1/auth/register").send({
+    const response = await request(app).post("/api/auth/sign-up/email").send({
       email: "duplicate@example.com",
+      name: "user2",
       username: "user2",
       password: "SecurePass123!",
     });
 
-    expect(response.status).toBe(409);
-    expect(response.body.error.code).toBe("EMAIL_EXISTS");
+    expect(response.status).toBe(422); // Better Auth retourne 422 pour les conflits
   });
 });
 ```
@@ -1626,7 +1626,7 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
 - [ ] Structure monorepo correcte (turbo + pnpm)
 - [ ] Types partagés dans `packages/shared`
 - [ ] Drizzle configuré avec migrations
-- [ ] Auth JWT fonctionnelle
+- [ ] Auth Better Auth fonctionnelle
 - [ ] Routes protégées (front + back)
 - [ ] Validation Zod sur tous les endpoints
 - [ ] Error handling unifié
