@@ -127,6 +127,8 @@ flowchart TB
 
 ## 4. Modèles de Données
 
+> **Note MVP** : Les modèles ci-dessous représentent la structure initiale. Certains champs (notamment `CharacterStats`, système de règles, races/classes) seront affinés lors de la phase de game design. Le schéma Drizzle permettra des migrations incrémentales.
+
 ### 4.1 Vue d'Ensemble
 
 ```mermaid
