@@ -17,10 +17,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 🔄 **Projet en reconstruction** — L'ancienne codebase (`jdrai-api/`, `jdrai-front/`) est abandonnée. Le projet repart de zéro avec une nouvelle stack technique.
 
 - **PRD validé** : `docs/prd.md` v1.2 (source de vérité pour les fonctionnalités)
-- **Architecture en cours de mise à jour** : `docs/architecture.md` v1.1 (en cours de mise à jour post-audit)
+- **Architecture validée** : `docs/architecture/` v1.2 (8 fichiers modulaires, voir `docs/architecture/README.md`)
 - **UX Cartography** : `docs/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants)
 - **Maquettes UX** : `mockups/` (inspiration libre, cf. UX cartography §1.2)
 - **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, en attente wireframes (UX Phase 2) et stories (PO)
+
+### Utilisation de la documentation architecture
+
+⚠️ **IMPORTANT** : La documentation architecture est maintenant modulaire pour optimiser le contexte.
+
+**Règle obligatoire (quand l'architecture est concernée) :**
+1. **TOUJOURS** commencer par lire `docs/architecture/README.md` pour identifier les fichiers pertinents
+2. **NE JAMAIS** charger tous les fichiers d'un coup — sélectionner UNIQUEMENT les sections nécessaires
+3. **Si incertain** sur les fichiers à charger, demander une clarification à l'utilisateur
+4. **Consulter les fichiers spécifiques** selon le besoin :
+   - `data-models.md` — Schémas DB, DTOs, types partagés
+   - `api.md` — Endpoints REST, erreurs, formats de réponse
+   - `frontend.md` — Architecture React, routing, auth client, UX
+   - `backend.md` — Structure API, LLM, auth service, middleware
+   - `infrastructure.md` — Docker, sécurité, workflow dev, monitoring
+   - `testing-conventions.md` — Tests, conventions de code
+   - `checklist.md` — Validation par phase (P1, P2, P3)
 
 ### Nouvelle stack (à implémenter)
 
