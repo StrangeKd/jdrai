@@ -3,7 +3,7 @@
 **Version :** 1.0
 **Date :** 2026-02-05
 **Auteur :** Sally (UX Expert, BMAD Method)
-**Statut :** Draft
+**Statut :** Validé par CEO
 **Référence :** `docs/prd.md` v1.1
 
 ---
@@ -344,8 +344,8 @@ app.jdrai.com/
 ├── /auth
 │   ├── /login                          ← Connexion
 │   ├── /register                       ← Inscription
-│   └── /reset-password                 ← Réinitialisation MDP
-│       └── /reset-password/:token      ← Formulaire nouveau MDP
+│   ├── /forgot-password                ← Demande de réinitialisation MDP
+│   └── /reset-password/:token          ← Formulaire nouveau MDP
 │
 ├── /onboarding
 │   ├── /welcome                        ← Bienvenue + explication
@@ -374,8 +374,15 @@ app.jdrai.com/
 │
 ├── /join                               ← Rejoindre une partie (P3)
 │   ├── /join/:inviteCode               ← Via code d'invitation / lien partagé
-│   └── /join/lobby                     ← Lobby public (si activé, voir Q1/Q2 §2.5.4)
+│   └── /join/lobby                     ← Lobby public (si activé, voir Q1 ci-dessous)
+│
+└── /settings                           ← Paramètres utilisateur
+    ├── Compte                          ← Email, mot de passe, suppression
+    ├── Préférences                     ← Thème, compagnon on/off, langue
+    └── Notifications                   ← (P3+, préparation multi)
 ```
+
+> **Q1 - Lobby public :** Voir détails dans la section [2.5.4 Questions ouvertes pour le PM](#254-questions-ouvertes-pour-le-pm)
 
 ### 3.2 Navigation globale
 
@@ -469,7 +476,7 @@ app.jdrai.com/
 | --- | --------------------------- | ----------------------------- | -------- | ------------------------------------------------------- | --------------- |
 | E1  | Login                       | `/auth/login`                 | P1       | `auth.png` (gauche) — adapter                           | Faible          |
 | E2  | Register                    | `/auth/register`              | P1       | `auth.png` (droite) — adapter                           | Faible          |
-| E3  | Reset password (demande)    | `/auth/reset-password`        | P1       | Non                                                     | Faible          |
+| E3  | Forgot password (demande)   | `/auth/forgot-password`       | P1       | Non                                                     | Faible          |
 | E4  | Reset password (formulaire) | `/auth/reset-password/:token` | P1       | Non                                                     | Faible          |
 | E5  | Onboarding — Bienvenue      | `/onboarding/welcome`         | P1       | Non — **à concevoir**                                   | Moyenne         |
 | E6  | Onboarding — Setup profil   | `/onboarding/profile-setup`   | P1       | Non — **à concevoir**                                   | Moyenne         |
@@ -487,6 +494,7 @@ app.jdrai.com/
 | E13 | Profil méta-personnage       | `/profile`                  | `detail_chara.png` — inspiration libre, **à reconcevoir** | Moyenne    |
 | E14 | Création personnage aventure | `/adventure/new` (étape 2)  | `create_chara.png` — inspiration libre, **à reconcevoir** | Moyenne    |
 | E15 | Paramètres MJ                | (modal ou panneau dans E10) | Non                                                       | Moyenne    |
+| E16 | Paramètres utilisateur       | `/settings`                 | Non — **à concevoir**                                     | Faible     |
 
 > **Note sur E15 — Paramètres MJ en session :**
 > L'accès aux paramètres MJ sera possible **pendant** une session active (panneau latéral ou drawer), évitant au joueur de quitter et relancer une aventure. Cependant, les paramètres seront divisés en deux catégories :
@@ -514,22 +522,22 @@ Par ordre de complexité et d'impact :
 
 ### 5.1 Composants globaux
 
-| Composant                | Usage                                                                                         | Écrans                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| **Sidebar**              | Navigation principale                                                                         | Tous (sauf auth, onboarding)                    |
-| **Bottom Tab Bar**       | Navigation mobile                                                                             | Tous (sauf auth, onboarding)                    |
-| **Logo JDRAI**           | Identité visuelle                                                                             | Tous                                            |
-| **Avatar utilisateur**   | Méta-personnage                                                                               | Sidebar, Hub, Profil                            |
-| **Bouton primaire**      | Action principale (parchemin + or)                                                            | Tous                                            |
-| **Bouton secondaire**    | Action secondaire                                                                             | Tous                                            |
-| **Bouton fantôme**       | Action tertiaire / navigation                                                                 | Tous                                            |
-| **Carte (Card)**         | Conteneur générique                                                                           | Hub, Historique, Listes                         |
-| **Modale**               | Confirmations, paramètres                                                                     | Divers                                          |
-| **Toast / Notification** | Feedback système                                                                              | Tous                                            |
-| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                    | Hub                                             |
-| **Loader / Skeleton**    | Chargement                                                                                    | Tous                                            |
-| **Barre de progression** | XP, avancement                                                                                | Hub, Profil, Onboarding                         |
-| **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [§7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
+| Composant                | Usage                                                                                        | Écrans                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Sidebar**              | Navigation principale                                                                        | Tous (sauf auth, onboarding)                    |
+| **Bottom Tab Bar**       | Navigation mobile                                                                            | Tous (sauf auth, onboarding)                    |
+| **Logo JDRAI**           | Identité visuelle                                                                            | Tous                                            |
+| **Avatar utilisateur**   | Méta-personnage                                                                              | Sidebar, Hub, Profil                            |
+| **Bouton primaire**      | Action principale (parchemin + or)                                                           | Tous                                            |
+| **Bouton secondaire**    | Action secondaire                                                                            | Tous                                            |
+| **Bouton fantôme**       | Action tertiaire / navigation                                                                | Tous                                            |
+| **Carte (Card)**         | Conteneur générique                                                                          | Hub, Historique, Listes                         |
+| **Modale**               | Confirmations, paramètres                                                                    | Divers                                          |
+| **Toast / Notification** | Feedback système                                                                             | Tous                                            |
+| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                   | Hub                                             |
+| **Loader / Skeleton**    | Chargement                                                                                   | Tous                                            |
+| **Barre de progression** | XP, avancement                                                                               | Hub, Profil, Onboarding                         |
+| **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
 
 ### 5.2 Composants Auth
 
@@ -615,16 +623,17 @@ Par ordre de complexité et d'impact :
 
 ### 6.2 Edge cases critiques
 
-| Situation                           | Comportement attendu                                                                                                      |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Perte de connexion en jeu**       | Message non-bloquant "Connexion perdue", auto-reconnexion, reprise depuis dernier état sauvegardé                         |
-| **LLM timeout / erreur**            | "Le MJ a besoin d'un moment..." → retry automatique (x3) → puis message "Problème technique, réessayez" avec bouton retry |
-| **Refresh page en jeu**             | Auto-save assure la reprise au dernier état. Pas de perte de progression.                                                 |
-| **Session expirée (JWT)**           | Redirect login avec message "Session expirée". Après reconnexion, retour à l'écran précédent.                             |
-| **Onboarding abandonné**            | L'utilisateur peut quitter à tout moment. Au retour → Hub avec profil incomplet + rappel.                                 |
-| **Double onglet sur même aventure** | Détecter et avertir : "Cette aventure est ouverte dans un autre onglet"                                                   |
-| **Texte libre inapproprié**         | Le MJ IA redirige avec diplomatie ("Votre personnage ne ferait pas cela...") — côté LLM prompt                            |
-| **Aventure bloquée (boucle IA)**    | Bouton "Le MJ semble perdu" → relance du contexte / options de secours                                                    |
+| Situation                           | Comportement attendu                                                                                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Perte de connexion en jeu**       | Message non-bloquant "Connexion perdue", auto-reconnexion, reprise depuis dernier état sauvegardé                                                                      |
+| **LLM timeout / erreur**            | "Le MJ a besoin d'un moment..." → retry automatique (x3) → puis message "Problème technique, réessayez" avec bouton retry                                              |
+| **Refresh page en jeu**             | Auto-save assure la reprise au dernier état. Pas de perte de progression.                                                                                              |
+| **Session expirée**                 | Redirect login avec message "Session expirée". Après reconnexion, retour à l'écran précédent. (Auth via cookies httpOnly Better Auth)                                  |
+| **Onboarding abandonné**            | L'utilisateur peut quitter à tout moment. Au retour → Hub avec profil incomplet + rappel.                                                                              |
+| **Double onglet sur même aventure** | Détecter et avertir : "Cette aventure est ouverte dans un autre onglet"                                                                                                |
+| **Texte libre inapproprié**         | Le MJ IA redirige avec diplomatie ("Votre personnage ne ferait pas cela...") — côté LLM prompt                                                                         |
+| **Aventure bloquée (boucle IA)**    | Bouton "Le MJ semble perdu" → relance du contexte / options de secours                                                                                                 |
+| **Rate limiting (HTTP 429)**        | Compagnon : "Du calme, aventurier ! Le MJ a besoin de reprendre son souffle." Désactiver temporairement le bouton d'envoi, réactiver après le délai. Compteur visible. |
 
 ---
 
