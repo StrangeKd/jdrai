@@ -3,7 +3,7 @@
 **Version :** 1.0
 **Date :** 2026-02-05
 **Auteur :** Sally (UX Expert, BMAD Method)
-**Statut :** Validé par CEO
+**Statut :** En cours
 **Référence :** `docs/prd.md` v1.1
 
 ---
@@ -407,15 +407,15 @@ app.jdrai.com/
 
 **Règles de navigation :**
 
-| Contexte                   | Sidebar       | Comportement                                                                                                           |
-| -------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Auth (login/register)      | Masquée       | Plein écran, pas de navigation                                                                                         |
-| Onboarding                 | Masquée       | Flow linéaire, pas de navigation libre                                                                                 |
-| Hub                        | Visible       | Navigation complète                                                                                                    |
-| Profil                     | Visible       | Retour Hub via sidebar                                                                                                 |
-| Nouvelle aventure (config) | Visible       | Retour Hub possible (abandon création)                                                                                 |
-| Session de jeu             | **Minimisée** | Sidebar réduite à icônes pour maximiser l'immersion. Menu hamburger pour actions (quitter, sauvegarder, paramètres MJ) |
-| Écran de fin               | Visible       | Retour Hub automatique proposé                                                                                         |
+| Contexte                   | Sidebar     | Comportement                                                                                                                                                                                                                                                                   |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Auth (login/register)      | Masquée     | Plein écran, pas de navigation                                                                                                                                                                                                                                                 |
+| Onboarding                 | Masquée     | Flow linéaire, pas de navigation libre                                                                                                                                                                                                                                         |
+| Hub                        | Visible     | Navigation complète                                                                                                                                                                                                                                                            |
+| Profil                     | Visible     | Retour Hub via sidebar                                                                                                                                                                                                                                                         |
+| Nouvelle aventure (config) | Visible     | Retour Hub possible (abandon création)                                                                                                                                                                                                                                         |
+| Session de jeu             | **Masquée** | Navigation classique masquée. Bouton de menu intégré à l'UI de jeu (style jeu vidéo, pas burger classique) pour les actions (quitter, sauvegarder, paramètres MJ). Confirmation obligatoire avant toute sortie de session (changement de page, déconnexion, fermeture onglet). |
+| Écran de fin               | Visible     | Retour Hub automatique proposé                                                                                                                                                                                                                                                 |
 
 ### 3.3 Hiérarchie du Hub (écran central)
 

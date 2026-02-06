@@ -16,22 +16,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 🔄 **Projet en reconstruction** — L'ancienne codebase (`jdrai-api/`, `jdrai-front/`) est abandonnée. Le projet repart de zéro avec une nouvelle stack technique.
 
-- **PRD validé** : `docs/prd.md` (source de vérité pour les fonctionnalités)
-- **Maquettes UX** : `mockups/` (à adapter pour la nouvelle version)
-- **Phase actuelle** : Discovery terminée, Architecture à venir
+- **PRD validé** : `docs/prd.md` v1.2 (source de vérité pour les fonctionnalités)
+- **Architecture en cours de mise à jour** : `docs/architecture.md` v1.1 (en cours de mise à jour post-audit)
+- **UX Cartography** : `docs/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants)
+- **Maquettes UX** : `mockups/` (inspiration libre, cf. UX cartography §1.2)
+- **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, en attente wireframes (UX Phase 2) et stories (PO)
 
 ### Nouvelle stack (à implémenter)
 
-| Couche | Technologie |
-|--------|-------------|
-| Monorepo | pnpm workspaces / Turborepo |
-| Frontend | React + Vite + TanStack Router/Query |
-| UI | Tailwind + ShadCN + React Hook Form + Zod |
-| Backend | Express + TypeScript |
-| ORM | Drizzle + drizzle-zod |
-| Auth | JWT (Passport.js) |
-| BDD | PostgreSQL (Docker) |
-| LLM | Multi-provider |
+| Couche   | Technologie                               |
+| -------- | ----------------------------------------- |
+| Monorepo | pnpm workspaces / Turborepo               |
+| Frontend | React + Vite + TanStack Router/Query      |
+| UI       | Tailwind + ShadCN + React Hook Form + Zod |
+| Backend  | Express + TypeScript                      |
+| ORM      | Drizzle + drizzle-zod                     |
+| Auth     | Better Auth (cookies httpOnly)            |
+| BDD      | PostgreSQL (Docker)                       |
+| LLM      | Multi-provider                            |
 
 ### Structure cible
 
@@ -52,4 +54,4 @@ Ce projet utilise BMAD pour le développement assisté par IA.
 
 **Agents disponibles** : dev, architect, pm, po, qa, analyst, ux-expert, sm, bmad-orchestrator, bmad-master
 
-**Documentation** : `docs/` — PRD, architecture, stories (`{epicNum}.{storyNum}.story.md`)
+**Documentation** : `docs/` — PRD, architecture, UX cartography, stories (`{epicNum}.{storyNum}.story.md`)

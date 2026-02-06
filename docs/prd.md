@@ -1,9 +1,9 @@
 # JDRAI - Product Requirements Document (PRD)
 
-**Version:** 1.1
-**Date:** 2026-02-04
+**Version:** 1.2
+**Date:** 2026-02-06
 **Statut:** Validé par CEO
-**Dernière mise à jour:** Stack technique confirmée, onboarding révisé
+**Dernière mise à jour:** Audit de cohérence post-UX, priorisation affinée, errata Auth
 **Auteur:** PM (BMAD Method)
 
 ---
@@ -118,19 +118,27 @@ Personnage **temporaire** créé pour chaque aventure.
 
 ### 4.1 Priorisation MVP
 
-| Priorité | Feature                      | Description                                                     |
-| -------- | ---------------------------- | --------------------------------------------------------------- |
-| **P1**   | Authentification             | Inscription, connexion, gestion de session                      |
-| **P1**   | Session solo MJ IA           | Aventure textuelle avec MJ IA (choix hybrides)                  |
-| **P1**   | Sauvegarde/Reprise           | Sauvegarder et reprendre une aventure en cours                  |
-| **P1**   | Onboarding/Tutoriel          | Parcours guidé pour nouveaux joueurs + création méta-personnage |
-| **P2**   | Méta-personnage              | Profil joueur avec progression et cosmétiques                   |
-| **P2**   | Personnalisation MJ          | Ajustement basique (ton, difficulté, style)                     |
-| **P2**   | Création personnage aventure | Race, classe, background, stats                                 |
-| **P3**   | Génération d'images          | Illustrations de scènes et personnages                          |
-| **P3**   | Multijoueur                  | Sessions à plusieurs joueurs                                    |
-| **P4**   | Narration audio              | Voix synthétisée pour le MJ                                     |
-| **P4**   | Genres additionnels          | Dark fantasy, sci-fi, etc.                                      |
+| Priorité | Feature                        | Description                                                                   |
+| -------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| **P1**   | Authentification               | Inscription, connexion, gestion de session (Better Auth)                      |
+| **P1**   | Session solo MJ IA             | Aventure textuelle avec MJ IA (choix hybrides), menu de jeu intégré           |
+| **P1**   | Sauvegarde/Reprise             | Sauvegarder et reprendre une aventure en cours                                |
+| **P1**   | Onboarding/Tutoriel            | Parcours guidé (welcome, profile-setup, tutoriel-aventure)                    |
+| **P1**   | Navigation mobile-first        | Bottom tab bar mobile, sidebar responsive, conception mobile-first            |
+| **P1**   | Résilience session             | Gestion rate limiting (429), reconnexion basique en session                   |
+| **P2**   | Méta-personnage                | Profil joueur avec progression, cosmétiques + page profil dédiée              |
+| **P2**   | Personnalisation MJ            | Ajustement basique (ton, difficulté, style) + verrouillage en session         |
+| **P2**   | Création personnage aventure   | Race, classe, background, stats                                               |
+| **P2**   | Paramètres utilisateur         | Gestion compte, préférences (version simple)                                  |
+| **P2**   | Résilience aventure            | Bouton "MJ bloqué" avec reset contexte                                        |
+| **P3**   | Compagnon d'interface          | Mascotte méta récurrente (loading, erreurs, transitions, onboarding)          |
+| **P3**   | Génération d'images            | Illustrations de scènes et personnages                                        |
+| **P3**   | Multijoueur                    | Sessions à plusieurs joueurs                                                  |
+| **P3**   | Parcours "Rejoindre un ami"    | Onboarding express via invitation, jonction session, récompenses rétroactives |
+| **P3**   | Paramètres utilisateur complet | Notifications, préférences avancées, compagnon on/off                         |
+| **P3**   | Détection double onglet        | Avertissement aventure ouverte dans un autre onglet                           |
+| **P4**   | Narration audio                | Voix synthétisée pour le MJ                                                   |
+| **P4**   | Genres additionnels            | Dark fantasy, sci-fi, etc.                                                    |
 
 ### 4.2 Détail des features MVP (P1)
 
@@ -139,7 +147,7 @@ Personnage **temporaire** créé pour chaque aventure.
 - Inscription (email + mot de passe)
 - Connexion / Déconnexion
 - Récupération de mot de passe
-- Session persistante (JWT)
+- Session persistante (Better Auth, cookies httpOnly)
 
 #### F2. Session solo MJ IA
 
@@ -152,6 +160,10 @@ Personnage **temporaire** créé pour chaque aventure.
 - Interaction hybride : choix suggérés + texte libre
 - Narration textuelle immersive
 - Système de règles maison (mécaniques à tester : dés visibles vs cachés)
+- **Navigation en session** : La sidebar/navigation classique est masquée. Un bouton de menu intégré à l'interface de jeu (style jeu vidéo, pas burger menu classique) donne accès aux actions : quitter, sauvegarder, paramètres MJ
+- **Confirmation de sortie** : Toute action quittant le mode aventure (changement de page, déconnexion, fermeture onglet) déclenche une fenêtre de confirmation pour éviter la perte de progression involontaire
+- Gestion du rate limiting (429) : désactivation temporaire de la saisie, message utilisateur, réactivation après délai
+- Reconnexion basique en cas de perte de connexion : message non-bloquant, auto-reconnexion, reprise depuis dernier état sauvegardé
 
 #### F3. Sauvegarde/Reprise
 
@@ -162,31 +174,26 @@ Personnage **temporaire** créé pour chaque aventure.
 
 #### F4. Onboarding/Tutoriel
 
-**Parcours standard :**
+**Parcours standard (3 étapes) :**
 
-- Parcours guidé première connexion
-- Création du méta-personnage avec presets de background
-- Tutoriel interactif = première aventure solo guidée
-- Le personnage créé pour cette aventure devient le méta-personnage
+- **Welcome** : Bienvenue + explication du concept
+- **Profile-setup** : Choix du pseudo + bases du profil
+- **Tutoriel** : Première aventure solo guidée (= session de jeu en mode accompagné)
+  - Création du méta-personnage intégrée narrativement (choix de race, classe en contexte)
+  - Le personnage créé pour cette aventure devient le méta-personnage
 
-**Parcours "Rejoindre un ami" :**
+**Mécanismes de flexibilité (P1) :**
 
-- Skip du tutoriel possible (invitation reçue)
-- Profil minimal créé (nom uniquement)
-- Rejoint directement l'aventure multijoueur
-- Tutoriel reprendre plus tard depuis le Hub
-- Méta-personnage complété ultérieurement
-- Récompenses de l'aventure stockées et liées rétroactivement au méta-personnage
+- Skip du tutoriel possible (le joueur peut choisir d'aller directement au Hub)
+- Profil "incomplet" (nom uniquement) = fonctionnel pour jouer
+- Rappel non-intrusif pour compléter le profil depuis le Hub
+- Tutoriel accessible à tout moment depuis le Hub
 
-**Règles :**
-
-- Tutoriel = fortement encouragé mais jamais bloquant
-- Profil "incomplet" = fonctionnel pour jouer
-- Rappel non-intrusif pour compléter le profil
+> **Note** : Le parcours spécifique "Rejoindre un ami" (invitation → profil express → jonction session multijoueur → récompenses rétroactives) dépend des features multijoueur et est donc classé **P3** (cf. §4.4 F13). Les mécanismes génériques ci-dessus (skip, profil incomplet, reprise tutoriel) sont P1 et seront réutilisés par ce parcours.
 
 ### 4.3 Détail des features importantes (P2)
 
-#### F5. Méta-personnage
+#### F5. Méta-personnage (+ page Profil)
 
 - Création lors de l'onboarding
 - Éléments : nom, avatar, origine/background
@@ -195,6 +202,7 @@ Personnage **temporaire** créé pour chaque aventure.
 - Cosmétiques : titres, éléments visuels
 - Modificateurs légers (optionnel, faible impact)
 - Fonction template pour personnages d'aventure
+- **Page Profil dédiée** (`/profile`) : vue détaillée avec sections Identité, Progression, Cosmétiques (le Hub P1 n'affiche qu'un résumé)
 
 #### F6. Personnalisation MJ
 
@@ -202,6 +210,9 @@ Personnage **temporaire** créé pour chaque aventure.
 - Difficulté : indulgent → impitoyable
 - Rigueur des règles : narratif libre → strict
 - Style narratif : concis → descriptif
+- **Accès en session** via panneau latéral (drawer), sans quitter l'aventure :
+  - **Ajustements légers** (modifiables en session) : ton, niveau de détail narratif, longueur des réponses
+  - **Paramètres structurels** (verrouillés en session) : difficulté, rigueur des règles — avec tooltip explicatif
 
 #### F7. Création personnage aventure
 
@@ -211,6 +222,55 @@ Personnage **temporaire** créé pour chaque aventure.
 - Distribution de points de stats
 - Nom (libre ou généré)
 - Option : partir du template méta-personnage
+
+#### F8. Paramètres utilisateur (version simple)
+
+- Gestion du compte : email, mot de passe, suppression de compte
+- Préférences : thème (clair/sombre/système), langue
+- Version complète en P3 (notifications, préférences avancées, compagnon on/off)
+
+#### F9. Résilience aventure
+
+- Bouton de secours "Le MJ semble perdu" → relance du contexte narratif avec options alternatives
+- Reset de contexte côté LLM pour débloquer les boucles IA
+
+### 4.4 Détail des features sociales et avancées (P3)
+
+#### F10. Compagnon d'interface (mascotte méta)
+
+> **Note architecture** : Bien que le développement soit P3, les composants et la structure doivent être anticipés dès la conception pour faciliter l'intégration future. Les emplacements d'intervention (loading, erreurs, empty states, onboarding, transitions) existent dès le MVP sous forme standard — le compagnon les remplacera par une version immersive.
+
+- Personnage récurrent **hors session de jeu** (le MJ IA reste le seul narrateur en session)
+- Intervient sur : loading LLM, erreurs/timeouts, onboarding, succès/récompenses, empty states, retours après absence
+- Jamais bloquant (informatif/décoratif uniquement, pas de modale exigeant une action)
+- Fréquence maîtrisée (moments clés : transitions, attentes, erreurs, premiers usages)
+- Désactivable dans les paramètres utilisateur
+- Évolutif : répliques adaptées au niveau du méta-personnage
+- Pistes de personnage : Le Scribe, L'Artefact, Le Gobelin de service (choix à affiner en Phase 2 UX)
+- Référence complète : `docs/ux-cartography.md` §7.2
+
+#### F11. Détection double onglet
+
+- Détection d'une même aventure ouverte dans plusieurs onglets
+- Avertissement non-bloquant pour éviter les conflits de sauvegarde
+
+#### F12. Paramètres utilisateur (version complète)
+
+- Notifications (préparation multijoueur)
+- Préférences avancées : compagnon on/off
+- Finalisation des éléments non couverts par la version simple P2
+
+#### F13. Parcours "Rejoindre un ami"
+
+> Dépend de : Multijoueur (P3). Réutilise les mécanismes P1 de skip tutoriel et profil incomplet (cf. F4).
+
+- Réception d'un lien/code d'invitation
+- Inscription (si nouveau) ou connexion (si existant)
+- Profil express : pseudo uniquement (skip tutoriel automatique)
+- Création de personnage rapide (preset recommandé ou manuel)
+- Jonction directe de la session multijoueur en cours
+- Récompenses de l'aventure stockées et liées rétroactivement au méta-personnage une fois celui-ci complété
+- Rappel dans le Hub pour compléter le tutoriel et le méta-personnage
 
 ---
 
@@ -227,9 +287,9 @@ Inscription → Tutoriel (aventure guidée + création perso = méta-perso)
                                             ↓
                               ┌─────────────┴─────────────┐
                               ↓                           ↓
-                    Nouvelle aventure              Reprendre aventure
+                    Nouvelle aventure         Rejoindre une partie (P3)
                               ↓                           ↓
-                    Paramètres + Création         Chargement sauvegarde
+                    Paramètres + Création         Code / Lobby (P3)
                     personnage temporaire
                               ↓                           ↓
                               └─────────────┬─────────────┘
@@ -241,22 +301,24 @@ Inscription → Tutoriel (aventure guidée + création perso = méta-perso)
                                     Récompenses → Hub
 ```
 
-**Parcours "Rejoindre un ami" :**
+**Parcours "Rejoindre un ami" (P3 — dépend du multijoueur) :**
 
 ```
-Inscription → Skip tutoriel → Profil minimal (nom)
-                                            ↓
-                              Rejoint aventure multijoueur
-                                            ↓
-                                    Session de jeu
-                                            ↓
-                              Fin → Récompenses stockées
-                                            ↓
-                    Hub (profil incomplet, rappel tutoriel)
-                                            ↓
-                    Compléter tutoriel → Créer méta-perso
-                                            ↓
-                          Récompenses liées rétroactivement
+Lien invitation → Inscription → Skip tutoriel → Profil express (nom)
+                                                        ↓
+                                        Création perso rapide (preset)
+                                                        ↓
+                                        Rejoint aventure multijoueur
+                                                        ↓
+                                                Session de jeu
+                                                        ↓
+                                        Fin → Récompenses stockées
+                                                        ↓
+                                Hub (profil incomplet, rappel tutoriel)
+                                                        ↓
+                                Compléter tutoriel → Créer méta-perso
+                                                        ↓
+                                        Récompenses liées rétroactivement
 ```
 
 ### 5.2 Interaction MJ IA
@@ -287,23 +349,31 @@ Inscription → Skip tutoriel → Profil minimal (nom)
 ╚════════════════════════════════════════════════════════════════╝
 ```
 
-### 5.3 Maquettes existantes
+### 5.3 Approche design
 
-Les maquettes UX/UI suivantes sont disponibles et validées comme base :
+- **Mobile-first** : La conception part du mobile (session de jeu = interaction chat/choix naturellement adaptée au mobile)
+- **Bottom tab bar** mobile (Hub, Profil, Aventure) — sidebar desktop classique
+- **Sidebar immersive** : En session de jeu, la sidebar est minimisée (icônes uniquement) pour maximiser l'immersion
+- Référence complète : `docs/ux-cartography.md` (navigation §3.2, responsive §7.5)
 
-| Écran                             | Fichier                    | Statut                           |
-| --------------------------------- | -------------------------- | -------------------------------- |
-| Authentification (Login/Register) | `mockups/auth.png`         | ✅ À adapter                     |
-| Liste des personnages             | `mockups/list_chara.png`   | ✅ À adapter (→ liste aventures) |
-| Création personnage               | `mockups/create_chara.png` | ✅ À adapter                     |
-| Détail personnage                 | `mockups/detail_chara.png` | ✅ À adapter                     |
+### 5.4 Maquettes existantes
+
+Les maquettes UX/UI suivantes sont disponibles comme **inspiration libre** (cf. `docs/ux-cartography.md` §1.2 pour le statut détaillé) :
+
+| Écran                             | Fichier                    | Statut                                                 |
+| --------------------------------- | -------------------------- | ------------------------------------------------------ |
+| Authentification (Login/Register) | `mockups/auth.png`         | Base fiable — adapter (ajouter pseudo à l'inscription) |
+| Liste des personnages             | `mockups/list_chara.png`   | Inspiration libre — reconcevoir pour le Hub            |
+| Création personnage               | `mockups/create_chara.png` | Inspiration libre — reconcevoir                        |
+| Détail personnage                 | `mockups/detail_chara.png` | Inspiration libre — reconcevoir pour profil méta-perso |
 
 **Écrans à concevoir :**
 
-- Hub (méta-personnage)
+- Session de jeu (coeur produit, 90% du temps utilisateur)
+- Hub (point d'entrée central)
+- Onboarding (welcome, profile-setup, tutoriel)
 - Lancement d'aventure (paramètres)
-- Interface de jeu (session MJ IA)
-- Onboarding/Tutoriel
+- Écran de fin (résumé + récompenses)
 
 ---
 
@@ -311,20 +381,21 @@ Les maquettes UX/UI suivantes sont disponibles et validées comme base :
 
 ### 6.1 Stack technique
 
-| Couche              | Technologie                                |
-| ------------------- | ------------------------------------------ |
-| **Monorepo**        | pnpm workspaces ou Turborepo               |
-| **Frontend (App)**  | React 18+, Vite, TypeScript                |
-| **Routing**         | TanStack Router                            |
-| **UI**              | Tailwind CSS, ShadCN/UI                    |
-| **Formulaires**     | React Hook Form + Zod                      |
-| **State/Data**      | TanStack Query                             |
-| **Backend**         | Node.js, Express, TypeScript               |
-| **Auth**            | JWT (géré par Express, Passport.js)        |
-| **ORM**             | Drizzle + drizzle-zod                      |
-| **Base de données** | PostgreSQL                                 |
-| **Temps réel**      | Socket.io (pour multijoueur futur)         |
-| **LLM**             | Multi-provider (Mammouth AI ou équivalent) |
+| Couche              | Technologie                                     |
+| ------------------- | ----------------------------------------------- |
+| **Monorepo**        | Turborepo + pnpm workspaces                     |
+| **Frontend (App)**  | React 18+, Vite, TypeScript                     |
+| **Routing**         | TanStack Router                                 |
+| **UI**              | Tailwind CSS, ShadCN/UI                         |
+| **Formulaires**     | React Hook Form + Zod                           |
+| **State/Data**      | TanStack Query                                  |
+| **State UI**        | Zustand (préférences locales, UI transient)     |
+| **Backend**         | Node.js, Express, TypeScript                    |
+| **Auth**            | Better Auth (cookies httpOnly, Drizzle adapter) |
+| **ORM**             | Drizzle + drizzle-zod                           |
+| **Base de données** | PostgreSQL                                      |
+| **Temps réel**      | Socket.io (pour multijoueur futur)              |
+| **LLM**             | Multi-provider (Mammouth AI ou équivalent)      |
 
 ### 6.2 Architecture globale
 
@@ -423,26 +494,43 @@ Les pages marketing (landing, features, pricing, blog) seront gérées via **Web
 
 ## 8. Roadmap
 
-### Phase 1 : MVP (P1 + P2 partiels)
+### 8.0 Principe de livraison : testabilité continue
 
-- Authentification complète
-- Onboarding + création méta-personnage
-- Session solo MJ IA (texte, one-shot)
+> **Règle absolue** : Chaque fonctionnalité ou parcours livré doit être testable "en vrai" — c'est-à-dire que le CEO (ou tout stakeholder) doit pouvoir lancer l'application et tester le flow de bout en bout, sans configuration technique particulière ni mocks manuels.
+
+**Ce que cela implique pour le PO et le dev :**
+
+- **Découpage vertical** : Chaque story ou incrément livre une tranche fonctionnelle complète (front + back + données), pas une couche technique isolée (ex : pas "créer le schéma DB" sans UI pour le voir)
+- **Environnement de démo permanent** : L'application doit être lançable localement à tout moment avec un état fonctionnel (seeds de données, configuration par défaut)
+- **Pas de feature invisible** : Si un parcours a avancé, il doit être accessible depuis l'interface, même si c'est une version simplifiée
+- **Feedback rapide** : La boucle "dev → démo → feedback" doit être la plus courte possible
+
+### Phase 1 : MVP (P1)
+
+- Authentification complète (Better Auth)
+- Onboarding en 3 étapes (welcome, profile-setup, tutoriel-aventure)
+- Session solo MJ IA (texte, one-shot) avec sidebar immersive
 - Sauvegarde/reprise
-- Personnalisation MJ basique
+- Navigation mobile-first (bottom tab bar + sidebar responsive)
+- Résilience session (gestion 429, reconnexion basique)
 
-### Phase 2 : Enrichissement
+### Phase 2 : Enrichissement (P2)
 
-- Méta-personnage complet (progression, succès, cosmétiques)
+- Méta-personnage complet (progression, succès, cosmétiques) + page Profil dédiée
+- Personnalisation MJ avec distinction verrouillé/ajustable en session
 - Création personnage aventure enrichie
-- Génération d'images
+- Paramètres utilisateur (version simple : compte, préférences)
+- Résilience aventure (bouton "MJ bloqué", reset contexte)
 
-### Phase 3 : Social
+### Phase 3 : Social + Polish (P3)
 
 - Mode multijoueur
-- Partage d'aventures
+- Compagnon d'interface (mascotte méta)
+- Génération d'images
+- Paramètres utilisateur complet (notifications, compagnon on/off)
+- Détection double onglet
 
-### Phase 4 : Extension
+### Phase 4 : Extension (P4)
 
 - Narration audio
 - Genres additionnels (dark fantasy, sci-fi)
@@ -490,21 +578,23 @@ Les pages marketing (landing, features, pricing, blog) seront gérées via **Web
 4. **Sync vs Async multijoueur** : À définir selon retours
 5. **Système de règles détaillé** : À concevoir (races, classes, stats, équilibrage)
 
-### Contraintes techniques à résoudre (Phase Architecture)
+### Contraintes techniques (traitées en Phase Architecture)
+
+> Les points ci-dessous ont été tranchés dans `docs/architecture.md`. Ils restent listés ici comme référence.
 
 **Base de données & Partage de types :**
 
-| Point                           | Question à trancher                                                                   |
-| ------------------------------- | ------------------------------------------------------------------------------------- |
-| **Emplacement schémas Drizzle** | Dans `packages/shared/` (source de vérité partagée) ou dans `apps/api/` avec export ? |
-| **Génération Zod**              | Build-time (script de génération) ou runtime (drizzle-zod à l'import) ?               |
-| **Types partagés**              | Quels types exposer au frontend (DTOs) vs garder internes à l'API ?                   |
-| **Workflow Docker**             | Structure docker-compose (dev, test, prod), volumes, networks                         |
-| **Migrations Drizzle**          | Stratégie avec Drizzle Kit, intégration CI/CD                                         |
-| **Seeding**                     | Données de développement, fixtures pour tests                                         |
-| **Hot reload**                  | Synchronisation des types partagés en développement (watch mode)                      |
+| Point                           | Question d'origine                                                                    | Statut                             |
+| ------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Emplacement schémas Drizzle** | Dans `packages/shared/` (source de vérité partagée) ou dans `apps/api/` avec export ? | → `apps/api/src/db/schema/`        |
+| **Génération Zod**              | Build-time (script de génération) ou runtime (drizzle-zod à l'import) ?               | → drizzle-zod                      |
+| **Types partagés**              | Quels types exposer au frontend (DTOs) vs garder internes à l'API ?                   | → DTOs dans `packages/shared/`     |
+| **Workflow Docker**             | Structure docker-compose (dev, test, prod), volumes, networks                         | → `docker/docker-compose.yml`      |
+| **Migrations Drizzle**          | Stratégie avec Drizzle Kit, intégration CI/CD                                         | → Drizzle Kit, cf. architecture §9 |
+| **Seeding**                     | Données de développement, fixtures pour tests                                         | → `apps/api/src/db/seeds/`         |
+| **Hot reload**                  | Synchronisation des types partagés en développement (watch mode)                      | → Turborepo watch mode             |
 
-Ces points seront détaillés dans le document d'architecture (`docs/architecture.md`).
+Référence complète : `docs/architecture.md`
 
 ---
 
@@ -530,13 +620,14 @@ Ces points seront détaillés dans le document d'architecture (`docs/architectur
 
 ### C. Décisions techniques documentées
 
-| Décision           | Choix                          | Justification                                                                      |
-| ------------------ | ------------------------------ | ---------------------------------------------------------------------------------- |
-| Framework frontend | React + Vite (pas Next.js)     | SPA interactive, pas de besoin SSR critique, cohérence avec backend Express séparé |
-| Auth               | JWT via Express (pas NextAuth) | Un seul système d'auth, contrôle total, pas de complexité de synchronisation       |
-| Temps réel         | Socket.io via Express          | Support natif WebSockets pour multijoueur futur                                    |
-| Pages marketing    | Webflow (externe)              | Indépendance marketing/dev, SEO natif, pas de maintenance technique                |
-| ORM                | Drizzle                        | Meilleure intégration TypeScript + Zod (drizzle-zod)                               |
+| Décision           | Choix                                   | Justification                                                                                                        |
+| ------------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Framework frontend | React + Vite (pas Next.js)              | SPA interactive, pas de besoin SSR critique, cohérence avec backend Express séparé                                   |
+| Auth               | Better Auth (pas JWT manuel / NextAuth) | TypeScript-first, Drizzle natif, cookies httpOnly, CSRF automatique, abstraction AuthService pour limiter le lock-in |
+| Temps réel         | Socket.io via Express                   | Support natif WebSockets pour multijoueur futur                                                                      |
+| Pages marketing    | Webflow (externe)                       | Indépendance marketing/dev, SEO natif, pas de maintenance technique                                                  |
+| ORM                | Drizzle                                 | Meilleure intégration TypeScript + Zod (drizzle-zod)                                                                 |
+| State UI           | Zustand                                 | Léger, API simple, middleware persist pour préférences locales                                                       |
 
 ---
 
@@ -545,3 +636,4 @@ Ces points seront détaillés dans le document d'architecture (`docs/architectur
 
 - v1.0 (2026-02-04) : Version initiale
 - v1.1 (2026-02-04) : Stack technique confirmée (React+Vite+Express), onboarding révisé (skip possible), pages marketing Webflow
+- v1.2 (2026-02-06) : Audit de cohérence post-UX cartography — Auth corrigée (Better Auth), ajout Zustand, navigation mobile-first (P1), résilience session (P1), paramètres utilisateur (P2), page profil (P2), personnalisation MJ verrouillé/ajustable (P2), compagnon d'interface (P3), détection double onglet (P3), roadmap réalignée

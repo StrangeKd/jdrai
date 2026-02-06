@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Date:** 2026-02-05
-**Statut:** Reviewed - En attente de phase UX
+**Statut:** En cours de mise à jour post-audit
 **Auteur:** Architect (BMAD Method)
 
 ---
@@ -1638,3 +1638,182 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
 ---
 
 **Document généré via BMAD Method — Phase Architecture**
+
+---
+
+## 19. Actions post-audit de cohérence (PM + UX → Architecte)
+
+> **Contexte** : Suite à l'audit de cohérence entre PRD v1.2, architecture v1.1 et UX cartography v1.0, les éléments ci-dessous doivent être intégrés dans ce document. Chaque action est classée par priorité (P1 = MVP, P2, P3) et référence sa source.
+>
+> **Sources** : `docs/prd.md` v1.2 | `docs/ux-cartography.md` v1.0
+
+### 19.1 Actions P1 (MVP — impactent le développement immédiat)
+
+#### A1. Routes onboarding détaillées
+
+**Source** : PRD §4.2 F4, UX §3.1
+
+L'arbre des routes frontend (§6.1) doit refléter les 3 sous-routes d'onboarding :
+
+```
+├── onboarding/
+│   ├── welcome.tsx          # Bienvenue + explication
+│   ├── profile-setup.tsx    # Choix pseudo + bases profil
+│   └── tutorial.tsx         # Aventure tutoriel (= session guidée)
+```
+
+#### A2. Route `/adventure/:id/summary`
+
+**Source** : UX §3.1
+
+Ajouter la route de l'écran de fin d'aventure dans les routes frontend :
+
+```
+├── _authenticated/
+│   └── adventure/
+│       ├── $id.tsx           # Session de jeu
+│       └── $id.summary.tsx   # Écran de fin (résumé + récompenses)
+```
+
+#### A3. Navigation en session de jeu (menu intégré + confirmation de sortie)
+
+**Source** : PRD §4.2 F2, UX §3.2
+
+En session de jeu, la sidebar/navigation classique est **masquée** (pas minimisée). À la place :
+
+- Un **bouton de menu intégré à l'interface de jeu** (style jeu vidéo, pas burger menu classique d'application) donne accès aux actions : quitter, sauvegarder, paramètres MJ
+- Ce bouton doit visuellement s'intégrer à l'UI de jeu (cohérent avec le design fantasy)
+- **Confirmation obligatoire** avant toute sortie de session : changement de page (navigation), déconnexion, fermeture d'onglet (`beforeunload`). Modale de confirmation type "Êtes-vous sûr de vouloir quitter l'aventure ?"
+- L'auto-save protège la progression, mais la confirmation évite les sorties involontaires
+
+#### A4. Bottom Tab Bar mobile (navigation mobile-first)
+
+**Source** : PRD §4.1, UX §3.2, §7.5
+
+Ajouter un composant `BottomTabBar` dans `components/layout/` pour la navigation mobile (Hub, Profil, Aventure). La conception est mobile-first. Documenter les breakpoints (UX §7.5) :
+
+- Mobile (< 768px) : bottom tab bar
+- Tablette (768-1024px) : sidebar collapsée
+- Desktop (> 1024px) : sidebar étendue
+
+#### A5. Résilience frontend — Gestion 429 et reconnexion
+
+**Source** : PRD §4.2 F2, UX §6.2
+
+Le client API (§8.4 `services/api.ts`) doit gérer :
+
+- **Rate limiting (HTTP 429)** : Intercepteur qui désactive la saisie, affiche un message, réactive après le délai du header `Retry-After`
+- **Perte de connexion en session** : Message non-bloquant, auto-reconnexion (Socket.io gère déjà la reconnexion, mais l'UX côté composant doit l'afficher), reprise depuis dernier auto-save
+
+### 19.2 Actions P2 (Post-MVP)
+
+#### A6. Route `/profile`
+
+**Source** : PRD §4.3 F5, UX §3.1
+
+Ajouter la route dans les routes authentifiées :
+
+```
+├── _authenticated/
+│   ├── hub/
+│   ├── profile.tsx          # Détail méta-personnage (Identité, Progression, Cosmétiques)
+│   ├── adventure/
+│   └── settings/
+```
+
+#### A7. Structure `components/` étendue
+
+**Source** : UX §5.1-5.7
+
+La structure `components/` actuelle (§6.1) est trop sommaire. L'enrichir pour refléter l'inventaire de composants UX :
+
+```
+├── components/
+│   ├── ui/              # shadcn (existant)
+│   ├── layout/          # Header, Sidebar, BottomTabBar (enrichir)
+│   ├── auth/            # AuthCard, inputs spécialisés
+│   ├── onboarding/      # StepIndicator, WelcomeHero, PresetSelector, NarrativeBox
+│   ├── hub/             # MetaCharacterBanner, AdventureCard, ActionCard, AdventureGrid, EmptyState
+│   ├── game/            # NarrationPanel, ChoiceList, FreeInput, CharacterPanel, StreamingText (existant, enrichir)
+│   ├── adventure/       # ParamSelector, ThemeCard, DifficultySlider, TemplateCard
+│   ├── character/       # Création/affichage (existant)
+│   ├── summary/         # SummaryCard, RewardList, XPGainAnimation
+│   └── companion/       # CompanionMessage (P3, structure anticipée)
+```
+
+> **Note** : Le dossier `companion/` est créé en avance (vide ou avec un placeholder) pour que les emplacements d'intervention (loading, erreurs, empty states) puissent être facilement swappés en P3.
+
+#### A8. Paramètres MJ en session — Panneau latéral
+
+**Source** : PRD §4.3 F6, UX §4.2 note E15
+
+Documenter le composant drawer/panneau latéral accessible depuis la session de jeu pour modifier les paramètres MJ. Deux catégories :
+
+- Ajustements légers (modifiables) : ton, niveau de détail, longueur des réponses
+- Paramètres structurels (verrouillés + tooltip explicatif) : difficulté, rigueur des règles
+
+#### A9. Route `/settings` et contenu
+
+**Source** : PRD §4.3 F8
+
+Détailler le contenu de la route `/settings` :
+
+- Compte : email, mot de passe, suppression
+- Préférences : thème (light/dark/system), langue
+
+#### A10. Résilience aventure — Endpoint "MJ bloqué"
+
+**Source** : PRD §4.3 F9
+
+Prévoir un endpoint API pour le reset de contexte narratif :
+
+- `POST /adventures/:id/reset-context` — Relance le contexte LLM avec une narration de secours
+- Bouton côté frontend : "Le MJ semble perdu" visible après N secondes sans réponse ou détection de boucle
+
+### 19.3 Actions P3 (anticipation documentaire)
+
+#### A11. Compagnon d'interface — Structure technique
+
+**Source** : PRD §4.4 F10, UX §5.1, §7.2
+
+Anticiper dans la documentation :
+
+- Composant `CompanionMessage` dans `components/companion/`
+- Store Zustand ou contexte pour les préférences compagnon (on/off)
+- Les points d'intervention sont les mêmes que les états loading/erreur/empty du MVP → swap de composant en P3
+- Le compagnon n'intervient JAMAIS en session de jeu (le MJ IA est le seul narrateur)
+
+#### A12. Routes multijoueur
+
+**Source** : UX §3.1, §2.5
+
+Routes à anticiper (commentaires dans l'arbre des routes) :
+
+```
+├── _authenticated/
+│   └── adventure/
+│       └── $id.lobby.tsx    # Salle d'attente multi (P3)
+├── join/
+│   ├── $inviteCode.tsx      # Rejoindre via code (P3)
+│   └── lobby.tsx            # Lobby public (P3, si validé — cf. UX §2.5.4 Q1)
+```
+
+#### A13. Détection double onglet
+
+**Source** : PRD §4.4 F11, UX §6.2
+
+Mécanisme technique à documenter : BroadcastChannel API ou événements localStorage pour détecter l'ouverture d'une même aventure dans plusieurs onglets.
+
+---
+
+### 19.4 Checklist de validation (mise à jour)
+
+Compléter la checklist §18 avec :
+
+- [ ] Routes onboarding détaillées (welcome, profile-setup, tutorial)
+- [ ] Route `/adventure/:id/summary`
+- [ ] Sidebar mode minimisé en session de jeu
+- [ ] Bottom tab bar mobile (`components/layout/`)
+- [ ] Intercepteur 429 dans le client API
+- [ ] Reconnexion UX en session (composant)
+- [ ] Structure `components/` alignée avec inventaire UX
