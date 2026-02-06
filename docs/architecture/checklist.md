@@ -18,6 +18,7 @@
 - [ ] Validation Zod sur tous les endpoints
 - [ ] Error handling unifié
 - [ ] Tests de base en place
+- [ ] Système de milestones complet (table, endpoints, DTO, génération LLM)
 
 **Frontend P1 :**
 
@@ -28,6 +29,7 @@
 - [ ] Breakpoints responsive (mobile / tablette / desktop)
 - [ ] Intercepteur 429 dans le client API
 - [ ] Reconnexion UX en session (composant toast/banner)
+- [ ] Interface milestones (modèle + historique drawer groupé)
 - [ ] Structure `components/` alignée avec inventaire UX Cartography
 
 **Frontend P2 :**
@@ -36,6 +38,7 @@
 - [ ] Page `/settings` (compte + préférences)
 - [ ] Panneau paramètres MJ en session
 - [ ] Endpoint + bouton « MJ bloqué » (reset-context)
+- [ ] Events narratifs entre milestones (modèle + composants frontend)
 
 **Anticipations P3 :**
 

@@ -41,23 +41,26 @@
 
 ### Adventures
 
-| Méthode | Endpoint                   | Description                         |
-| ------- | -------------------------- | ----------------------------------- |
-| GET     | `/adventures`              | Liste aventures user                |
-| POST    | `/adventures`              | Créer aventure                      |
-| GET     | `/adventures/:id`          | Détail aventure                     |
-| PATCH   | `/adventures/:id`          | Modifier (pause, abandon, settings) |
-| GET     | `/adventures/:id/messages` | Historique messages                 |
+| Méthode | Endpoint                     | Description                                  |
+| ------- | ---------------------------- | -------------------------------------------- |
+| GET     | `/adventures`                | Liste aventures user                         |
+| POST    | `/adventures`                | Créer aventure                               |
+| GET     | `/adventures/:id`            | Détail aventure                              |
+| PATCH   | `/adventures/:id`            | Modifier (pause, abandon, settings)          |
+| GET     | `/adventures/:id/messages`   | Historique messages (filtre `?milestoneId=`) |
+| GET     | `/adventures/:id/milestones` | Liste milestones de l'aventure               |
 
 > **Note** : L'abandon d'une aventure se fait via `PATCH` avec `{ status: "abandoned" }`, pas via `DELETE`. Une suppression physique n'est pas prévue pour conserver l'historique.
 
+> **Note Milestones** : `GET /adventures` retourne `currentMilestone` (nom du milestone actif, dérivé) dans chaque `AdventureDTO`. `GET /adventures/:id/milestones` retourne la liste ordonnée des milestones avec leur statut. `GET /adventures/:id/messages?milestoneId=xxx` permet de filtrer les messages par milestone (utilisé par le `HistoryDrawer`).
+
 ### Game (WebSocket + REST fallback)
 
-| Méthode | Endpoint                        | Description                      |
-| ------- | ------------------------------- | -------------------------------- |
-| POST    | `/adventures/:id/action`        | Envoyer action joueur            |
-| GET     | `/adventures/:id/state`         | État actuel du jeu               |
-| POST    | `/adventures/:id/reset-context` | Reset contexte narratif LLM (P2) |
+| Méthode | Endpoint                        | Description                                |
+| ------- | ------------------------------- | ------------------------------------------ |
+| POST    | `/adventures/:id/action`        | Envoyer action joueur                      |
+| GET     | `/adventures/:id/state`         | État actuel du jeu (inclut `milestones[]`) |
+| POST    | `/adventures/:id/reset-context` | Reset contexte narratif LLM (P2)           |
 
 ### Reference Data
 

@@ -1,34 +1,35 @@
 # JDRAI - Architecture Fullstack
 
-**Version:** 1.2
+**Version:** 1.3
 **Date:** 2026-02-06
-**Statut:** In review post-audit
+**Statut:** In review
 **Auteur:** Architect (BMAD Method)
 
 ---
 
 ## Change Log
 
-| Date       | Version | Description                                                                | Auteur    |
-| :--------- | :------ | :------------------------------------------------------------------------- | :-------- |
-| 2026-02-05 | 1.0     | Version initiale                                                           | Architect |
-| 2026-02-05 | 1.1     | Auth: Better Auth + abstraction AuthService                                | Architect |
-| 2026-02-06 | 1.2     | Intégration audit cohérence PRD/UX (13 actions §19 → sections principales) | Architect |
+| Date       | Version | Description                                                                 | Auteur    |
+| :--------- | :------ | :-------------------------------------------------------------------------- | :-------- |
+| 2026-02-05 | 1.0     | Version initiale                                                            | Architect |
+| 2026-02-05 | 1.1     | Auth: Better Auth + abstraction AuthService                                 | Architect |
+| 2026-02-06 | 1.2     | Intégration audit cohérence PRD/UX (13 actions §19 → sections principales)  | Architect |
+| 2026-02-06 | 1.3     | Intégration Milestones P1 (table dédiée, ERD, DTOs, API, backend, frontend) | Architect |
 
 ---
 
 ## Table des matières
 
-| Document                                        | Contenu                                                           |
-| ----------------------------------------------- | ----------------------------------------------------------------- |
-| **[README.md](./README.md)** (ce fichier)       | Vue d'ensemble, stack, structure projet                           |
-| **[data-models.md](./data-models.md)**           | Modèles de données (ERD), DTOs TypeScript, package shared        |
-| **[api.md](./api.md)**                           | Endpoints REST, format de réponse, gestion des erreurs           |
-| **[frontend.md](./frontend.md)**                 | Architecture frontend, routing, auth client, résilience, UX      |
-| **[backend.md](./backend.md)**                   | Architecture backend, LLM, auth service, middleware              |
-| **[infrastructure.md](./infrastructure.md)**     | Workflow dev, Docker, sécurité, monitoring, variables env         |
-| **[testing-conventions.md](./testing-conventions.md)** | Stratégie de tests, conventions de code                    |
-| **[checklist.md](./checklist.md)**               | Checklist de validation (P1, P2, P3)                             |
+| Document                                               | Contenu                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| **[README.md](./README.md)** (ce fichier)              | Vue d'ensemble, stack, structure projet                     |
+| **[data-models.md](./data-models.md)**                 | Modèles de données (ERD), DTOs TypeScript, package shared   |
+| **[api.md](./api.md)**                                 | Endpoints REST, format de réponse, gestion des erreurs      |
+| **[frontend.md](./frontend.md)**                       | Architecture frontend, routing, auth client, résilience, UX |
+| **[backend.md](./backend.md)**                         | Architecture backend, LLM, auth service, middleware         |
+| **[infrastructure.md](./infrastructure.md)**           | Workflow dev, Docker, sécurité, monitoring, variables env   |
+| **[testing-conventions.md](./testing-conventions.md)** | Stratégie de tests, conventions de code                     |
+| **[checklist.md](./checklist.md)**                     | Checklist de validation (P1, P2, P3)                        |
 
 ---
 

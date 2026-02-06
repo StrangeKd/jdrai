@@ -18,6 +18,7 @@ apps/api/
 │   │   ├── schema/          # Schémas Drizzle
 │   │   │   ├── users.ts
 │   │   │   ├── adventures.ts
+│   │   │   ├── milestones.ts    # Jalons narratifs (P1)
 │   │   │   ├── characters.ts
 │   │   │   └── index.ts
 │   │   ├── migrations/      # Fichiers migration
@@ -111,13 +112,25 @@ export class LLMService {
 Le MJ IA utilise un système de prompts structuré :
 
 1. **System Prompt** : Définit la personnalité, les règles, le ton
-2. **Context Window** : Historique récent + état du jeu compressé
-3. **User Action** : Action du joueur (choix ou texte libre)
+2. **Milestone Context** : Liste des milestones avec statuts, milestone actif, objectif narratif en cours
+3. **Context Window** : Historique récent + état du jeu compressé
+4. **User Action** : Action du joueur (choix ou texte libre)
+
+### Gestion des Milestones par le LLM
+
+Le `GameService` orchestre le cycle de vie des milestones :
+
+1. **Création d'aventure** : Le LLM génère la liste initiale de milestones (noms + descriptions) basée sur `estimatedDuration` (courte = 2-3, moyenne = 4-5, longue = 6+). Le premier milestone passe en `active`
+2. **En cours de jeu** : Le system prompt inclut le milestone actif et ses objectifs narratifs. Le LLM signale les transitions via un marqueur structuré dans sa réponse (ex: `[MILESTONE_COMPLETE:nom]`)
+3. **Transition** : Le `GameService` parse la réponse, met à jour le statut du milestone complété (`completed` + `completedAt`), active le suivant (`active` + `startedAt`), et tagge les nouveaux messages avec le `milestoneId` courant
+4. **Fin d'aventure** : Le dernier milestone complété déclenche la génération du résumé et des récompenses
 
 ```typescript
 interface GameContext {
   character: AdventureCharacterDTO;
   setting: AdventureSettings;
+  milestones: MilestoneDTO[]; // Structure narrative complète
+  currentMilestone: MilestoneDTO | null; // Milestone actif
   recentHistory: GameMessageDTO[]; // Derniers N messages
   worldState: Record<string, unknown>; // État narratif compressé
 }

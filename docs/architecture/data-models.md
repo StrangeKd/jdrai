@@ -12,6 +12,7 @@ erDiagram
     User ||--|| MetaCharacter : has
     Adventure ||--o{ AdventureCharacter : contains
     Adventure ||--o{ Message : logs
+    Adventure ||--o{ Milestone : structures
     Adventure }o--|| AdventureTemplate : "based_on?"
     MetaCharacter ||--o{ Achievement : unlocks
     AdventureCharacter }o--|| CharacterClass : has
@@ -54,6 +55,17 @@ erDiagram
         timestamp completedAt
     }
 
+    Milestone {
+        uuid id PK
+        uuid adventureId FK
+        string name
+        text description "nullable"
+        int sortOrder
+        enum status "pending|active|completed"
+        timestamp startedAt "nullable"
+        timestamp completedAt "nullable"
+    }
+
     AdventureCharacter {
         uuid id PK
         uuid adventureId FK
@@ -70,6 +82,7 @@ erDiagram
     Message {
         uuid id PK
         uuid adventureId FK
+        uuid milestoneId FK "nullable"
         enum role "user|assistant|system"
         text content
         jsonb metadata
@@ -111,6 +124,33 @@ erDiagram
 
 ---
 
+## Structure narrative : Milestones (P1) — Décision architecture
+
+> **Source** : PRD v1.3 §3.4, UX Cartography §2.6
+
+### Décision : Table dédiée `Milestone`
+
+Les milestones sont implémentés en tant que **table relationnelle dédiée** (et non JSONB dans `Adventure.state`).
+
+**Justification :**
+
+1. **Requêtes structurées** — Le Hub affiche `currentMilestone` par aventure, l'historique groupe les messages par milestone, l'écran de fin récapitule les milestones complétés. Une table dédiée rend ces requêtes simples et performantes
+2. **Anticipation P2 (Events)** — Les Events nécessiteront une FK vers `Milestone`. Impossible proprement avec du JSONB
+3. **Intégrité référentielle** — Les messages sont liés à un milestone via `milestoneId` FK nullable, garantissant la cohérence
+4. **Analytique** — Durée par milestone, taux de complétion, patterns narratifs exploitables via SQL standard
+
+### Règles métier
+
+| Règle                                     | Détail                                                                                                                            |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Corrélation durée-milestones**          | `AdventureTemplate.estimatedDuration` guide le nombre de milestones générés par le LLM (courte = 2-3, moyenne = 4-5, longue = 6+) |
+| **`currentMilestone` sur `AdventureDTO`** | Champ **dérivé** (résolu depuis le milestone avec `status = "active"`), jamais stocké en DB                                       |
+| **Progression numérique interdite**       | Le frontend ne reçoit JAMAIS de données position/total. Seul le nom du milestone actuel est exposé                                |
+| **Lien Message → Milestone**              | `Message.milestoneId` FK nullable — les messages sont taggés avec le milestone actif au moment de leur création                   |
+| **Anticipation Events (P2)**              | Table `Event` liée par `milestoneId` FK. Aucune implémentation en P1                                                              |
+
+---
+
 ## Interfaces TypeScript (DTOs - `packages/shared`)
 
 ```typescript
@@ -148,6 +188,7 @@ export interface AdventureDTO {
   status: AdventureStatus;
   difficulty: Difficulty;
   tone: Tone;
+  currentMilestone?: string; // Nom du milestone actuel (affiché Hub + historique)
   startedAt: string;
   lastPlayedAt: string;
   character: AdventureCharacterDTO;
@@ -188,6 +229,20 @@ export interface CharacterStats {
 ```
 
 ```typescript
+// packages/shared/src/types/milestone.ts
+export type MilestoneStatus = "pending" | "active" | "completed";
+
+export interface MilestoneDTO {
+  id: string;
+  name: string;
+  description?: string;
+  status: MilestoneStatus;
+  startedAt?: string;
+  completedAt?: string;
+}
+```
+
+```typescript
 // packages/shared/src/types/game.ts
 export type MessageRole = "user" | "assistant" | "system";
 
@@ -195,6 +250,7 @@ export interface GameMessageDTO {
   id: string;
   role: MessageRole;
   content: string;
+  milestone?: string; // Nom du milestone associé (pour regroupement historique)
   createdAt: string;
   choices?: SuggestedAction[];
 }
@@ -214,6 +270,7 @@ export interface PlayerActionInput {
 export interface GameStateDTO {
   adventure: AdventureDTO;
   messages: GameMessageDTO[];
+  milestones: MilestoneDTO[];
   isStreaming: boolean;
 }
 ```
@@ -228,11 +285,13 @@ packages/shared/
 │   ├── schemas/             # Schémas Zod (générés + manuels)
 │   │   ├── user.schema.ts
 │   │   ├── adventure.schema.ts
+│   │   ├── milestone.schema.ts
 │   │   ├── game.schema.ts
 │   │   └── index.ts
 │   ├── types/               # Types TypeScript
 │   │   ├── user.ts
 │   │   ├── adventure.ts
+│   │   ├── milestone.ts
 │   │   ├── game.ts
 │   │   ├── api.ts           # Types réponses API
 │   │   └── index.ts

@@ -1,9 +1,9 @@
 # JDRAI - Product Requirements Document (PRD)
 
-**Version:** 1.2
+**Version:** 1.3
 **Date:** 2026-02-06
 **Statut:** Validé par CEO
-**Dernière mise à jour:** Audit de cohérence post-UX, priorisation affinée, errata Auth
+**Dernière mise à jour:** Intégration structure narrative Milestones & Events (UX §2.6)
 **Auteur:** PM (BMAD Method)
 
 ---
@@ -112,33 +112,65 @@ Personnage **temporaire** créé pour chaque aventure.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### 3.4 Structure narrative : Milestones & Events
+
+Les aventures sont structurées selon une hiérarchie narrative qui permet au MJ IA de gérer la durée et le déroulement :
+
+```
+AVENTURE
+│
+├── 🏴 MILESTONE — Jalon narratif majeur (obligatoire)
+│   │               Structure l'aventure et en prédit la durée.
+│   │               Ex : Réception de la quête, Confrontation finale
+│   │
+│   ├── ○ EVENT — Rencontre/situation entre milestones (optionnel ou obligatoire)
+│   │              Le MJ guide, mais les choix du joueur peuvent contourner
+│   │              certains events. Ex : visite d'échoppes, grotte secondaire
+│   │
+│   └── (Scènes) — Séquence cohérente d'échanges MJ-joueur au sein d'un event
+│                   Ex : discuter avec un PNJ, explorer une salle
+```
+
+**Priorisation :**
+
+| Concept        | Priorité | Justification                                                                   |
+| -------------- | -------- | ------------------------------------------------------------------------------- |
+| **Milestones** | **P1**   | Fondamental pour structurer les aventures du MJ IA et gérer la durée dès le MVP |
+| **Events**     | **P2**   | Structuration plus fine entre milestones, enrichit l'expérience post-MVP        |
+
+**Règle UX** : Le nom du milestone en cours peut être affiché (ex : "Réception de la quête" dans l'historique), mais **jamais de progression numérique** (pas de "2/4" ni "50%"). L'aventure reste une expérience narrative, pas un tableau de bord.
+
+> Référence complète : `docs/ux-cartography.md` §2.6
+
 ---
 
 ## 4. Fonctionnalités
 
 ### 4.1 Priorisation MVP
 
-| Priorité | Feature                        | Description                                                                   |
-| -------- | ------------------------------ | ----------------------------------------------------------------------------- |
-| **P1**   | Authentification               | Inscription, connexion, gestion de session (Better Auth)                      |
-| **P1**   | Session solo MJ IA             | Aventure textuelle avec MJ IA (choix hybrides), menu de jeu intégré           |
-| **P1**   | Sauvegarde/Reprise             | Sauvegarder et reprendre une aventure en cours                                |
-| **P1**   | Onboarding/Tutoriel            | Parcours guidé (welcome, profile-setup, tutoriel-aventure)                    |
-| **P1**   | Navigation mobile-first        | Bottom tab bar mobile, sidebar responsive, conception mobile-first            |
-| **P1**   | Résilience session             | Gestion rate limiting (429), reconnexion basique en session                   |
-| **P2**   | Méta-personnage                | Profil joueur avec progression, cosmétiques + page profil dédiée              |
-| **P2**   | Personnalisation MJ            | Ajustement basique (ton, difficulté, style) + verrouillage en session         |
-| **P2**   | Création personnage aventure   | Race, classe, background, stats                                               |
-| **P2**   | Paramètres utilisateur         | Gestion compte, préférences (version simple)                                  |
-| **P2**   | Résilience aventure            | Bouton "MJ bloqué" avec reset contexte                                        |
-| **P3**   | Compagnon d'interface          | Mascotte méta récurrente (loading, erreurs, transitions, onboarding)          |
-| **P3**   | Génération d'images            | Illustrations de scènes et personnages                                        |
-| **P3**   | Multijoueur                    | Sessions à plusieurs joueurs                                                  |
-| **P3**   | Parcours "Rejoindre un ami"    | Onboarding express via invitation, jonction session, récompenses rétroactives |
-| **P3**   | Paramètres utilisateur complet | Notifications, préférences avancées, compagnon on/off                         |
-| **P3**   | Détection double onglet        | Avertissement aventure ouverte dans un autre onglet                           |
-| **P4**   | Narration audio                | Voix synthétisée pour le MJ                                                   |
-| **P4**   | Genres additionnels            | Dark fantasy, sci-fi, etc.                                                    |
+| Priorité | Feature                          | Description                                                                   |
+| -------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| **P1**   | Authentification                 | Inscription, connexion, gestion de session (Better Auth)                      |
+| **P1**   | Session solo MJ IA               | Aventure textuelle avec MJ IA (choix hybrides), menu de jeu intégré           |
+| **P1**   | Sauvegarde/Reprise               | Sauvegarder et reprendre une aventure en cours                                |
+| **P1**   | Onboarding/Tutoriel              | Parcours guidé (welcome, profile-setup, tutoriel-aventure)                    |
+| **P1**   | Navigation mobile-first          | Bottom tab bar mobile, sidebar responsive, conception mobile-first            |
+| **P1**   | Structure narrative (Milestones) | Jalons narratifs structurant les aventures et leur durée estimée              |
+| **P1**   | Résilience session               | Gestion rate limiting (429), reconnexion basique en session                   |
+| **P2**   | Events narratifs                 | Structuration fine entre milestones (rencontres, situations)                  |
+| **P2**   | Méta-personnage                  | Profil joueur avec progression, cosmétiques + page profil dédiée              |
+| **P2**   | Personnalisation MJ              | Ajustement basique (ton, difficulté, style) + verrouillage en session         |
+| **P2**   | Création personnage aventure     | Race, classe, background, stats                                               |
+| **P2**   | Paramètres utilisateur           | Gestion compte, préférences (version simple)                                  |
+| **P2**   | Résilience aventure              | Bouton "MJ bloqué" avec reset contexte                                        |
+| **P3**   | Compagnon d'interface            | Mascotte méta récurrente (loading, erreurs, transitions, onboarding)          |
+| **P3**   | Génération d'images              | Illustrations de scènes et personnages                                        |
+| **P3**   | Multijoueur                      | Sessions à plusieurs joueurs                                                  |
+| **P3**   | Parcours "Rejoindre un ami"      | Onboarding express via invitation, jonction session, récompenses rétroactives |
+| **P3**   | Paramètres utilisateur complet   | Notifications, préférences avancées, compagnon on/off                         |
+| **P3**   | Détection double onglet          | Avertissement aventure ouverte dans un autre onglet                           |
+| **P4**   | Narration audio                  | Voix synthétisée pour le MJ                                                   |
+| **P4**   | Genres additionnels              | Dark fantasy, sci-fi, etc.                                                    |
 
 ### 4.2 Détail des features MVP (P1)
 
@@ -153,10 +185,11 @@ Personnage **temporaire** créé pour chaque aventure.
 
 - Lancement d'aventure avec paramètres :
   - Thème/ambiance
-  - Durée estimée (courte, moyenne, longue)
+  - Durée estimée (courte, moyenne, longue) — corrélée au nombre de milestones (courte = 2-3, longue = 6+)
   - Difficulté
 - OU sélection d'un scénario template
 - OU génération aléatoire
+- **Structure par milestones** : Chaque aventure est découpée en jalons narratifs obligatoires (cf. §3.4). Le MJ IA utilise cette structure pour piloter la durée et la progression narrative
 - Interaction hybride : choix suggérés + texte libre
 - Narration textuelle immersive
 - Système de règles maison (mécaniques à tester : dés visibles vs cachés)
@@ -168,9 +201,10 @@ Personnage **temporaire** créé pour chaque aventure.
 #### F3. Sauvegarde/Reprise
 
 - Sauvegarde automatique de l'état de l'aventure
-- Liste des aventures en cours
+- Liste des aventures en cours (avec nom du milestone actuel affiché)
 - Reprise à tout moment
 - Historique des aventures terminées
+- **Historique en session** : Drawer affichant l'historique groupé par milestones (cf. wireframes WF-E10-07)
 
 #### F4. Onboarding/Tutoriel
 
@@ -355,6 +389,7 @@ Lien invitation → Inscription → Skip tutoriel → Profil express (nom)
 - **Bottom tab bar** mobile (Hub, Profil, Aventure) — sidebar desktop classique
 - **Sidebar immersive** : En session de jeu, la sidebar est masquée (icônes uniquement) pour maximiser l'immersion
 - Référence complète : `docs/ux-cartography.md` (navigation §3.2, responsive §7.5)
+- **Wireframes de référence** : `docs/ux-wireframes.md` — wireframes détaillés de la session de jeu (E10), incluant la structure par milestones dans l'historique
 
 ### 5.4 Maquettes existantes
 
@@ -510,12 +545,14 @@ Les pages marketing (landing, features, pricing, blog) seront gérées via **Web
 - Authentification complète (Better Auth)
 - Onboarding en 3 étapes (welcome, profile-setup, tutoriel-aventure)
 - Session solo MJ IA (texte, one-shot) avec sidebar immersive
+- **Structure narrative par milestones** (jalons obligatoires, durée estimée, historique groupé)
 - Sauvegarde/reprise
 - Navigation mobile-first (bottom tab bar + sidebar responsive)
 - Résilience session (gestion 429, reconnexion basique)
 
 ### Phase 2 : Enrichissement (P2)
 
+- **Events narratifs** entre milestones (structuration fine des rencontres/situations)
 - Méta-personnage complet (progression, succès, cosmétiques) + page Profil dédiée
 - Personnalisation MJ avec distinction verrouillé/ajustable en session
 - Création personnage aventure enrichie
@@ -573,7 +610,7 @@ Les pages marketing (landing, features, pricing, blog) seront gérées via **Web
 ### Gameplay
 
 1. **Mécaniques de dés** : Dés visibles vs calculs cachés — à tester avec utilisateurs
-2. **Progression in-aventure** : XP/niveaux vs milestones narratifs — à définir
+2. **Progression in-aventure** : ~~XP/niveaux vs milestones narratifs~~ → **Milestones narratifs retenus** (cf. §3.4). Pas de progression numérique visible. Reste à définir : impact des milestones sur les récompenses XP méta-personnage
 3. **Taille max groupe multijoueur** : À définir selon retours
 4. **Sync vs Async multijoueur** : À définir selon retours
 5. **Système de règles détaillé** : À concevoir (races, classes, stats, équilibrage)
@@ -602,14 +639,17 @@ Référence complète : `docs/architecture.md`
 
 ### A. Glossaire
 
-| Terme                     | Définition                                                                  |
-| ------------------------- | --------------------------------------------------------------------------- |
-| **Méta-personnage**       | Profil persistant du joueur (sans stats), progresse à travers les aventures |
-| **Personnage d'aventure** | Personnage temporaire créé pour une aventure spécifique                     |
-| **MJ IA**                 | Maître du Jeu contrôlé par intelligence artificielle                        |
-| **One-shot**              | Aventure conçue pour être jouée en une session                              |
-| **Campagne**              | Aventure longue sur plusieurs sessions                                      |
-| **Hub**                   | Espace central où le joueur gère son méta-personnage et lance des aventures |
+| Terme                     | Définition                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| **Méta-personnage**       | Profil persistant du joueur (sans stats), progresse à travers les aventures   |
+| **Personnage d'aventure** | Personnage temporaire créé pour une aventure spécifique                       |
+| **MJ IA**                 | Maître du Jeu contrôlé par intelligence artificielle                          |
+| **One-shot**              | Aventure conçue pour être jouée en une session                                |
+| **Campagne**              | Aventure longue sur plusieurs sessions                                        |
+| **Hub**                   | Espace central où le joueur gère son méta-personnage et lance des aventures   |
+| **Milestone**             | Jalon narratif majeur structurant une aventure (obligatoire). Prédit la durée |
+| **Event**                 | Rencontre ou situation entre milestones (optionnel ou obligatoire, P2)        |
+| **Scène**                 | Séquence cohérente d'échanges MJ-joueur au sein d'un event                    |
 
 ### B. Références maquettes
 
@@ -637,3 +677,4 @@ Référence complète : `docs/architecture.md`
 - v1.0 (2026-02-04) : Version initiale
 - v1.1 (2026-02-04) : Stack technique confirmée (React+Vite+Express), onboarding révisé (skip possible), pages marketing Webflow
 - v1.2 (2026-02-06) : Audit de cohérence post-UX cartography — Auth corrigée (Better Auth), ajout Zustand, navigation mobile-first (P1), résilience session (P1), paramètres utilisateur (P2), page profil (P2), personnalisation MJ verrouillé/ajustable (P2), compagnon d'interface (P3), détection double onglet (P3), roadmap réalignée
+- v1.3 (2026-02-06) : Intégration structure narrative Milestones & Events (UX §2.6) — §3.4 concept, milestones P1, events P2, F2/F3 mis à jour, glossaire enrichi, question progression résolue, référence wireframes ajoutée

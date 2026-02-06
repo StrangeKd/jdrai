@@ -16,11 +16,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 🔄 **Projet en reconstruction** — L'ancienne codebase (`jdrai-api/`, `jdrai-front/`) est abandonnée. Le projet repart de zéro avec une nouvelle stack technique.
 
-- **PRD validé** : `docs/prd.md` v1.2 (source de vérité pour les fonctionnalités)
+- **PRD validé** : `docs/prd.md` v1.3 (source de vérité pour les fonctionnalités)
 - **Architecture validée** : `docs/architecture/` v1.2 (8 fichiers modulaires, voir `docs/architecture/README.md`)
-- **UX Cartography** : `docs/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants)
+- **UX Cartography** : `docs/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants, structure narrative §2.6)
+- **UX Wireframes** : `docs/ux-wireframes.md` v0.1 (Phase 2 — wireframes session de jeu E10)
 - **Maquettes UX** : `mockups/` (inspiration libre, cf. UX cartography §1.2)
-- **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, en attente wireframes (UX Phase 2) et stories (PO)
+- **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, wireframes E10 en cours (UX Phase 2), en attente stories (PO)
 
 ### Utilisation de la documentation architecture
 

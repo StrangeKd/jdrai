@@ -39,7 +39,7 @@ apps/web/
 │   │   ├── auth/                # AuthCard, inputs spécialisés
 │   │   ├── onboarding/          # StepIndicator, WelcomeHero, PresetSelector, NarrativeBox
 │   │   ├── hub/                 # MetaCharacterBanner, AdventureCard, ActionCard, AdventureGrid, EmptyState
-│   │   ├── game/                # NarrationPanel, ChoiceList, FreeInput, CharacterPanel, StreamingText
+│   │   ├── game/                # NarrationPanel, ChoiceList, FreeInput, CharacterPanel, StreamingText, HistoryDrawer, MilestoneHeader
 │   │   ├── adventure/           # ParamSelector, ThemeCard, DifficultySlider, TemplateCard
 │   │   ├── character/           # Création/affichage perso
 │   │   ├── summary/             # SummaryCard, RewardList, XPGainAnimation
@@ -297,6 +297,20 @@ function App() {
 
 ---
 
+## Historique par milestones (HistoryDrawer)
+
+> **Source** : PRD §4.2 F3, UX Wireframes WF-E10-07
+
+Le `HistoryDrawer` est un drawer latéral accessible en session de jeu, affichant l'historique des échanges **groupé par milestones** :
+
+- **`MilestoneHeader`** : Séparateur visuel portant le nom du milestone (ex : « Réception de la quête »). Le milestone actif est visuellement distingué (badge, couleur)
+- **Regroupement** : Les messages sont groupés sous le `MilestoneHeader` correspondant via `GameMessageDTO.milestone`
+- **Aucune progression numérique** : Pas de « 2/4 » ni « 50% ». Seul le nom du milestone actuel est visible
+- **Scroll** : L'historique scroll vers le milestone actif à l'ouverture du drawer
+- **Data** : Utilise `GameStateDTO.milestones` pour les headers et `GameStateDTO.messages` pour le contenu, regroupés côté client
+
+---
+
 ## Navigation en session de jeu
 
 > **Source** : PRD §4.2 F2, UX §3.2
@@ -477,5 +491,6 @@ Routes anticipées dans l'arbre (commentées) :
 - `/join/lobby` — Lobby public, parcourir les parties (sous `_authenticated/` — cf. UX §2.5.4 Q1)
 
 > **Pourquoi séparer `/join` en deux niveaux d'auth ?**
+>
 > - **`/join/:inviteCode` = publique** : Le parcours « Rejoindre un ami » (PRD F13, UX §2.2) commence par un lien reçu par un utilisateur potentiellement non inscrit. La page d'invitation affiche le contexte (qui invite, quelle partie) **avant** l'authentification. Pattern standard des invitations (Slack, Discord, Notion).
 > - **`/join/lobby` = authentifiée** : Le lobby est accédé depuis le Hub (UX §3.3 « Parcourir le lobby »). Parcourir les parties disponibles n'a de sens que pour un utilisateur connecté.
