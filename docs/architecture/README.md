@@ -161,8 +161,8 @@ jdrai/
 │   └── docker-compose.yml
 ├── docs/
 │   ├── prd.md
-│   ├── architecture/           # Ce dossier
-│   └── ux-cartography.md
+│   ├── architecture/
+│   └── ux/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml

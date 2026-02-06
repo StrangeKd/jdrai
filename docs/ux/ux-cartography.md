@@ -790,7 +790,7 @@ Par ordre de complexité et d'impact :
 
 Ce document sert de **fondation** pour :
 
-1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4) → `docs/ux-wireframes.md`
+1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4) → `docs/ux/ux-wireframes.md`
 2. **Phase 3** : Spécifications front-end et prompts de génération UI
 3. **PO** : Rédaction des user stories basées sur les flows et l'inventaire d'écrans
 4. **PM** : Intégration du concept Milestones & Events (§2.6) dans le PRD — impacte les Concepts Clés (§3) et Fonctionnalités (§4)

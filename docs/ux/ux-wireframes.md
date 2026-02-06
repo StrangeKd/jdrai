@@ -4,7 +4,7 @@
 **Date :** 2026-02-06
 **Auteur :** Sally (UX Expert, BMAD Method)
 **Statut :** En cours
-**Références :** `docs/prd.md` v1.3, `docs/ux-cartography.md` v1.1
+**Références :** `docs/prd.md` v1.3, `docs/ux/ux-cartography.md` v1.1
 
 ---
 

@@ -140,7 +140,7 @@ AVENTURE
 
 **Règle UX** : Le nom du milestone en cours peut être affiché (ex : "Réception de la quête" dans l'historique), mais **jamais de progression numérique** (pas de "2/4" ni "50%"). L'aventure reste une expérience narrative, pas un tableau de bord.
 
-> Référence complète : `docs/ux-cartography.md` §2.6
+> Référence complète : `docs/ux/ux-cartography.md` §2.6
 
 ---
 
@@ -281,7 +281,7 @@ AVENTURE
 - Désactivable dans les paramètres utilisateur
 - Évolutif : répliques adaptées au niveau du méta-personnage
 - Pistes de personnage : Le Scribe, L'Artefact, Le Gobelin de service (choix à affiner en Phase 2 UX)
-- Référence complète : `docs/ux-cartography.md` §7.2
+- Référence complète : `docs/ux/ux-cartography.md` §7.2
 
 #### F11. Détection double onglet
 
@@ -388,12 +388,12 @@ Lien invitation → Inscription → Skip tutoriel → Profil express (nom)
 - **Mobile-first** : La conception part du mobile (session de jeu = interaction chat/choix naturellement adaptée au mobile)
 - **Bottom tab bar** mobile (Hub, Profil, Aventure) — sidebar desktop classique
 - **Sidebar immersive** : En session de jeu, la sidebar est masquée (icônes uniquement) pour maximiser l'immersion
-- Référence complète : `docs/ux-cartography.md` (navigation §3.2, responsive §7.5)
-- **Wireframes de référence** : `docs/ux-wireframes.md` — wireframes détaillés de la session de jeu (E10), incluant la structure par milestones dans l'historique
+- Référence complète : `docs/ux/ux-cartography.md` (navigation §3.2, responsive §7.5)
+- **Wireframes de référence** : `docs/ux/ux-wireframes.md` — wireframes détaillés de la session de jeu (E10), incluant la structure par milestones dans l'historique
 
 ### 5.4 Maquettes existantes
 
-Les maquettes UX/UI suivantes sont disponibles comme **inspiration libre** (cf. `docs/ux-cartography.md` §1.2 pour le statut détaillé) :
+Les maquettes UX/UI suivantes sont disponibles comme **inspiration libre** (cf. `docs/ux/ux-cartography.md` §1.2 pour le statut détaillé) :
 
 | Écran                             | Fichier                    | Statut                                                 |
 | --------------------------------- | -------------------------- | ------------------------------------------------------ |

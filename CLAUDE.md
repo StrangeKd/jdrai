@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **PRD validé** : `docs/prd.md` v1.3 (source de vérité pour les fonctionnalités)
 - **Architecture validée** : `docs/architecture/` v1.2 (8 fichiers modulaires, voir `docs/architecture/README.md`)
-- **UX Cartography** : `docs/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants, structure narrative §2.6)
-- **UX Wireframes** : `docs/ux-wireframes.md` v0.1 (Phase 2 — wireframes session de jeu E10)
+- **UX Cartography** : `docs/ux/ux-cartography.md` v1.0 (Phase 1 — flows, écrans, composants, structure narrative §2.6)
+- **UX Wireframes** : `docs/ux/ux-wireframes.md` v0.1 (Phase 2 — wireframes session de jeu E10)
 - **Maquettes UX** : `mockups/` (inspiration libre, cf. UX cartography §1.2)
 - **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, wireframes E10 en cours (UX Phase 2), en attente stories (PO)
 
@@ -28,6 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ⚠️ **IMPORTANT** : La documentation architecture est maintenant modulaire pour optimiser le contexte.
 
 **Règle obligatoire (quand l'architecture est concernée) :**
+
 1. **TOUJOURS** commencer par lire `docs/architecture/README.md` pour identifier les fichiers pertinents
 2. **NE JAMAIS** charger tous les fichiers d'un coup — sélectionner UNIQUEMENT les sections nécessaires
 3. **Si incertain** sur les fichiers à charger, demander une clarification à l'utilisateur
