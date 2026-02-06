@@ -4,7 +4,7 @@
 **Date :** 2026-02-06
 **Auteur :** Sally (UX Expert, BMAD Method)
 **Statut :** En cours
-**Références :** `docs/prd.md` v1.2, `docs/ux-cartography.md` v1.0
+**Références :** `docs/prd.md` v1.3, `docs/ux-cartography.md` v1.1
 
 ---
 
@@ -24,19 +24,63 @@
 
 ### 1.1 Décisions transversales
 
-| Décision | Choix | Justification |
-|----------|-------|---------------|
-| Approche | Mobile-first | PRD §5.3 — session de jeu = interaction chat/choix naturellement adaptée au mobile |
-| Navigation en session | Sidebar/tab bar masquée | PRD §4.2 F2 — immersion totale pendant le jeu |
-| Thème visuel | Dark fantasy | UX Cartography §1.1 — tons chauds, textures parchemin, ambiance immersive |
+| Décision              | Choix                   | Justification                                                                      |
+| --------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| Approche              | Mobile-first            | PRD §5.3 — session de jeu = interaction chat/choix naturellement adaptée au mobile |
+| Navigation en session | Sidebar/tab bar masquée | PRD §4.2 F2 — immersion totale pendant le jeu                                      |
+| Thème visuel          | Dark fantasy            | UX Cartography §1.1 — tons chauds, textures parchemin, ambiance immersive          |
 
-### 1.2 Décisions spécifiques E10
+### 1.2 Structure narrative : Milestones & Events
 
-| Décision | Choix | Alternatives écartées | Raison |
-|----------|-------|----------------------|--------|
-| Paradigme narration | **Scène focalisée** | Scroll narratif (chat-like), Hybride narratif | Immersion maximale, feeling jeu vidéo plutôt que chatbot |
-| Zone d'action | **Inline + champ fixe** | Zone fixe complète en bas | Les choix sont contextuels (liés à la narration), le champ libre reste toujours accessible |
-| Menu de jeu | **Overlay pause** | Barre flottante d'icônes | Renforce l'immersion, distinction claire avec une app classique (feeling menu pause RPG) |
+> **Origine :** Concept issu de la phase de discovery initiale (brainstorming fondateurs). Impacte la structure des aventures et plusieurs écrans (session, hub, lancement, fin).
+
+**Hiérarchie narrative d'une aventure :**
+
+```
+AVENTURE "La Crypte des Ombres"
+│
+├── 🏴 MILESTONE 1 — Réception de la quête
+│   ├── ○ Event : Arrivée à la taverne (obligatoire — intro)
+│   ├── ○ Event : Rencontre avec le marchand (optionnel)
+│   └── ○ Event : Discussion avec l'informateur (optionnel)
+│
+├── 🏴 MILESTONE 2 — Entrée dans la crypte
+│   ├── ○ Event : Exploration de la grotte (optionnel)
+│   ├── ○ Event : Piège dans le couloir (optionnel)
+│   └── ○ Event : Découverte de la salle principale (obligatoire)
+│
+├── 🏴 MILESTONE 3 — Confrontation finale
+│   ├── ○ Event : Négociation avec le gardien (optionnel)
+│   └── ○ Event : Combat final (obligatoire)
+│
+└── 🏴 MILESTONE 4 — Résolution
+    └── ○ Event : Retour et récompenses (obligatoire)
+```
+
+| Concept       | Définition                                                                                                                                                 | Obligatoire ?                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Milestone** | Jalon narratif majeur qui structure l'aventure et en prédit la durée. Moment clé et (sauf exception) incontournable.                                       | Oui (sauf exceptions)                                 |
+| **Event**     | Rencontre ou situation entre les milestones. Ponctue l'aventure. Le MJ guide le joueur, mais certains choix peuvent éloigner d'un event.                   | Non — certains sont obligatoires, d'autres optionnels |
+| **Scène**     | Séquence cohérente d'échanges MJ-joueur avec un début et une fin naturels (ex : parler à un PNJ, explorer une pièce). Plusieurs scènes composent un event. | —                                                     |
+
+**Impact UX :**
+
+| Écran                       | Impact                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| **E10 — Historique**        | Regroupement par milestones (P1), events à l'intérieur (P2+)                              |
+| **E9 — Lancement aventure** | Durée estimée corrélée au nombre de milestones (courte = 2-3, longue = 6+)                |
+| **E8 — Hub**                | Carte aventure en cours affiche le nom du milestone actuel (pas de progression numérique) |
+| **E11 — Écran de fin**      | Récap par milestones atteints (P1), events découverts (P2+)                               |
+
+> **Règle de visibilité** : Jamais de progression numérique ("2/4", "%"). Seul le nom du milestone est affiché. Cf. UX Cartography §7.1 principe 6.
+
+### 1.3 Décisions spécifiques E10
+
+| Décision            | Choix                   | Alternatives écartées                         | Raison                                                                                     |
+| ------------------- | ----------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Paradigme narration | **Scène focalisée**     | Scroll narratif (chat-like), Hybride narratif | Immersion maximale, feeling jeu vidéo plutôt que chatbot                                   |
+| Zone d'action       | **Inline + champ fixe** | Zone fixe complète en bas                     | Les choix sont contextuels (liés à la narration), le champ libre reste toujours accessible |
+| Menu de jeu         | **Overlay pause**       | Barre flottante d'icônes                      | Renforce l'immersion, distinction claire avec une app classique (feeling menu pause RPG)   |
 
 ---
 
@@ -117,6 +161,7 @@
 ```
 
 **Légende :**
+
 - `[⚙]` : icône thématique menu pause (dé, grimoire, ou bouclier — à définir en phase UI)
 - `📜` : bouton historique (ouvre le drawer d'historique)
 - `[➤]` : envoi saisie libre
@@ -152,6 +197,7 @@
 ```
 
 **Notes :**
+
 - `░░░` : indicateur animé (plume qui écrit, encre qui coule — à définir en phase UI)
 - Les choix n'apparaissent **pas** pendant le streaming — ils arrivent une fois le texte complet
 - L'input est désactivé pour éviter les envois pendant que le MJ écrit
@@ -252,6 +298,7 @@
 ```
 
 **Notes :**
+
 - `▓` : fond sombre semi-transparent, le jeu est flouté en arrière-plan
 - Feeling : menu pause de RPG (Skyrim, Baldur's Gate 3)
 - Accès via l'icône `[⚙]` du SessionHeader
@@ -291,6 +338,7 @@
 ```
 
 **Déclencheurs :**
+
 - Bouton "Quitter l'aventure" dans le menu pause
 - Bouton retour du navigateur
 - Navigation vers une autre route (guard)
@@ -304,34 +352,38 @@
 │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │
 │                                     │
 │  ┌─────────────────────────────┐    │
-│  │ CHAPITRE 1                  │    │ ← Regroupement par
-│  │                             │    │   "tours" (échange
-│  │ Le MJ :                     │    │    MJ + choix joueur)
+│  │ 🏴 Réception de la quête   │    │ ← Milestone 1
+│  │                             │    │
 │  │ "Vous arrivez aux portes    │    │
 │  │ d'une cité oubliée..."     │    │
+│  │ ▸ Franchi les portes        │    │ ← Choix joueur
 │  │                             │    │
-│  │ ▸ Vous avez franchi les     │    │ ← Choix du joueur
-│  │   portes prudemment         │    │
+│  │ "Les gardes vous            │    │
+│  │ dévisagent..."              │    │
+│  │ ▸ Montré le sceau royal     │    │
+│  │                             │    │
+│  │ "Un homme vous interpelle   │    │
+│  │ depuis son échoppe..."      │    │
+│  │ ▸ Acheté une potion         │    │
 │  ├─────────────────────────────┤    │
-│  │ CHAPITRE 2                  │    │
+│  │ 🏴 Entrée dans la crypte   │    │ ← Milestone 2
+│  │               ● en cours    │    │
 │  │                             │    │
-│  │ Le MJ :                     │    │
-│  │ "Les rues sont désertes,    │    │
-│  │ mais des ombres bougent..." │    │
-│  │                             │    │
-│  │ ▸ Vous avez dégainé votre   │    │
-│  │   épée                      │    │
-│  ├─────────────────────────────┤    │
-│  │ CHAPITRE 3  ● en cours      │    │ ← Marqueur scène actuelle
-│  │ ...                         │    │
+│  │ "Le sol se dérobe sous      │    │
+│  │ vos pieds..."               │    │
+│  │ ▸ Sauté sur le côté         │    │
 │  └─────────────────────────────┘    │
 │                                     │
 └─────────────────────────────────────┘
 ```
 
 **Notes :**
+
 - Plein écran sur mobile, panneau latéral sur desktop
-- Chaque "chapitre" = un échange (narration MJ + choix joueur)
+- **P1** : Regroupement par **milestones** uniquement. Les échanges (narration MJ + choix joueur) s'enchaînent dans le flux sous chaque milestone.
+- **P2+** : Ajout du niveau **events** entre milestones et échanges (cf. UX Cartography §2.6)
+- Le milestone en cours est marqué `● en cours`
+- Les échanges individuels ne sont pas nommés — ils s'enchaînent naturellement
 - Lecture seule — le joueur ne peut pas revenir en arrière
 - Accessible via le bouton `📜` dans le FreeInput ou via le menu pause
 
@@ -468,6 +520,7 @@
 ```
 
 **Notes desktop :**
+
 - Même structure que mobile — pas de sidebar, immersion totale
 - NarrationPanel centré avec `max-width: ~720px` pour la lisibilité (comme un article/livre)
 - AutosaveIndicator visible dans le header (plus d'espace)
@@ -475,30 +528,30 @@
 
 ### 2.5 Interactions et transitions
 
-| Action utilisateur | Résultat |
-|-------------------|----------|
-| Tap sur un choix | Écho du choix (WF-04) → Loading MJ (WF-03) → Streaming (WF-02) → Nouveaux choix (WF-01) |
-| Envoi saisie libre | Écho du texte (WF-04) → Loading MJ (WF-03) → Streaming (WF-02) → Nouveaux choix (WF-01) |
-| Tap `[⚙]` | Overlay menu pause (WF-05) |
-| Tap `📜` (dans input) | Drawer historique (WF-07) |
-| Tap "Quitter" (menu pause) | Confirmation de sortie (WF-06) |
-| Swipe back / bouton retour navigateur | Confirmation de sortie (WF-06) |
-| `beforeunload` (fermeture onglet) | Confirmation navigateur native (limitation technique) |
-| Perte de connexion | Bandeau reconnexion (WF-08) |
-| HTTP 429 | Choix grisés + compteur (WF-09) |
-| LLM timeout (après 3 retries auto) | Message erreur + retry manuel (WF-10) |
+| Action utilisateur                    | Résultat                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------- |
+| Tap sur un choix                      | Écho du choix (WF-04) → Loading MJ (WF-03) → Streaming (WF-02) → Nouveaux choix (WF-01) |
+| Envoi saisie libre                    | Écho du texte (WF-04) → Loading MJ (WF-03) → Streaming (WF-02) → Nouveaux choix (WF-01) |
+| Tap `[⚙]`                             | Overlay menu pause (WF-05)                                                              |
+| Tap `📜` (dans input)                 | Drawer historique (WF-07)                                                               |
+| Tap "Quitter" (menu pause)            | Confirmation de sortie (WF-06)                                                          |
+| Swipe back / bouton retour navigateur | Confirmation de sortie (WF-06)                                                          |
+| `beforeunload` (fermeture onglet)     | Confirmation navigateur native (limitation technique)                                   |
+| Perte de connexion                    | Bandeau reconnexion (WF-08)                                                             |
+| HTTP 429                              | Choix grisés + compteur (WF-09)                                                         |
+| LLM timeout (après 3 retries auto)    | Message erreur + retry manuel (WF-10)                                                   |
 
 ### 2.6 Règles de comportement
 
-| Règle | Description |
-|-------|-------------|
-| **Auto-save** | Sauvegarde après chaque échange complet (choix joueur + réponse MJ). Indicateur "✓ Sauvegardé" visible 2s. |
-| **Streaming** | Le texte apparaît mot par mot. Les choix n'apparaissent qu'après la fin du streaming. |
-| **Input lock** | Le FreeInput est désactivé pendant le loading et le streaming. Réactivé une fois les choix affichés. |
-| **Écho choix** | Le choix du joueur est affiché brièvement en haut de la scène avant la nouvelle narration. Reste visible pendant le streaming. |
-| **Historique** | Stocké côté client (+ serveur via save). Chaque "chapitre" = 1 narration MJ + 1 action joueur. |
-| **Navigation bloquée** | Aucune navigation hors session sans confirmation. Inclut : liens, bouton retour, refresh, fermeture. |
-| **Keyboard desktop** | Touches 1-4 pour sélectionner un choix. Enter pour envoyer le texte libre. Escape pour ouvrir le menu pause. |
+| Règle                  | Description                                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auto-save**          | Sauvegarde après chaque échange complet (choix joueur + réponse MJ). Indicateur "✓ Sauvegardé" visible 2s.                                      |
+| **Streaming**          | Le texte apparaît mot par mot. Les choix n'apparaissent qu'après la fin du streaming.                                                           |
+| **Input lock**         | Le FreeInput est désactivé pendant le loading et le streaming. Réactivé une fois les choix affichés.                                            |
+| **Écho choix**         | Le choix du joueur est affiché brièvement en haut de la scène avant la nouvelle narration. Reste visible pendant le streaming.                  |
+| **Historique**         | Stocké côté client (+ serveur via save). Organisé par milestones → events → échanges (cf. [§1.2](#12-structure-narrative--milestones--events)). |
+| **Navigation bloquée** | Aucune navigation hors session sans confirmation. Inclut : liens, bouton retour, refresh, fermeture.                                            |
+| **Keyboard desktop**   | Touches 1-4 pour sélectionner un choix. Enter pour envoyer le texte libre. Escape pour ouvrir le menu pause.                                    |
 
 ---
 

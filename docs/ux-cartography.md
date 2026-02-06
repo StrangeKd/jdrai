@@ -1,10 +1,10 @@
 # JDRAI - Cartographie UX (Phase 1)
 
-**Version :** 1.0
+**Version :** 1.1
 **Date :** 2026-02-05
 **Auteur :** Sally (UX Expert, BMAD Method)
 **Statut :** En cours
-**Référence :** `docs/prd.md` v1.1
+**Référence :** `docs/prd.md` v1.3
 
 ---
 
@@ -332,6 +332,71 @@ Hub → Nouvelle aventure → [Multijoueur]
 | Q5  | **Sync vs Async**                                                                      | A) Temps réel uniquement / B) Mode asynchrone (tour par tour)                                                                                        | B = design radicalement différent, notifications, file d'attente d'actions                                    |
 | Q6  | **Interaction entre joueurs**                                                          | A) Chacun agit individuellement, le MJ synthétise / B) Chat entre joueurs + actions / C) Vote collectif sur les choix                                | Impacte le layout de la session de jeu (chat panel, votes, etc.)                                              |
 
+### 2.6 Structure narrative : Milestones & Events
+
+> **Origine :** Concept issu de la phase de discovery initiale (brainstorming fondateurs). Structure la durée et le déroulement des aventures.
+
+**Hiérarchie narrative :**
+
+```
+AVENTURE
+│
+├── 🏴 MILESTONE — Jalon narratif obligatoire (sauf exceptions)
+│   │               Structure l'aventure et en prédit la durée.
+│   │               Ex : Réception de la quête, Complétion du donjon
+│   │
+│   ├── ○ EVENT — Rencontre/situation entre milestones (optionnel ou obligatoire)
+│   │              Le MJ guide, mais les choix du joueur peuvent contourner
+│   │              certains events. Ex : visite d'échoppes, grotte secondaire
+│   │
+│   └── (Scènes) — Séquence cohérente d'échanges MJ-joueur au sein d'un event
+│                   avec un début et une fin naturels. Ex : discuter avec un PNJ.
+│                   Les échanges individuels ne sont pas nommés.
+```
+
+**Exemple concret :**
+
+```
+AVENTURE "La Crypte des Ombres"
+│
+├── 🏴 MILESTONE 1 — Réception de la quête
+│   ├── ○ Arrivée à la taverne (obligatoire — intro)
+│   ├── ○ Rencontre avec le marchand (optionnel)
+│   └── ○ Discussion avec l'informateur (optionnel)
+│
+├── 🏴 MILESTONE 2 — Entrée dans la crypte
+│   ├── ○ Exploration de la grotte (optionnel)
+│   ├── ○ Piège dans le couloir (optionnel)
+│   └── ○ Découverte de la salle principale (obligatoire)
+│
+├── 🏴 MILESTONE 3 — Confrontation finale
+│   ├── ○ Négociation avec le gardien (optionnel)
+│   └── ○ Combat final (obligatoire)
+│
+└── 🏴 MILESTONE 4 — Résolution
+    └── ○ Retour et récompenses (obligatoire)
+```
+
+**Priorisation :**
+
+| Concept        | Priorité     | Justification                                                                   |
+| -------------- | ------------ | ------------------------------------------------------------------------------- |
+| **Milestones** | **P1**       | Fondamental pour structurer les aventures du MJ IA et gérer la durée dès le MVP |
+| **Events**     | **P2 ou P3** | Structuration plus fine entre milestones — à valider avec le PM                 |
+
+**Règle de visibilité UX :** Le nom du milestone en cours peut être affiché (ex : "Réception de la quête" dans l'historique), mais **jamais de progression numérique** (pas de "2/4" ni "50%"). L'estimation de complétion basée sur les milestones, via une barre de progression par exemple, peut être une feature long terme.
+
+**Impact UX :**
+
+| Écran                       | Impact                                                                     | Phase |
+| --------------------------- | -------------------------------------------------------------------------- | ----- |
+| **E10 — Historique drawer** | Regroupement par milestones (P1), puis par events (P2+)                    | P1    |
+| **E8 — Hub**                | Carte aventure en cours affiche le nom du milestone actuel                 | P1    |
+| **E9 — Lancement aventure** | Durée estimée corrélée au nombre de milestones (courte = 2-3, longue = 6+) | P1    |
+| **E11 — Écran de fin**      | Récap par milestones atteints (P1), events découverts (P2+)                | P1    |
+
+> **Action PM :** Ce concept doit être intégré au PRD (`docs/prd.md`) dans les sections Concepts Clés (§3) et Fonctionnalités (§4).
+
 ---
 
 ## 3. Architecture de l'information
@@ -572,18 +637,20 @@ Par ordre de complexité et d'impact :
 
 ### 5.5 Composants Session de jeu (E10 — le plus critique)
 
-| Composant             | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| **NarrationPanel**    | Zone principale : texte narratif du MJ, scrollable, style parchemin |
-| **ChoiceList**        | Liste de 2-4 choix d'action cliquables                              |
-| **ChoiceButton**      | Bouton de choix individuel (numéroté, hover distinctif)             |
-| **FreeInput**         | Zone de saisie texte libre ("OU tapez votre action...")             |
-| **CharacterPanel**    | Panneau latéral : résumé personnage d'aventure (stats, inventaire)  |
-| **DiceResult**        | Affichage résultat de dé (si mécaniques visibles)                   |
-| **StreamingText**     | Texte qui apparaît progressivement (streaming LLM)                  |
-| **SessionHeader**     | Titre aventure + boutons (quitter, sauvegarder, paramètres MJ)      |
-| **AutosaveIndicator** | Indicateur discret de sauvegarde ("Sauvegardé ✓")                   |
-| **LoadingNarration**  | Indicateur que le MJ réfléchit (animation thématique)               |
+| Composant             | Description                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **NarrationPanel**    | Zone principale : texte narratif du MJ, scrollable, style parchemin                                                                                                           |
+| **ChoiceList**        | Liste de 2-4 choix d'action cliquables                                                                                                                                        |
+| **ChoiceButton**      | Bouton de choix individuel (numéroté, hover distinctif)                                                                                                                       |
+| **FreeInput**         | Zone de saisie texte libre ("OU tapez votre action...")                                                                                                                       |
+| **CharacterPanel**    | Panneau latéral : résumé personnage d'aventure (stats, inventaire)                                                                                                            |
+| **DiceResult**        | Affichage résultat de dé (si mécaniques visibles)                                                                                                                             |
+| **StreamingText**     | Texte qui apparaît progressivement (streaming LLM)                                                                                                                            |
+| **SessionHeader**     | Titre aventure + boutons (quitter, sauvegarder, paramètres MJ)                                                                                                                |
+| **AutosaveIndicator** | Indicateur discret de sauvegarde ("Sauvegardé ✓")                                                                                                                             |
+| **LoadingNarration**  | Indicateur que le MJ réfléchit (animation thématique)                                                                                                                         |
+| **HistoryDrawer**     | Drawer plein écran (mobile) / panneau latéral (desktop) affichant l'historique de l'aventure, groupé par milestones (cf. [§2.6](#26-structure-narrative--milestones--events)) |
+| **MilestoneHeader**   | En-tête de regroupement dans l'historique : nom du milestone + marqueur "en cours" si applicable                                                                              |
 
 ### 5.6 Composants Lancement aventure
 
@@ -646,6 +713,7 @@ Par ordre de complexité et d'impact :
 3. **Feedback constant** : Le joueur doit toujours savoir ce qui se passe (auto-save, MJ qui réfléchit, streaming texte).
 4. **Mobile-first pour la session de jeu** : L'interaction chat/choix se prête naturellement au mobile. Concevoir d'abord pour mobile.
 5. **Gratification visible** : Chaque fin d'aventure doit donner un sentiment d'accomplissement (animations, récompenses, résumé).
+6. **Progression narrative, pas numérique** : Les milestones structurent l'aventure mais le joueur ne voit jamais de progression chiffrée (pas de "2/4" ni "%"). Seul le nom du milestone en cours est affiché dans l'historique. L'aventure reste une expérience narrative, pas un tableau de bord.
 
 ### 7.2 Compagnon méta — Mascotte de l'interface
 
@@ -722,9 +790,10 @@ Par ordre de complexité et d'impact :
 
 Ce document sert de **fondation** pour :
 
-1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4)
+1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4) → `docs/ux-wireframes.md`
 2. **Phase 3** : Spécifications front-end et prompts de génération UI
 3. **PO** : Rédaction des user stories basées sur les flows et l'inventaire d'écrans
+4. **PM** : Intégration du concept Milestones & Events (§2.6) dans le PRD — impacte les Concepts Clés (§3) et Fonctionnalités (§4)
 
 **Priorité de conception UX (wireframes/maquettes) :**
 
