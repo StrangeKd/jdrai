@@ -382,7 +382,7 @@ app.jdrai.com/
     └── Notifications                   ← (P3+, préparation multi)
 ```
 
-> **Q1 - Lobby public :** Voir détails dans la section [2.5.4 Questions ouvertes pour le PM](#254-questions-ouvertes-pour-le-pm)
+> **Q1 - Lobby public :** Voir détails dans la section [§2.5.4 Questions ouvertes pour le PM](#254-questions-ouvertes-pour-le-pm)
 
 ### 3.2 Navigation globale
 
@@ -522,22 +522,22 @@ Par ordre de complexité et d'impact :
 
 ### 5.1 Composants globaux
 
-| Composant                | Usage                                                                                        | Écrans                                          |
-| ------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| **Sidebar**              | Navigation principale                                                                        | Tous (sauf auth, onboarding)                    |
-| **Bottom Tab Bar**       | Navigation mobile                                                                            | Tous (sauf auth, onboarding)                    |
-| **Logo JDRAI**           | Identité visuelle                                                                            | Tous                                            |
-| **Avatar utilisateur**   | Méta-personnage                                                                              | Sidebar, Hub, Profil                            |
-| **Bouton primaire**      | Action principale (parchemin + or)                                                           | Tous                                            |
-| **Bouton secondaire**    | Action secondaire                                                                            | Tous                                            |
-| **Bouton fantôme**       | Action tertiaire / navigation                                                                | Tous                                            |
-| **Carte (Card)**         | Conteneur générique                                                                          | Hub, Historique, Listes                         |
-| **Modale**               | Confirmations, paramètres                                                                    | Divers                                          |
-| **Toast / Notification** | Feedback système                                                                             | Tous                                            |
-| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                   | Hub                                             |
-| **Loader / Skeleton**    | Chargement                                                                                   | Tous                                            |
-| **Barre de progression** | XP, avancement                                                                               | Hub, Profil, Onboarding                         |
-| **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
+| Composant                | Usage                                                                                         | Écrans                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Sidebar**              | Navigation principale                                                                         | Tous (sauf auth, onboarding)                    |
+| **Bottom Tab Bar**       | Navigation mobile                                                                             | Tous (sauf auth, onboarding)                    |
+| **Logo JDRAI**           | Identité visuelle                                                                             | Tous                                            |
+| **Avatar utilisateur**   | Méta-personnage                                                                               | Sidebar, Hub, Profil                            |
+| **Bouton primaire**      | Action principale (parchemin + or)                                                            | Tous                                            |
+| **Bouton secondaire**    | Action secondaire                                                                             | Tous                                            |
+| **Bouton fantôme**       | Action tertiaire / navigation                                                                 | Tous                                            |
+| **Carte (Card)**         | Conteneur générique                                                                           | Hub, Historique, Listes                         |
+| **Modale**               | Confirmations, paramètres                                                                     | Divers                                          |
+| **Toast / Notification** | Feedback système                                                                              | Tous                                            |
+| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                    | Hub                                             |
+| **Loader / Skeleton**    | Chargement                                                                                    | Tous                                            |
+| **Barre de progression** | XP, avancement                                                                                | Hub, Profil, Onboarding                         |
+| **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [§7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
 
 ### 5.2 Composants Auth
 

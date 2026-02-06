@@ -353,7 +353,7 @@ Lien invitation → Inscription → Skip tutoriel → Profil express (nom)
 
 - **Mobile-first** : La conception part du mobile (session de jeu = interaction chat/choix naturellement adaptée au mobile)
 - **Bottom tab bar** mobile (Hub, Profil, Aventure) — sidebar desktop classique
-- **Sidebar immersive** : En session de jeu, la sidebar est minimisée (icônes uniquement) pour maximiser l'immersion
+- **Sidebar immersive** : En session de jeu, la sidebar est masquée (icônes uniquement) pour maximiser l'immersion
 - Référence complète : `docs/ux-cartography.md` (navigation §3.2, responsive §7.5)
 
 ### 5.4 Maquettes existantes
