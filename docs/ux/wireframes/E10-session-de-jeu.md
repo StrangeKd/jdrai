@@ -13,7 +13,7 @@
 1. [Décisions spécifiques E10](#1-décisions-spécifiques-e10)
 2. [Anatomie de l'écran](#2-anatomie-de-lécran)
 3. [Wireframes mobile](#3-wireframes-mobile--768px)
-4. [États d'erreur et résilience](#4-états-derreur-et-résilience)
+4. [États d'erreur et edge cases](#4-états-derreur-et-edge-cases)
 5. [Wireframe desktop](#5-wireframe-desktop--1024px)
 6. [Interactions et transitions](#6-interactions-et-transitions)
 7. [Règles de comportement](#7-règles-de-comportement)
@@ -330,7 +330,7 @@
 
 ---
 
-## 4. États d'erreur et résilience
+## 4. États d'erreur et edge cases
 
 ### WF-E10-08 — Perte de connexion
 
