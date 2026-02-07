@@ -19,7 +19,7 @@
 | ------- | ----- | ------ | -------- |
 | [`E10-session-de-jeu.md`](E10-session-de-jeu.md) | E10 — Session de jeu | Terminé (v0.1) | P1 |
 | [`E8-hub.md`](E8-hub.md) | E8 — Hub | Terminé (v0.1) | P1 |
-| `E5-E6-E7-onboarding.md` | E5/E6/E7 — Onboarding | _A venir_ | P1 |
+| [`E5-E6-E7-onboarding.md`](E5-E6-E7-onboarding.md) | E5/E6/E7 — Onboarding | Terminé (v0.1) | P1 |
 | `E9-lancement-aventure.md` | E9 — Lancement aventure | _A venir_ | P1 |
 | `E11-ecran-de-fin.md` | E11 — Ecran de fin | _A venir_ | P1 |
 | `E1-E2-auth.md` | E1/E2 — Auth | _A venir_ | P1 |
