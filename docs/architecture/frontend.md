@@ -299,7 +299,7 @@ function App() {
 
 ## Historique par milestones (HistoryDrawer)
 
-> **Source** : PRD §4.2 F3, UX Wireframes WF-E10-07
+> **Source** : PRD §4.2 F3, Wireframe E10 - Session de jeu §WF-E10-07
 
 Le `HistoryDrawer` est un drawer latéral accessible en session de jeu, affichant l'historique des échanges **groupé par milestones** :
 

@@ -3,7 +3,7 @@
 **Version :** 1.1
 **Date :** 2026-02-05
 **Auteur :** Sally (UX Expert, BMAD Method)
-**Statut :** En cours
+**Statut :** Validé par CEO
 **Référence :** `docs/prd.md` v1.3
 
 ---
@@ -737,17 +737,17 @@ Par ordre de complexité et d'impact :
 
 **Interventions types :**
 
-| Moment                       | Exemple d'intervention                                                                                                                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Loading LLM**              | _"Le MJ fouille ses notes... il est un peu désorganisé."_                                                                                                                                                                      |
-| **Erreur / timeout**         | _"Quelqu'un a renversé de l'encre sur le parchemin. On nettoie."_                                                                                                                                                              |
-| **Onboarding**               | _"Bienvenue, aventurier ! Je serai votre guide... enfin, j'essaierai."_                                                                                                                                                        |
-| **Première aventure lancée** | _"C'est parti ! ...Ne me regardez pas comme ça, c'est VOUS le héros."_                                                                                                                                                         |
-| **Succès / récompense**      | _"Pas mal ! J'ai noté ça dans vos annales. Oui, vous avez des annales maintenant."_                                                                                                                                            |
-| **Hub vide (empty state)**   | _"C'est trop calme... J'aime pas trop beaucoup ça... Je préfère quand c'est un peu trop plus moins calme... Et si on partait à l'aventure ?"_ Référence à Jamel Debbouze. Évaluer la pertinence de l'intégration de références |
-| **Session expirée**          | _"Vous vous êtes endormi à la taverne. Reconnectez-vous pour reprendre."_                                                                                                                                                      |
-| **Double onglet**            | _"Je ne peux pas être à deux endroits à la fois ! Choisissez un onglet."_                                                                                                                                                      |
-| **Retour après absence**     | _"Tiens, vous revoilà ! Votre aventure vous attend, chapitre 3."_                                                                                                                                                              |
+| Moment                       | Exemple d'intervention                                                                                                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Loading LLM**              | _"Le MJ fouille ses notes... il est un peu désorganisé."_                                                                                                               |
+| **Erreur / timeout**         | _"Quelqu'un a renversé de l'encre sur le parchemin. On nettoie."_                                                                                                       |
+| **Onboarding**               | _"Bienvenue, aventurier ! Je serai votre guide... enfin, j'essaierai."_                                                                                                 |
+| **Première aventure lancée** | _"C'est parti ! ...Ne me regardez pas comme ça, c'est VOUS le héros."_                                                                                                  |
+| **Succès / récompense**      | _"Pas mal ! J'ai noté ça dans vos annales. Oui, vous avez des annales maintenant."_                                                                                     |
+| **Hub vide (empty state)**   | _"C'est trop calme... J'aime pas trop beaucoup ça... Et si on partait à l'aventure ?"_ Référence à Jamel Debbouze. Évaluer la pertinence de l'intégration de références |
+| **Session expirée**          | _"Vous vous êtes endormi à la taverne. Reconnectez-vous pour reprendre."_                                                                                               |
+| **Double onglet**            | _"Je ne peux pas être à deux endroits à la fois ! Choisissez un onglet."_                                                                                               |
+| **Retour après absence**     | _"Tiens, vous revoilà ! Votre aventure vous attend, chapitre 3."_                                                                                                       |
 
 **Règles de design du compagnon :**
 
@@ -790,7 +790,7 @@ Par ordre de complexité et d'impact :
 
 Ce document sert de **fondation** pour :
 
-1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4) → `docs/ux/ux-wireframes.md`
+1. **Phase 2** : Wireframes détaillés de chaque écran listé (section 4) → `docs/ux/wireframes/` (1 fichier par écran, voir `wireframes/README.md`)
 2. **Phase 3** : Spécifications front-end et prompts de génération UI
 3. **PO** : Rédaction des user stories basées sur les flows et l'inventaire d'écrans
 4. **PM** : Intégration du concept Milestones & Events (§2.6) dans le PRD — impacte les Concepts Clés (§3) et Fonctionnalités (§4)

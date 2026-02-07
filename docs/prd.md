@@ -1,9 +1,9 @@
 # JDRAI - Product Requirements Document (PRD)
 
-**Version:** 1.3
-**Date:** 2026-02-06
-**Statut:** Validé par CEO
-**Dernière mise à jour:** Intégration structure narrative Milestones & Events (UX §2.6)
+**Version:** 1.3  
+**Date:** 2026-02-06  
+**Statut:** Validé par CEO  
+**Dernière mise à jour:** Intégration structure narrative Milestones & Events (UX §2.6)  
 **Auteur:** PM (BMAD Method)
 
 ---
@@ -204,7 +204,7 @@ AVENTURE
 - Liste des aventures en cours (avec nom du milestone actuel affiché)
 - Reprise à tout moment
 - Historique des aventures terminées
-- **Historique en session** : Drawer affichant l'historique groupé par milestones (cf. wireframes WF-E10-07)
+- **Historique en session** : Drawer affichant l'historique groupé par milestones (cf. `docs/ux/wireframes/E10-session-de-jeu.md` §WF-E10-07)
 
 #### F4. Onboarding/Tutoriel
 
@@ -389,7 +389,7 @@ Lien invitation → Inscription → Skip tutoriel → Profil express (nom)
 - **Bottom tab bar** mobile (Hub, Profil, Aventure) — sidebar desktop classique
 - **Sidebar immersive** : En session de jeu, la sidebar est masquée (icônes uniquement) pour maximiser l'immersion
 - Référence complète : `docs/ux/ux-cartography.md` (navigation §3.2, responsive §7.5)
-- **Wireframes de référence** : `docs/ux/ux-wireframes.md` — wireframes détaillés de la session de jeu (E10), incluant la structure par milestones dans l'historique
+- **Wireframes de référence** : `docs/ux/wireframes/E10-session-de-jeu.md` — wireframes détaillés de la session de jeu (E10), incluant la structure par milestones dans l'historique
 
 ### 5.4 Maquettes existantes
 

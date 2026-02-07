@@ -1,80 +1,26 @@
-# JDRAI - Wireframes UX (Phase 2)
+# E10 — Session de jeu
 
-**Version :** 0.1 (draft)
-**Date :** 2026-02-06
-**Auteur :** Sally (UX Expert, BMAD Method)
-**Statut :** En cours
-**Références :** `docs/prd.md` v1.3, `docs/ux/ux-cartography.md` v1.1
+**Route :** `/adventure/:id`  
+**Priorité :** P1  
+**Complexité :** Très élevée  
+**Référence composants :** UX Cartography §5.5  
+**Parent :** [`wireframes/README.md`](README.md)
 
 ---
 
 ## Table des matières
 
-1. [Décisions de design](#1-décisions-de-design)
-2. [E10 — Session de jeu](#2-e10--session-de-jeu)
-3. [E8 — Hub](#3-e8--hub) _(à venir)_
-4. [E5/E6/E7 — Onboarding](#4-e5e6e7--onboarding) _(à venir)_
-5. [E9 — Lancement aventure](#5-e9--lancement-aventure) _(à venir)_
-6. [E11 — Écran de fin](#6-e11--écran-de-fin) _(à venir)_
-7. [E1/E2 — Auth](#7-e1e2--auth) _(à venir)_
+1. [Décisions spécifiques E10](#1-décisions-spécifiques-e10)
+2. [Anatomie de l'écran](#2-anatomie-de-lécran)
+3. [Wireframes mobile](#3-wireframes-mobile--768px)
+4. [États d'erreur et résilience](#4-états-derreur-et-résilience)
+5. [Wireframe desktop](#5-wireframe-desktop--1024px)
+6. [Interactions et transitions](#6-interactions-et-transitions)
+7. [Règles de comportement](#7-règles-de-comportement)
 
 ---
 
-## 1. Décisions de design
-
-### 1.1 Décisions transversales
-
-| Décision              | Choix                   | Justification                                                                      |
-| --------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| Approche              | Mobile-first            | PRD §5.3 — session de jeu = interaction chat/choix naturellement adaptée au mobile |
-| Navigation en session | Sidebar/tab bar masquée | PRD §4.2 F2 — immersion totale pendant le jeu                                      |
-| Thème visuel          | Dark fantasy            | UX Cartography §1.1 — tons chauds, textures parchemin, ambiance immersive          |
-
-### 1.2 Structure narrative : Milestones & Events
-
-> **Origine :** Concept issu de la phase de discovery initiale (brainstorming fondateurs). Impacte la structure des aventures et plusieurs écrans (session, hub, lancement, fin).
-
-**Hiérarchie narrative d'une aventure :**
-
-```
-AVENTURE "La Crypte des Ombres"
-│
-├── 🏴 MILESTONE 1 — Réception de la quête
-│   ├── ○ Event : Arrivée à la taverne (obligatoire — intro)
-│   ├── ○ Event : Rencontre avec le marchand (optionnel)
-│   └── ○ Event : Discussion avec l'informateur (optionnel)
-│
-├── 🏴 MILESTONE 2 — Entrée dans la crypte
-│   ├── ○ Event : Exploration de la grotte (optionnel)
-│   ├── ○ Event : Piège dans le couloir (optionnel)
-│   └── ○ Event : Découverte de la salle principale (obligatoire)
-│
-├── 🏴 MILESTONE 3 — Confrontation finale
-│   ├── ○ Event : Négociation avec le gardien (optionnel)
-│   └── ○ Event : Combat final (obligatoire)
-│
-└── 🏴 MILESTONE 4 — Résolution
-    └── ○ Event : Retour et récompenses (obligatoire)
-```
-
-| Concept       | Définition                                                                                                                                                 | Obligatoire ?                                         |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Milestone** | Jalon narratif majeur qui structure l'aventure et en prédit la durée. Moment clé et (sauf exception) incontournable.                                       | Oui (sauf exceptions)                                 |
-| **Event**     | Rencontre ou situation entre les milestones. Ponctue l'aventure. Le MJ guide le joueur, mais certains choix peuvent éloigner d'un event.                   | Non — certains sont obligatoires, d'autres optionnels |
-| **Scène**     | Séquence cohérente d'échanges MJ-joueur avec un début et une fin naturels (ex : parler à un PNJ, explorer une pièce). Plusieurs scènes composent un event. | —                                                     |
-
-**Impact UX :**
-
-| Écran                       | Impact                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------- |
-| **E10 — Historique**        | Regroupement par milestones (P1), events à l'intérieur (P2+)                              |
-| **E9 — Lancement aventure** | Durée estimée corrélée au nombre de milestones (courte = 2-3, longue = 6+)                |
-| **E8 — Hub**                | Carte aventure en cours affiche le nom du milestone actuel (pas de progression numérique) |
-| **E11 — Écran de fin**      | Récap par milestones atteints (P1), events découverts (P2+)                               |
-
-> **Règle de visibilité** : Jamais de progression numérique ("2/4", "%"). Seul le nom du milestone est affiché. Cf. UX Cartography §7.1 principe 6.
-
-### 1.3 Décisions spécifiques E10
+## 1. Décisions spécifiques E10
 
 | Décision            | Choix                   | Alternatives écartées                         | Raison                                                                                     |
 | ------------------- | ----------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -84,14 +30,7 @@ AVENTURE "La Crypte des Ombres"
 
 ---
 
-## 2. E10 — Session de jeu
-
-**Route :** `/adventure/:id`
-**Priorité :** P1
-**Complexité :** Très élevée
-**Référence composants :** UX Cartography §5.5
-
-### 2.1 Anatomie de l'écran
+## 2. Anatomie de l'écran
 
 ```
 ┌─────────────────────────────────┐
@@ -113,9 +52,11 @@ AVENTURE "La Crypte des Ombres"
 
 **Composants impliqués :** SessionHeader, NarrationPanel, ChoiceList, ChoiceButton, FreeInput, StreamingText, LoadingNarration, AutosaveIndicator
 
-### 2.2 Wireframes mobile (< 768px)
+---
 
-#### WF-E10-01 — État par défaut (narration + choix)
+## 3. Wireframes mobile (< 768px)
+
+### WF-E10-01 — État par défaut (narration + choix)
 
 ```
 ┌─────────────────────────────────────┐
@@ -167,7 +108,7 @@ AVENTURE "La Crypte des Ombres"
 - `[➤]` : envoi saisie libre
 - `AutosaveIndicator` : apparaît brièvement sous le header ("✓ Sauvegardé"), disparaît après 2s
 
-#### WF-E10-02 — Streaming MJ (le MJ écrit)
+### WF-E10-02 — Streaming MJ (le MJ écrit)
 
 ```
 ┌─────────────────────────────────────┐
@@ -202,7 +143,7 @@ AVENTURE "La Crypte des Ombres"
 - Les choix n'apparaissent **pas** pendant le streaming — ils arrivent une fois le texte complet
 - L'input est désactivé pour éviter les envois pendant que le MJ écrit
 
-#### WF-E10-03 — Loading MJ (avant le streaming)
+### WF-E10-03 — Loading MJ (avant le streaming)
 
 ```
 ┌─────────────────────────────────────┐
@@ -233,7 +174,7 @@ AVENTURE "La Crypte des Ombres"
 
 **Note :** Phase brève avant que le streaming ne commence (temps de réponse API initial). Si le streaming démarre en < 1s, cet état peut ne pas être perçu.
 
-#### WF-E10-04 — Écho du choix joueur (transition)
+### WF-E10-04 — Écho du choix joueur (transition)
 
 ```
 ┌─────────────────────────────────────┐
@@ -266,7 +207,7 @@ AVENTURE "La Crypte des Ombres"
 
 **Note :** L'écho rappelle le choix du joueur avant la réponse du MJ. Compense l'absence d'historique visible en mode scène focalisée. Donne du contexte narratif immédiat.
 
-#### WF-E10-05 — Menu pause (overlay)
+### WF-E10-05 — Menu pause (overlay)
 
 ```
 ┌─────────────────────────────────────┐
@@ -304,7 +245,7 @@ AVENTURE "La Crypte des Ombres"
 - Accès via l'icône `[⚙]` du SessionHeader
 - **Paramètres MJ** : visible mais grisé en P1 (pas de personnalisation MJ), actif en P2
 
-#### WF-E10-06 — Confirmation de sortie
+### WF-E10-06 — Confirmation de sortie
 
 ```
 ┌─────────────────────────────────────┐
@@ -344,7 +285,7 @@ AVENTURE "La Crypte des Ombres"
 - Navigation vers une autre route (guard)
 - `beforeunload` (fermeture onglet / refresh)
 
-#### WF-E10-07 — Drawer historique
+### WF-E10-07 — Drawer historique
 
 ```
 ┌─────────────────────────────────────┐
@@ -387,9 +328,11 @@ AVENTURE "La Crypte des Ombres"
 - Lecture seule — le joueur ne peut pas revenir en arrière
 - Accessible via le bouton `📜` dans le FreeInput ou via le menu pause
 
-### 2.3 États d'erreur et résilience
+---
 
-#### WF-E10-08 — Perte de connexion
+## 4. États d'erreur et résilience
+
+### WF-E10-08 — Perte de connexion
 
 ```
 ┌─────────────────────────────────────┐
@@ -415,7 +358,7 @@ AVENTURE "La Crypte des Ombres"
 
 **Comportement :** Auto-reconnexion en arrière-plan. Si réussie → bandeau disparaît, input réactivé. Si échec après X tentatives → bouton "Réessayer" dans le bandeau.
 
-#### WF-E10-09 — Rate limiting (429)
+### WF-E10-09 — Rate limiting (429)
 
 ```
 ┌─────────────────────────────────────┐
@@ -448,7 +391,7 @@ AVENTURE "La Crypte des Ombres"
 
 **Comportement :** À la fin du compteur → réactivation automatique des choix et du champ de saisie, sans action utilisateur nécessaire.
 
-#### WF-E10-10 — Erreur LLM (timeout / échec)
+### WF-E10-10 — Erreur LLM (timeout / échec)
 
 ```
 ┌─────────────────────────────────────┐
@@ -478,9 +421,11 @@ AVENTURE "La Crypte des Ombres"
 
 **Comportement :** Retry auto x3 (invisible pour l'utilisateur) → si toujours en échec → affiche ce state avec bouton retry manuel. L'input est réactivé pour permettre au joueur de reformuler.
 
-### 2.4 Wireframe desktop (> 1024px)
+---
 
-#### WF-E10-11 — Desktop — État par défaut
+## 5. Wireframe desktop (> 1024px)
+
+### WF-E10-11 — Desktop — État par défaut
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -526,7 +471,9 @@ AVENTURE "La Crypte des Ombres"
 - AutosaveIndicator visible dans le header (plus d'espace)
 - Le menu pause utilise le même overlay que mobile
 
-### 2.5 Interactions et transitions
+---
+
+## 6. Interactions et transitions
 
 | Action utilisateur                    | Résultat                                                                                |
 | ------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -541,47 +488,19 @@ AVENTURE "La Crypte des Ombres"
 | HTTP 429                              | Choix grisés + compteur (WF-09)                                                         |
 | LLM timeout (après 3 retries auto)    | Message erreur + retry manuel (WF-10)                                                   |
 
-### 2.6 Règles de comportement
-
-| Règle                  | Description                                                                                                                                     |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auto-save**          | Sauvegarde après chaque échange complet (choix joueur + réponse MJ). Indicateur "✓ Sauvegardé" visible 2s.                                      |
-| **Streaming**          | Le texte apparaît mot par mot. Les choix n'apparaissent qu'après la fin du streaming.                                                           |
-| **Input lock**         | Le FreeInput est désactivé pendant le loading et le streaming. Réactivé une fois les choix affichés.                                            |
-| **Écho choix**         | Le choix du joueur est affiché brièvement en haut de la scène avant la nouvelle narration. Reste visible pendant le streaming.                  |
-| **Historique**         | Stocké côté client (+ serveur via save). Organisé par milestones → events → échanges (cf. [§1.2](#12-structure-narrative--milestones--events)). |
-| **Navigation bloquée** | Aucune navigation hors session sans confirmation. Inclut : liens, bouton retour, refresh, fermeture.                                            |
-| **Keyboard desktop**   | Touches 1-4 pour sélectionner un choix. Enter pour envoyer le texte libre. Escape pour ouvrir le menu pause.                                    |
-
 ---
 
-## 3. E8 — Hub
+## 7. Règles de comportement
 
-_(À venir)_
-
----
-
-## 4. E5/E6/E7 — Onboarding
-
-_(À venir)_
-
----
-
-## 5. E9 — Lancement aventure
-
-_(À venir)_
-
----
-
-## 6. E11 — Écran de fin
-
-_(À venir)_
-
----
-
-## 7. E1/E2 — Auth
-
-_(À venir)_
+| Règle                  | Description                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auto-save**          | Sauvegarde après chaque échange complet (choix joueur + réponse MJ). Indicateur "✓ Sauvegardé" visible 2s.                            |
+| **Streaming**          | Le texte apparaît mot par mot. Les choix n'apparaissent qu'après la fin du streaming.                                                 |
+| **Input lock**         | Le FreeInput est désactivé pendant le loading et le streaming. Réactivé une fois les choix affichés.                                  |
+| **Écho choix**         | Le choix du joueur est affiché brièvement en haut de la scène avant la nouvelle narration. Reste visible pendant le streaming.        |
+| **Historique**         | Stocké côté client (+ serveur via save). Organisé par milestones → events → échanges (cf. wireframes/README.md §Milestones & Events). |
+| **Navigation bloquée** | Aucune navigation hors session sans confirmation. Inclut : liens, bouton retour, refresh, fermeture.                                  |
+| **Keyboard desktop**   | Touches 1-4 pour sélectionner un choix. Enter pour envoyer le texte libre. Escape pour ouvrir le menu pause.                          |
 
 ---
 
