@@ -1,10 +1,10 @@
 # JDRAI - Wireframes UX (Phase 2)
 
-**Version :** 0.2
-**Date :** 2026-02-06
+**Version :** 0.3
+**Date :** 2026-02-08
 **Auteur :** Sally (UX Expert, BMAD Method)
-**Statut :** En cours
-**Références :** `docs/prd.md` v1.3, `docs/ux/ux-cartography.md` v1.1
+**Statut :** Validé par CEO
+**Références :** `docs/prd.md` v1.4, `docs/ux/ux-cartography.md` v1.1
 
 ---
 

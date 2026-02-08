@@ -1,20 +1,21 @@
 # JDRAI - Architecture Fullstack
 
-**Version:** 1.3
-**Date:** 2026-02-06
-**Statut:** In review
+**Version:** 1.4
+**Date:** 2026-02-08
+**Statut:** Validé par CEO
 **Auteur:** Architect (BMAD Method)
 
 ---
 
 ## Change Log
 
-| Date       | Version | Description                                                                 | Auteur    |
-| :--------- | :------ | :-------------------------------------------------------------------------- | :-------- |
-| 2026-02-05 | 1.0     | Version initiale                                                            | Architect |
-| 2026-02-05 | 1.1     | Auth: Better Auth + abstraction AuthService                                 | Architect |
-| 2026-02-06 | 1.2     | Intégration audit cohérence PRD/UX (13 actions §19 → sections principales)  | Architect |
-| 2026-02-06 | 1.3     | Intégration Milestones P1 (table dédiée, ERD, DTOs, API, backend, frontend) | Architect |
+| Date       | Version | Description                                                                                                                                                                                                                                             | Auteur    |
+| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------- |
+| 2026-02-05 | 1.0     | Version initiale                                                                                                                                                                                                                                        | Architect |
+| 2026-02-05 | 1.1     | Auth: Better Auth + abstraction AuthService                                                                                                                                                                                                             | Architect |
+| 2026-02-06 | 1.2     | Intégration audit cohérence PRD/UX (13 actions §19 → sections principales)                                                                                                                                                                              | Architect |
+| 2026-02-06 | 1.3     | Intégration Milestones P1 (table dédiée, ERD, DTOs, API, backend, frontend)                                                                                                                                                                             | Architect |
+| 2026-02-08 | 1.4     | Audit cohérence wireframes — register sans username, Difficulty 4 valeurs, estimatedDuration, tone optionnel P1, character defaults, reset-password route, AdventureStatus simplifié, limite 5 aventures, email verification, onglet Aventure permanent | PM        |
 
 ---
 

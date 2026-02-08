@@ -29,7 +29,8 @@ apps/web/
 │   │   ├── auth/
 │   │   │   ├── login.tsx
 │   │   │   ├── register.tsx
-│   │   │   └── forgot-password.tsx
+│   │   │   ├── forgot-password.tsx
+│   │   │   └── reset-password.$token.tsx  # Réinitialisation mot de passe (E4)
 │   │   # join/
 │   │   #   └── $inviteCode.tsx          # Page d'invitation (P3 — route publique, contexte avant auth)
 │   │   └── index.tsx            # Redirect → /hub (auth) ou /auth/login
@@ -104,6 +105,10 @@ export const Route = createFileRoute("/_authenticated")({
         search: { redirect: location.href },
       });
     }
+    // Redirect vers onboarding si pseudo manquant (seul cas de redirect onboarding)
+    if (!context.auth.user?.username) {
+      throw redirect({ to: "/onboarding/profile-setup" });
+    }
   },
   component: AuthenticatedLayout,
 });
@@ -140,12 +145,10 @@ export function useAuth() {
     return result.data;
   };
 
-  const register = async (email: string, password: string, username: string) => {
+  const register = async (email: string, password: string) => {
     const result = await signUp.email({
       email,
       password,
-      name: username,
-      username,
     });
     if (result.error) throw new Error(result.error.message);
     return result.data;
@@ -350,11 +353,11 @@ useEffect(() => {
 
 La conception est **mobile-first**. Le composant `BottomTabBar` (`components/layout/BottomTabBar.tsx`) est le point d'entrée de navigation mobile.
 
-| Breakpoint   | Taille     | Navigation        | Comportement                                                            |
-| ------------ | ---------- | ----------------- | ----------------------------------------------------------------------- |
-| **Mobile**   | < 768px    | Bottom Tab Bar    | Onglets : Hub, Aventure, Profil. Visible partout sauf en session de jeu |
-| **Tablette** | 768–1024px | Sidebar collapsée | Icônes uniquement, expand on hover                                      |
-| **Desktop**  | > 1024px   | Sidebar étendue   | Navigation complète avec labels                                         |
+| Breakpoint   | Taille     | Navigation        | Comportement                                                                                                                                                                                                                                                                                           |
+| ------------ | ---------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Mobile**   | < 768px    | Bottom Tab Bar    | Onglets : Hub, Profil, Aventure. Visible partout sauf en session de jeu et onboarding. L'onglet Aventure est **toujours visible** et ouvre toujours une **modale** : si aventure(s) en cours → modale de reprise (aventure la plus récente) ; si aucune aventure → modale d'invitation à en lancer une |
+| **Tablette** | 768–1024px | Sidebar collapsée | Icônes uniquement, expand on hover                                                                                                                                                                                                                                                                     |
+| **Desktop**  | > 1024px   | Sidebar étendue   | Navigation complète avec labels                                                                                                                                                                                                                                                                        |
 
 > **Note** : En session de jeu, toute navigation (bottom bar, sidebar) est masquée au profit du menu intégré.
 
@@ -394,6 +397,34 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
 ```
 
 **Comportement UX** : L'intercepteur désactive la saisie utilisateur, affiche un message explicatif (« Trop de requêtes, veuillez patienter… »), puis réactive automatiquement après le délai `Retry-After`.
+
+### Messages d'erreur localisés
+
+L'API retourne des erreurs avec un `code` machine (enum `ErrorCode`) et un `message` technique en anglais (pour les logs/debug). Le `message` de l'API n'est **jamais** affiché à l'utilisateur. Le frontend mappe le `code` vers un message localisé :
+
+```typescript
+// apps/web/src/lib/error-messages.ts
+import type { ErrorCode } from "@jdrai/shared";
+
+const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  VALIDATION_ERROR: "Données invalides.",
+  UNAUTHORIZED: "Veuillez vous connecter.",
+  FORBIDDEN: "Accès refusé.",
+  NOT_FOUND: "Ressource introuvable.",
+  CONFLICT: "Conflit avec une donnée existante.",
+  MAX_ACTIVE_ADVENTURES: "Vous avez atteint la limite de 5 aventures actives.",
+  RATE_LIMITED: "Trop de requêtes, veuillez patienter…",
+  INTERNAL_ERROR: "Une erreur inattendue est survenue.",
+  LLM_ERROR: "Le MJ rencontre des difficultés…",
+  LLM_TIMEOUT: "Le MJ met trop de temps à répondre…",
+};
+
+export function getErrorMessage(code: ErrorCode): string {
+  return ERROR_MESSAGES[code] ?? ERROR_MESSAGES.INTERNAL_ERROR;
+}
+```
+
+> **i18n (futur)** : En P1, un simple dictionnaire français suffit. Si le multi-langue est introduit, ce fichier migre vers une lib i18n (ex : `i18next`) avec un fichier de traductions par locale (`fr.json`, `en.json`). L'API ne change pas — le `code` reste la clé de mapping, seul le frontend évolue.
 
 ### Perte de connexion en session
 

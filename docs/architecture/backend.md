@@ -169,7 +169,7 @@ export const users = pgTable("user", {
   // Champs gérés par Better Auth: id, email, emailVerified, name, image, createdAt, updatedAt
   // Champs additionnels pour JDRAI:
   id: text("id").primaryKey(), // Better Auth utilise text, pas uuid
-  username: text("username").notNull(),
+  username: text("username"), // Nullable — défini en onboarding (E6)
   role: userRoleEnum("role").default("user").notNull(),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
 });
@@ -203,6 +203,7 @@ export interface IAuthService {
   refreshSession(sessionToken: string): Promise<AuthResult | null>;
   getUser(userId: string): Promise<UserDTO | null>;
   updateUser(userId: string, data: Partial<UserDTO>): Promise<UserDTO>;
+  setUsername(userId: string, username: string): Promise<UserDTO>;
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(token: string, newPassword: string): Promise<void>;
 }
@@ -222,7 +223,18 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // MVP: désactivé, activer en P2
+    requireEmailVerification: false, // Non-bloquant en P1 (le joueur accède directement à l'onboarding)
+    sendResetPassword: async ({ user, url }) => {
+      // Envoi email de réinitialisation (cf. infra §Email)
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true, // Envoie un email de vérification à l'inscription
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60, // 1h
+    sendVerificationEmail: async ({ user, url }) => {
+      // Envoi email de vérification (intégration email provider)
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 jours
@@ -236,11 +248,11 @@ export const auth = betterAuth({
     additionalFields: {
       username: {
         type: "string",
-        required: true,
+        required: false, // Défini en onboarding (E6), pas à l'inscription
       },
       role: {
         type: "string",
-        defaultValue: "user",
+        defaultValue: "user", // Valeur unique en P1. Si besoin admin/modération futur → activer le plugin `admin` de Better Auth (RBAC natif, set-role, has-permission). Ne pas implémenter de logique de rôles custom.
       },
       onboardingCompleted: {
         type: "boolean",
@@ -264,13 +276,13 @@ import { IAuthService, AuthResult } from "./auth.interface";
 import { UserDTO, UserCreateInput, UserLoginInput } from "@jdrai/shared";
 
 export class BetterAuthService implements IAuthService {
-  async register(data: UserCreateInput): Promise<AuthResult> {
+  async register(data: { email: string; password: string }): Promise<AuthResult> {
     const result = await auth.api.signUpEmail({
       body: {
         email: data.email,
         password: data.password,
-        name: data.username,
-        username: data.username,
+        // Utilise la partie avant le @ de l'email comme nom temporaire avant E6-01
+        name: data.email.split("@")[0],
       },
     });
 
@@ -331,11 +343,28 @@ export class BetterAuthService implements IAuthService {
     return {
       id: user.id,
       email: user.email,
-      username: user.username || user.name,
+      username: user.username || null,
       role: user.role || "user",
       onboardingCompleted: user.onboardingCompleted || false,
       createdAt: user.createdAt,
     };
+  }
+
+  async setUsername(userId: string, username: string): Promise<UserDTO> {
+    // Met à jour username (champ JDRAI) ET name (champ Better Auth natif)
+    const updated = await auth.api.updateUser({
+      body: {
+        name: username,
+        username,
+      },
+      headers: { "x-user-id": userId },
+    });
+
+    if (!updated.user) {
+      throw new Error("Failed to set username");
+    }
+
+    return this.mapToUserDTO(updated.user);
   }
 
   // ... autres méthodes
@@ -406,7 +435,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     req.user = {
       id: session.user.id,
       email: session.user.email,
-      username: session.user.username || session.user.name,
+      username: session.user.username || null,
       role: session.user.role || "user",
       onboardingCompleted: session.user.onboardingCompleted || false,
       createdAt: session.user.createdAt,
@@ -433,7 +462,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.user = {
         id: session.user.id,
         email: session.user.email,
-        username: session.user.username || session.user.name,
+        username: session.user.username || null,
         role: session.user.role || "user",
         onboardingCompleted: session.user.onboardingCompleted || false,
         createdAt: session.user.createdAt,

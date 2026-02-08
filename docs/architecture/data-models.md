@@ -45,9 +45,10 @@ erDiagram
         uuid userId FK
         uuid templateId FK "nullable"
         string title
-        enum status "active|paused|completed|abandoned"
-        enum difficulty
-        enum tone
+        enum status "active|completed|abandoned"
+        enum difficulty "easy|normal|hard|nightmare"
+        enum tone "nullable — P2"
+        enum estimatedDuration "short|medium|long"
         jsonb settings
         jsonb state "game state snapshot"
         timestamp startedAt
@@ -94,6 +95,7 @@ erDiagram
         string name
         string description
         jsonb baseStats
+        boolean isDefault "P1: Aventurier = true"
     }
 
     Race {
@@ -101,6 +103,7 @@ erDiagram
         string name
         string description
         jsonb traits
+        boolean isDefault "P1: Humain = true"
     }
 
     AdventureTemplate {
@@ -149,6 +152,18 @@ Les milestones sont implémentés en tant que **table relationnelle dédiée** (
 | **Lien Message → Milestone**              | `Message.milestoneId` FK nullable — les messages sont taggés avec le milestone actif au moment de leur création                   |
 | **Anticipation Events (P2)**              | Table `Event` liée par `milestoneId` FK. Aucune implémentation en P1                                                              |
 
+### Valeurs par défaut P1
+
+> **Contexte** : En P1, la création de personnage d'aventure (E14) n'existe pas. Le serveur remplit automatiquement les champs requis.
+
+| Donnée                  | Comportement P1                                                                                                                                                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Race**                | Table `Race` seedée avec une entrée par défaut `Humain` (`isDefault: true`). Si le joueur a complété le tutoriel, la race choisie en E7 est utilisée. Sinon, `Humain` est attribué automatiquement.                                                |
+| **Classe**              | Table `CharacterClass` seedée avec une entrée par défaut `Aventurier` (`isDefault: true`). Si le joueur a complété le tutoriel, la classe choisie en E7 est utilisée. Sinon, `Aventurier` est attribué automatiquement.                            |
+| **Personnage aventure** | Si `character` est absent dans `AdventureCreateInput`, le serveur crée un `AdventureCharacter` à partir du méta-personnage (nom, race, classe). Si pas de méta-personnage (skip onboarding), utilise le pseudo comme nom + race/classe par défaut. |
+| **Tone**                | `null` en P1. Le LLM utilise un ton par défaut (`epic`). Sélection exposée en P2 (F6).                                                                                                                                                             |
+| **Limite aventures**    | Maximum **5 aventures solo actives** simultanément. Vérification côté serveur à la création (`POST /adventures`). Erreur `CONFLICT` si limite atteinte.                                                                                            |
+
 ---
 
 ## Interfaces TypeScript (DTOs - `packages/shared`)
@@ -178,16 +193,18 @@ export interface UserLoginInput {
 
 ```typescript
 // packages/shared/src/types/adventure.ts
-export type AdventureStatus = "active" | "paused" | "completed" | "abandoned";
+export type AdventureStatus = "active" | "completed" | "abandoned";
 export type Difficulty = "easy" | "normal" | "hard" | "nightmare";
 export type Tone = "serious" | "humorous" | "epic" | "dark";
+export type EstimatedDuration = "short" | "medium" | "long";
 
 export interface AdventureDTO {
   id: string;
   title: string;
   status: AdventureStatus;
   difficulty: Difficulty;
-  tone: Tone;
+  tone?: Tone; // P2 — nullable, valeur par défaut serveur en P1
+  estimatedDuration: EstimatedDuration;
   currentMilestone?: string; // Nom du milestone actuel (affiché Hub + historique)
   startedAt: string;
   lastPlayedAt: string;
@@ -196,10 +213,11 @@ export interface AdventureDTO {
 
 export interface AdventureCreateInput {
   templateId?: string;
-  title: string;
+  title?: string; // Généré par le LLM si absent
   difficulty: Difficulty;
-  tone: Tone;
-  character: AdventureCharacterCreateInput;
+  tone?: Tone; // P2 — optionnel, valeur par défaut serveur en P1
+  estimatedDuration: EstimatedDuration;
+  character?: AdventureCharacterCreateInput; // Optionnel — si absent, le serveur crée un personnage à partir du méta-personnage (ou défauts P1)
 }
 
 export interface AdventureCharacterDTO {

@@ -1,9 +1,9 @@
 # JDRAI - Product Requirements Document (PRD)
 
-**Version:** 1.3  
-**Date:** 2026-02-06  
-**Statut:** Validé par CEO  
-**Dernière mise à jour:** Intégration structure narrative Milestones & Events (UX §2.6)  
+**Version:** 1.4
+**Date:** 2026-02-08
+**Statut:** Validé par CEO
+**Dernière mise à jour:** Audit cohérence wireframes/architecture — limite 5 aventures (F3), email verification non-bloquante (F1)
 **Auteur:** PM (BMAD Method)
 
 ---
@@ -180,6 +180,7 @@ AVENTURE
 - Connexion / Déconnexion
 - Récupération de mot de passe
 - Session persistante (Better Auth, cookies httpOnly)
+- **Vérification email** : Non-bloquante en P1. Un email de vérification est envoyé à l'inscription, mais le joueur accède directement à l'onboarding sans attendre. Bandeau de rappel dans le Hub tant que l'email n'est pas vérifié.
 
 #### F2. Session solo MJ IA
 
@@ -202,6 +203,7 @@ AVENTURE
 
 - Sauvegarde automatique de l'état de l'aventure
 - Liste des aventures en cours (avec nom du milestone actuel affiché)
+- **Limite** : Maximum **5 aventures solo actives** simultanément. Au-delà, le joueur doit terminer ou abandonner une aventure pour en lancer une nouvelle. Cette limite évite l'accumulation de contenu inachevé. Le mode multijoueur (P3) aura son propre compteur séparé.
 - Reprise à tout moment
 - Historique des aventures terminées
 - **Historique en session** : Drawer affichant l'historique groupé par milestones (cf. `docs/ux/wireframes/E10-session-de-jeu.md` §WF-E10-07)
@@ -678,3 +680,4 @@ Référence complète : `docs/architecture.md`
 - v1.1 (2026-02-04) : Stack technique confirmée (React+Vite+Express), onboarding révisé (skip possible), pages marketing Webflow
 - v1.2 (2026-02-06) : Audit de cohérence post-UX cartography — Auth corrigée (Better Auth), ajout Zustand, navigation mobile-first (P1), résilience session (P1), paramètres utilisateur (P2), page profil (P2), personnalisation MJ verrouillé/ajustable (P2), compagnon d'interface (P3), détection double onglet (P3), roadmap réalignée
 - v1.3 (2026-02-06) : Intégration structure narrative Milestones & Events (UX §2.6) — §3.4 concept, milestones P1, events P2, F2/F3 mis à jour, glossaire enrichi, question progression résolue, référence wireframes ajoutée
+- v1.4 (2026-02-08) : Audit cohérence wireframes/architecture — F1 ajout vérification email non-bloquante, F3 ajout limite 5 aventures solo actives

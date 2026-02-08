@@ -99,22 +99,18 @@
 │  └─────────────────────────────┘    │
 │                                     │
 │     Récompenses                     │ ← Titre section récompenses
-│                                     │
+│                                     │   **P2 — placeholder en P1**
 │  ┌─────────────────────────────┐    │
 │  │                             │    │
-│  │  ⭐ Expérience              │    │ ← XPGainAnimation
-│  │  ████████████░░░░░░         │    │   barre qui se remplit
-│  │  +120 XP                    │    │   avec animation
+│  │  ⭐ Expérience              │    │ ← XPGainAnimation (P2)
+│  │  ░░░░░░░░░░░░░░░░░░         │    │   P1 : section masquée ou
+│  │  Bientôt disponible...      │    │   message "Bientôt disponible"
 │  │                             │    │
 │  ├─────────────────────────────┤    │
-│  │  🏆 Succès débloqués        │    │ ← RewardList
-│  │                             │    │
-│  │  ┌─────┐  Premier donjon    │    │   badges / succès obtenus
-│  │  │ 🏰  │  terminé           │    │   pendant l'aventure
-│  │  └─────┘                    │    │
-│  │  ┌─────┐  Diplomate         │    │
-│  │  │ 🤝  │  Négociation       │    │
-│  │  └─────┘  réussie           │    │
+│  │  🏆 Succès                  │    │ ← RewardList (P2)
+│  │                             │    │   P1 : section masquée ou
+│  │  Les succès arrivent        │    │   placeholder discret
+│  │  bientôt !                  │    │
 │  │                             │    │
 │  └─────────────────────────────┘    │
 │                                     │
@@ -134,7 +130,8 @@
 - L'animation de célébration se joue une seule fois à l'arrivée sur l'écran
 - Le SummaryCard contient un texte narratif généré par le MJ (pas un tableau de stats)
 - Les milestones sont listés dans l'ordre avec un check — pas de numérotation (règle de visibilité : jamais "2/4")
-- La barre XP se remplit avec une animation fluide (XPGainAnimation)
+- **P1** : La section récompenses est un **placeholder** (message "Bientôt disponible" ou section masquée). L'implémentation XP + succès arrive en P2 avec le méta-personnage complet
+- **P2** : La barre XP se remplit avec une animation fluide (XPGainAnimation), les succès sont affichés avec badges
 - "Rejouer ce scénario" relance une aventure avec les mêmes paramètres (nouveau seed narratif)
 
 ### WF-E11-02 — Skeleton loading
@@ -346,10 +343,10 @@ Quand le backend retourne une erreur (500, timeout, données corrompues) et qu'a
 │  ├───────────────┤   │                          │                          │  │
 │  │  ⚙️ Paramètres  │   ├──────────────────────────┴──────────────────────────┤  │
 │  │  🚪 Déconnexion │   │                                                    │  │
-│  └───────────────┘   │  Récompenses                                        │  │
+│  └───────────────┘   │  Récompenses (P2 — placeholder en P1)               │  │
 │                      │                                                    │  │
-│                      │  ⭐ +120 XP  ████████████░░░░  │  🏆 Premier donjon │  │
-│                      │                                │  🏆 Diplomate      │  │
+│                      │  ⭐ XP — Bientôt disponible    │  🏆 Succès — P2    │  │
+│                      │                                │                    │  │
 │                      │                                                    │  │
 │                      │        ┌───────────────────────────┐               │  │
 │                      │        │     RETOUR AU HUB         │               │  │
@@ -414,8 +411,8 @@ Hub (Historique) ──[Tap carte aventure]──► E11 (consultation)
 | **Résumé narratif**     | Généré par le LLM en fin de session. Texte immersif de 2-4 phrases résumant les moments clés. Si la génération échoue, le reste de l'écran fonctionne normalement (cf. WF-E11-03).                                                                                                               |
 | **Milestones (P1)**     | Listés dans l'ordre narratif avec un marqueur ✓. Pas de numérotation, pas de progression numérique. En cas d'abandon, seuls les milestones atteints sont affichés (les non atteints sont masqués pour éviter le spoil).                                                                          |
 | **Events (P2+)**        | En P2, les events découverts seront affichés sous chaque milestone (détail dépliable). En P1, seuls les milestones sont visibles.                                                                                                                                                                |
-| **XP et succès**        | L'XP est calculée côté serveur à la fin de l'aventure. L'animation de la barre se déclenche au scroll (intersection observer). Les succès sont des badges avec icône + nom + description courte.                                                                                                 |
-| **Aventure abandonnée** | Ton neutre (pas de célébration). Seuls les milestones atteints sont affichés (pas de spoil). Teaser narratif statique sous les milestones : _"Cette histoire avait encore des chemins inexplorés..."_ (P1 statique, P2+ généré LLM). Pas de récompenses. CTA "Retenter" au lieu de "Rejouer". |
+| **XP et succès**        | **P2** : L'XP est calculée côté serveur à la fin de l'aventure. L'animation de la barre se déclenche au scroll (intersection observer). Les succès sont des badges avec icône + nom + description courte. **P1** : Section placeholder (masquée ou message "Bientôt disponible").                |
+| **Aventure abandonnée** | Ton neutre (pas de célébration). Seuls les milestones atteints sont affichés (pas de spoil). Teaser narratif statique sous les milestones : _"Cette histoire avait encore des chemins inexplorés..."_ (P1 statique, P2+ généré LLM). Pas de récompenses. CTA "Retenter" au lieu de "Rejouer".    |
 | **Rejouer**             | Relance une aventure avec les mêmes paramètres mais un seed narratif différent. Le joueur ne revit pas la même histoire.                                                                                                                                                                         |
 | **Persistance**         | L'écran est accessible indéfiniment depuis l'historique du Hub (URL persistante). Les données sont stockées en base, pas éphémères.                                                                                                                                                              |
 | **Erreur backend**      | Si le backend est en erreur (500, timeout), afficher WF-E11-05 (erreur globale). Le joueur peut retry ou retourner au Hub. Différent de WF-E11-03 (erreur LLM seule).                                                                                                                            |

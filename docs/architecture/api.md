@@ -30,6 +30,8 @@
 | PATCH   | `/users/me`            | Modifier profil            |
 | PATCH   | `/users/me/onboarding` | Marquer onboarding terminé |
 
+> **Onboarding E6-01** : `PATCH /users/me` avec `{ username: "xxx" }` met à jour les champs `username` (JDRAI) **et** `name` (Better Auth) pour remplacer le placeholder `email.split("@")[0]` défini à l'inscription. Le `username` est obligatoire pour accéder au reste de l'app (redirect si absent).
+
 ### Meta-Character
 
 | Méthode | Endpoint                       | Description          |
@@ -51,6 +53,8 @@
 | GET     | `/adventures/:id/milestones` | Liste milestones de l'aventure               |
 
 > **Note** : L'abandon d'une aventure se fait via `PATCH` avec `{ status: "abandoned" }`, pas via `DELETE`. Une suppression physique n'est pas prévue pour conserver l'historique.
+
+> **Limite aventures** : `POST /adventures` retourne `409 CONFLICT` (code `MAX_ACTIVE_ADVENTURES`) si le joueur a déjà **5 aventures solo actives** (`status = "active"`). Le client doit vérifier cette limite avant d'afficher le formulaire de création (cf. wireframe E9 WF-E9-06).
 
 > **Note Milestones** : `GET /adventures` retourne `currentMilestone` (nom du milestone actif, dérivé) dans chaque `AdventureDTO`. `GET /adventures/:id/milestones` retourne la liste ordonnée des milestones avec leur statut. `GET /adventures/:id/messages?milestoneId=xxx` permet de filtrer les messages par milestone (utilisé par le `HistoryDrawer`).
 
@@ -125,11 +129,14 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "MAX_ACTIVE_ADVENTURES"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
   | "LLM_ERROR"
   | "LLM_TIMEOUT";
 ```
+
+> **Convention localisation** : Le champ `message` est en anglais technique (pour les logs et le debug). Il n'est **jamais** affiché à l'utilisateur. Le frontend utilise le `code` comme clé pour afficher un message localisé (cf. `frontend.md` §Résilience client — Messages d'erreur localisés).
 
 ## Error Middleware
 

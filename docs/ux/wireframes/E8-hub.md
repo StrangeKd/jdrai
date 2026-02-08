@@ -128,10 +128,10 @@
 **Légende :**
 
 - `●` sous Hub : onglet actif
-- `████████░░` : barre de progression XP (P2 — placeholder visuel en P1)
+- `░░░░░░░░░░` : barre de progression XP. **P1** : affiche Niv. 1 + barre vide (placeholder). **P2** : barre fonctionnelle avec progression XP
 - `🏴` : icône milestone — seul le **nom** est affiché, jamais de numéro ni pourcentage
 - `→` : indicateur de scroll horizontal (carousel)
-- L'onglet `⚔️ Aventure` dans la tab bar n'apparaît **que** si au moins une aventure est en cours
+- L'onglet `⚔️ Aventure` dans la tab bar est **toujours visible** (ouvre toujours une modale : reprise ou invitation)
 - Les AdventureCardActive sont empilées verticalement, triées par dernière sauvegarde (la plus récente en premier). Max 5 solo
 
 ### WF-E8-02 — Empty state (première visite, aucune aventure)
@@ -172,9 +172,9 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│   🏠          👤                    │ ← BottomTabBar
-│   Hub        Profil                 │   pas d'onglet Aventure
-│   ●                                 │   (aucune en cours)
+│   🏠          👤          ⚔️       │ ← BottomTabBar
+│   Hub        Profil     Aventure    │   toujours visible
+│   ●                                 │   (si tap → modale)
 └─────────────────────────────────────┘
 ```
 
@@ -289,8 +289,8 @@
 │  └────────┘  └────────┘  └────────┘ │
 │                                     │
 ├─────────────────────────────────────┤
-│   🏠          👤                    │
-│   Hub        Profil                 │
+│   🏠          👤          ⚔️       │
+│   Hub        Profil     Aventure    │
 │   ●                                 │
 └─────────────────────────────────────┘
 ```
@@ -334,8 +334,8 @@
 │  └─────────────────────────────┘    │
 │                                     │
 ├─────────────────────────────────────┤
-│   🏠          👤                    │
-│   Hub        Profil                 │
+│   🏠          👤          ⚔️       │
+│   Hub        Profil     Aventure    │
 │   ●                                 │
 └─────────────────────────────────────┘
 ```
@@ -419,45 +419,45 @@ Pas de wireframe spécifique — le joueur arrive sur le Hub normalement après 
 - Contenu centré avec `max-width: ~960px`
 - ActionCards plus larges — intègrent une **description courte** en plus de l'icône et du label
 - Historique en **grille 4 colonnes** (au lieu du carousel mobile)
-- Onglet `⚔️ Aventure` dans la sidebar = raccourci direct vers la session en cours
+- Onglet `⚔️ Aventure` dans la sidebar = ouvre la modale de reprise (même comportement que le tab bar mobile)
 - **Paramètres** (P2) et **Déconnexion** en bas de sidebar
 
 ---
 
 ## 6. Interactions et transitions
 
-| Action utilisateur                 | Résultat                                                                                   |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| Tap MetaCharacterBanner            | Navigation vers E13 Profil (P2). En P1 : pas d'action ou toast "Bientôt disponible"        |
-| Tap `[REPRENDRE]`                  | Navigation vers E10 Session (`/adventure/:id`)                                             |
-| Tap ActionCard "Personnalisée"     | Navigation vers E9 Lancement (`/adventure/new`)                                            |
-| Tap ActionCard "Scénario"          | Navigation vers E9 avec présélection mode templates                                        |
-| Tap ActionCard "Aléatoire"         | Navigation vers E9 avec génération aléatoire directe                                       |
-| Tap AdventureCard historique       | Navigation vers E11 Résumé (`/adventure/:id/summary`)                                      |
-| Tap `Tout >` (historique)          | Navigation vers liste complète des aventures terminées                                     |
-| Tap onglet `⚔️ Aventure` (tab bar) | Si 1 aventure → navigation directe vers E10 Session. Si plusieurs → scroll vers la section "Aventures en cours" du Hub. |
-| Tap onglet `👤 Profil` (tab bar)   | Navigation vers E13 Profil (P2)                                                            |
-| Swipe horizontal sur historique    | Scroll carousel des aventures terminées (mobile)                                           |
-| Pull-to-refresh (mobile)           | Rafraîchit les données du Hub (aventure en cours, historique)                              |
-| Dismiss bandeau `[×]`              | Masque le bandeau (profil incomplet ou email non vérifié) pour la session courante         |
-| Tap "Renvoyer" (bandeau email)     | Renvoie l'email de vérification. Rate limited (1/60s). Toast confirmation "Email envoyé !" |
+| Action utilisateur                 | Résultat                                                                                                                                                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tap MetaCharacterBanner            | Navigation vers E13 Profil (P2). En P1 : pas d'action ou toast "Bientôt disponible"                                                                                                                                          |
+| Tap `[REPRENDRE]`                  | Navigation vers E10 Session (`/adventure/:id`)                                                                                                                                                                               |
+| Tap ActionCard "Personnalisée"     | Navigation vers E9 Lancement (`/adventure/new`)                                                                                                                                                                              |
+| Tap ActionCard "Scénario"          | Navigation vers E9 avec présélection mode templates                                                                                                                                                                          |
+| Tap ActionCard "Aléatoire"         | Navigation vers E9 avec génération aléatoire directe                                                                                                                                                                         |
+| Tap AdventureCard historique       | Navigation vers E11 Résumé (`/adventure/:id/summary`)                                                                                                                                                                        |
+| Tap `Tout >` (historique)          | Navigation vers liste complète des aventures terminées                                                                                                                                                                       |
+| Tap onglet `⚔️ Aventure` (tab bar) | Si aventure(s) en cours → modale de reprise affichant l'aventure la plus récente (titre, milestone, dernière sauvegarde) avec CTA "Reprendre". Si **aucune aventure** → modale invitant à lancer une aventure depuis le Hub. |
+| Tap onglet `👤 Profil` (tab bar)   | Navigation vers E13 Profil (P2)                                                                                                                                                                                              |
+| Swipe horizontal sur historique    | Scroll carousel des aventures terminées (mobile)                                                                                                                                                                             |
+| Pull-to-refresh (mobile)           | Rafraîchit les données du Hub (aventure en cours, historique)                                                                                                                                                                |
+| Dismiss bandeau `[×]`              | Masque le bandeau (profil incomplet ou email non vérifié) pour la session courante                                                                                                                                           |
+| Tap "Renvoyer" (bandeau email)     | Renvoie l'email de vérification. Rate limited (1/60s). Toast confirmation "Email envoyé !"                                                                                                                                   |
 
 ---
 
 ## 7. Règles de comportement
 
-| Règle                 | Description                                                                                                                                                                                                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Aventures en cours** | Maximum **5 aventures solo** actives simultanément. Les cartes sont empilées verticalement, triées par dernière sauvegarde (plus récente en premier). La section n'apparaît que si au moins une aventure est en cours. Le multi (P2+) aura son propre compteur séparé. |
-| **Milestone affiché** | Le nom du milestone actuel est affiché sur l'AdventureCardActive. **Jamais** de progression numérique (pas de "2/4", pas de "%"). Cf. UX Cartography §7.1 principe 6.                                                                                             |
-| **Onglet Aventure**   | L'onglet `⚔️ Aventure` dans la tab bar / sidebar n'apparaît que si au moins une aventure est en cours. Si 1 aventure → raccourci direct vers E10. Si plusieurs → scroll vers la section "Aventures en cours" du Hub.                                                 |
-| **Empty state**       | Si aucune aventure (ni en cours, ni terminée) : afficher l'EmptyState avec CTA engageant (WF-E8-02). Les ActionCards "Scénario" et "Aléatoire" restent accessibles via le lien secondaire.                                                                        |
-| **Historique**        | Trié par date de complétion (plus récent en premier). Limité aux ~4/5 dernières sur le Hub, page complète via "Tout >".                                                                                                                                           |
-| **Cache**             | Le MetaCharacterBanner est mis en cache pour un affichage instantané au retour. Les données d'aventures sont rafraîchies en arrière-plan (stale-while-revalidate).                                                                                                |
-| **Profil incomplet**  | Bandeau dismissable par session mais réapparaît à chaque visite tant que l'onboarding n'est pas complété. N'apparaît que pour le flow "rejoindre un ami" (UX Cartography §2.2).                                                                                   |
-| **Email non vérifié** | Bandeau info (WF-E8-08) dismissable par session, réapparaît tant que l'email n'est pas vérifié. Lien "Renvoyer" avec rate limiting (1/60s). Non-bloquant en P1. Si bandeau profil incomplet actif en même temps → profil incomplet prioritaire (un seul bandeau). |
-| **Compagnon (P3)**    | Emplacements réservés dans : empty state, loading, erreur. En P1, messages statiques sans personnage.                                                                                                                                                             |
-| **Pull-to-refresh**   | Disponible sur mobile uniquement. Rafraîchit aventure en cours + historique.                                                                                                                                                                                      |
+| Règle                  | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Aventures en cours** | Maximum **5 aventures solo** actives simultanément. Les cartes sont empilées verticalement, triées par dernière sauvegarde (plus récente en premier). La section n'apparaît que si au moins une aventure est en cours. Le multi (P2+) aura son propre compteur séparé.                                                                                                                                |
+| **Milestone affiché**  | Le nom du milestone actuel est affiché sur l'AdventureCardActive. **Jamais** de progression numérique (pas de "2/4", pas de "%"). Cf. UX Cartography §7.1 principe 6.                                                                                                                                                                                                                                 |
+| **Onglet Aventure**    | L'onglet `⚔️ Aventure` dans la tab bar / sidebar est **toujours visible**. Ouvre toujours une **modale** : si aventure(s) en cours → modale de reprise (aventure la plus récente : titre, milestone actuel, dernière sauvegarde, CTA "Reprendre") ; si **aucune aventure** → modale d'invitation à lancer une aventure. Pattern unique : le bouton ouvre toujours une modale, seul le contenu change. |
+| **Empty state**        | Si aucune aventure (ni en cours, ni terminée) : afficher l'EmptyState avec CTA engageant (WF-E8-02). Les ActionCards "Scénario" et "Aléatoire" restent accessibles via le lien secondaire.                                                                                                                                                                                                            |
+| **Historique**         | Trié par date de complétion (plus récent en premier). Limité aux ~4/5 dernières sur le Hub, page complète via "Tout >".                                                                                                                                                                                                                                                                               |
+| **Cache**              | Le MetaCharacterBanner est mis en cache pour un affichage instantané au retour. Les données d'aventures sont rafraîchies en arrière-plan (stale-while-revalidate).                                                                                                                                                                                                                                    |
+| **Profil incomplet**   | Bandeau dismissable par session mais réapparaît à chaque visite tant que l'onboarding n'est pas complété. N'apparaît que pour le flow "rejoindre un ami" (UX Cartography §2.2).                                                                                                                                                                                                                       |
+| **Email non vérifié**  | Bandeau info (WF-E8-08) dismissable par session, réapparaît tant que l'email n'est pas vérifié. Lien "Renvoyer" avec rate limiting (1/60s). Non-bloquant en P1. Si bandeau profil incomplet actif en même temps → profil incomplet prioritaire (un seul bandeau).                                                                                                                                     |
+| **Compagnon (P3)**     | Emplacements réservés dans : empty state, loading, erreur. En P1, messages statiques sans personnage.                                                                                                                                                                                                                                                                                                 |
+| **Pull-to-refresh**    | Disponible sur mobile uniquement. Rafraîchit aventure en cours + historique.                                                                                                                                                                                                                                                                                                                          |
 
 ---
 

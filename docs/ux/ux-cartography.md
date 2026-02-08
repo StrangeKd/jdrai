@@ -4,7 +4,7 @@
 **Date :** 2026-02-05
 **Auteur :** Sally (UX Expert, BMAD Method)
 **Statut :** Validé par CEO
-**Référence :** `docs/prd.md` v1.3
+**Référence :** `docs/prd.md` v1.4
 
 ---
 
@@ -678,15 +678,15 @@ Par ordre de complexité et d'impact :
 
 ### 6.1 Matrice des états par écran
 
-| Écran                      | Default                      | Loading                                  | Empty                             | Error                                                 | Success                                  |
-| -------------------------- | ---------------------------- | ---------------------------------------- | --------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
-| **Login**                  | Formulaire vide              | Spinner sur bouton                       | —                                 | Message erreur inline (identifiants incorrects)       | Redirect vers Hub/Onboarding             |
-| **Register**               | Formulaire vide              | Spinner sur bouton                       | —                                 | Erreurs validation inline                             | Redirect vers Onboarding                 |
-| **Hub**                    | Méta-perso + aventures       | Skeletons cards + compagnon              | Compagnon : empty state engageant | Toast erreur + compagnon contextuel                   | —                                        |
-| **Hub (profil incomplet)** | Bandeau rappel + fonctionnel | Idem                                     | Idem                              | Idem                                                  | —                                        |
-| **Session de jeu**         | Narration + choix            | Compagnon : message d'attente thématique | —                                 | Compagnon : message d'erreur avec humour + retry auto | Action traitée, nouvelle narration       |
-| **Lancement aventure**     | Formulaire paramètres        | Spinner + compagnon contextuel           | —                                 | Compagnon : message d'erreur + retry                  | Redirect vers session                    |
-| **Écran de fin**           | Résumé + récompenses         | Skeleton résumé                          | —                                 | Toast erreur                                          | Compagnon : félicitations personnalisées |
+| Écran                      | Default                      | Loading                                  | Empty                             | Error                                                 | Success                                                          |
+| -------------------------- | ---------------------------- | ---------------------------------------- | --------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| **Login**                  | Formulaire vide              | Spinner sur bouton                       | —                                 | Message erreur inline (identifiants incorrects)       | Redirect vers Hub (exception : pseudo absent → Onboarding E6-01) |
+| **Register**               | Formulaire vide              | Spinner sur bouton                       | —                                 | Erreurs validation inline                             | Redirect vers Onboarding                                         |
+| **Hub**                    | Méta-perso + aventures       | Skeletons cards + compagnon              | Compagnon : empty state engageant | Toast erreur + compagnon contextuel                   | —                                                                |
+| **Hub (profil incomplet)** | Bandeau rappel + fonctionnel | Idem                                     | Idem                              | Idem                                                  | —                                                                |
+| **Session de jeu**         | Narration + choix            | Compagnon : message d'attente thématique | —                                 | Compagnon : message d'erreur avec humour + retry auto | Action traitée, nouvelle narration                               |
+| **Lancement aventure**     | Formulaire paramètres        | Spinner + compagnon contextuel           | —                                 | Compagnon : message d'erreur + retry                  | Redirect vers session                                            |
+| **Écran de fin**           | Résumé + récompenses         | Skeleton résumé                          | —                                 | Toast erreur                                          | Compagnon : félicitations personnalisées                         |
 
 ### 6.2 Edge cases critiques
 
