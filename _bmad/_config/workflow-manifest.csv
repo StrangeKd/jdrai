@@ -1,0 +1,9 @@
+name,description,module,path
+"brainstorming","Facilitate interactive brainstorming sessions using diverse creative techniques and ideation methods","core","_bmad/core/workflows/brainstorming/workflow.md"
+"party-mode","Orchestrates group discussions between all installed BMAD agents, enabling natural multi-agent conversations","core","_bmad/core/workflows/party-mode/workflow.md"
+"brainstorm-game","Facilitate game brainstorming sessions with game-specific context, guidance, and game design techniques.","bmgd","_bmad/bmgd/workflows/1-preproduction/brainstorm-game/workflow.yaml"
+"create-game-brief","Creates a comprehensive Game Brief through collaborative step-by-step discovery to capture game vision before detailed design.","bmgd","_bmad/bmgd/workflows/1-preproduction/game-brief/workflow.md"
+"game-brief","Interactive game brief creation workflow that guides users through defining their game vision with multiple input sources and conversational collaboration","bmgd","_bmad/bmgd/workflows/1-preproduction/game-brief/workflow.yaml"
+"create-gdd","Creates a comprehensive Game Design Document through collaborative step-by-step discovery between game designer and user.","bmgd","_bmad/bmgd/workflows/2-design/gdd/workflow.md"
+"gdd","Game Design Document workflow for all game project levels - from small prototypes to full AAA games. Generates comprehensive GDD with game mechanics, systems, progression, and implementation guidance.","bmgd","_bmad/bmgd/workflows/2-design/gdd/workflow.yaml"
+"narrative","Narrative design workflow for story-driven games. Creates comprehensive narrative documentation including story structure, character arcs, world-building, dialogue systems, and production planning.","bmgd","_bmad/bmgd/workflows/2-design/narrative/workflow.yaml"
