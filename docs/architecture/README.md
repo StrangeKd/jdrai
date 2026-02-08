@@ -29,7 +29,8 @@
 | **[frontend.md](./frontend.md)**                       | Architecture frontend, routing, auth client, résilience, UX |
 | **[backend.md](./backend.md)**                         | Architecture backend, LLM, auth service, middleware         |
 | **[infrastructure.md](./infrastructure.md)**           | Workflow dev, Docker, sécurité, monitoring, variables env   |
-| **[testing-conventions.md](./testing-conventions.md)** | Stratégie de tests, conventions de code                     |
+| **[coding-standards.md](./coding-standards.md)**       | Standards de code, naming, patterns, Git                    |
+| **[testing-conventions.md](./testing-conventions.md)** | Stratégie de tests                                          |
 | **[checklist.md](./checklist.md)**                     | Checklist de validation (P1, P2, P3)                        |
 
 ---

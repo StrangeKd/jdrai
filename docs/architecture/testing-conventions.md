@@ -1,4 +1,4 @@
-# Tests & Conventions de Code
+# Tests
 
 ---
 
@@ -74,27 +74,3 @@ describe("POST /api/auth/sign-up/email", () => {
 });
 ```
 
----
-
-## Conventions de Code
-
-### Règles Critiques
-
-| Règle              | Description                                           |
-| ------------------ | ----------------------------------------------------- |
-| **Type Sharing**   | Toujours définir les types API dans `packages/shared` |
-| **API Calls**      | Utiliser le service layer, jamais fetch direct        |
-| **Env Variables**  | Accès via config objects uniquement                   |
-| **Error Handling** | Utiliser le middleware d'erreur standard              |
-| **Validation**     | Zod obligatoire sur tous les inputs API               |
-
-### Naming Conventions
-
-| Élément              | Convention           | Exemple                |
-| -------------------- | -------------------- | ---------------------- |
-| Composants React     | PascalCase           | `UserProfile.tsx`      |
-| Hooks                | camelCase + use      | `useAuth.ts`           |
-| Services             | camelCase + .service | `auth.service.ts`      |
-| Routes API           | kebab-case           | `/meta-character`      |
-| Tables DB            | snake_case           | `adventure_characters` |
-| Fichiers TS généraux | camelCase            | `gameUtils.ts`         |
