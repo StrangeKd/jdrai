@@ -40,7 +40,7 @@
 │  MetaCharacterBanner            │ ← Scrollable (pas fixe)
 │  (avatar + nom + niveau)        │
 │                                 │
-│  AdventureCardActive            │ ← Hero card (si aventure en cours)
+│  AdventureCardActive (x1 à x5)  │ ← Hero card(s) (si aventure(s) en cours)
 │  (titre + milestone + reprendre)│
 │                                 │
 │  ActionCards (3 colonnes)       │ ← Raccourcis nouvelle aventure
@@ -73,7 +73,7 @@
 │  │ └────┘  ████████░░  Niv. 3  │    │   barre XP compacte
 │  └─────────────────────────────┘    │
 │                                     │
-│  Aventure en cours                  │ ← Section label
+│  Aventures en cours                 │ ← Section label (pluriel)
 │  ┌─────────────────────────────┐    │
 │  │                              │    │
 │  │  🔥 La Crypte des Ombres    │    │ ← AdventureCardActive
@@ -82,7 +82,19 @@
 │  │  💾 Sauvegardée il y a 2h   │    │
 │  │                              │    │
 │  │  ┌───────────────────────┐   │    │
-│  │  │      REPRENDRE        │   │    │ ← CTA primaire, proéminent
+│  │  │      REPRENDRE        │   │    │ ← CTA primaire
+│  │  └───────────────────────┘   │    │
+│  │                              │    │
+│  └─────────────────────────────┘    │
+│  ┌─────────────────────────────┐    │
+│  │                              │    │
+│  │  🌊 Les Marées de Korhal   │    │ ← 2e AdventureCardActive
+│  │                              │    │   (si plusieurs aventures)
+│  │  🏴 Réception de la quête   │    │
+│  │  💾 Sauvegardée il y a 1j   │    │
+│  │                              │    │
+│  │  ┌───────────────────────┐   │    │
+│  │  │      REPRENDRE        │   │    │
 │  │  └───────────────────────┘   │    │
 │  │                              │    │
 │  └─────────────────────────────┘    │
@@ -119,7 +131,8 @@
 - `████████░░` : barre de progression XP (P2 — placeholder visuel en P1)
 - `🏴` : icône milestone — seul le **nom** est affiché, jamais de numéro ni pourcentage
 - `→` : indicateur de scroll horizontal (carousel)
-- L'onglet `⚔️ Aventure` dans la tab bar n'apparaît **que** si une aventure est en cours
+- L'onglet `⚔️ Aventure` dans la tab bar n'apparaît **que** si au moins une aventure est en cours
+- Les AdventureCardActive sont empilées verticalement, triées par dernière sauvegarde (la plus récente en premier). Max 5 solo
 
 ### WF-E8-02 — Empty state (première visite, aucune aventure)
 
@@ -422,7 +435,7 @@ Pas de wireframe spécifique — le joueur arrive sur le Hub normalement après 
 | Tap ActionCard "Aléatoire"         | Navigation vers E9 avec génération aléatoire directe                                       |
 | Tap AdventureCard historique       | Navigation vers E11 Résumé (`/adventure/:id/summary`)                                      |
 | Tap `Tout >` (historique)          | Navigation vers liste complète des aventures terminées                                     |
-| Tap onglet `⚔️ Aventure` (tab bar) | Navigation directe vers E10 Session (raccourci = REPRENDRE)                                |
+| Tap onglet `⚔️ Aventure` (tab bar) | Si 1 aventure → navigation directe vers E10 Session. Si plusieurs → scroll vers la section "Aventures en cours" du Hub. |
 | Tap onglet `👤 Profil` (tab bar)   | Navigation vers E13 Profil (P2)                                                            |
 | Swipe horizontal sur historique    | Scroll carousel des aventures terminées (mobile)                                           |
 | Pull-to-refresh (mobile)           | Rafraîchit les données du Hub (aventure en cours, historique)                              |
@@ -435,9 +448,9 @@ Pas de wireframe spécifique — le joueur arrive sur le Hub normalement après 
 
 | Règle                 | Description                                                                                                                                                                                                                                                       |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Aventure en cours** | Maximum **une** aventure active en P1. La section "Aventure en cours" n'apparaît que si une aventure est en pause.                                                                                                                                                |
+| **Aventures en cours** | Maximum **5 aventures solo** actives simultanément. Les cartes sont empilées verticalement, triées par dernière sauvegarde (plus récente en premier). La section n'apparaît que si au moins une aventure est en cours. Le multi (P2+) aura son propre compteur séparé. |
 | **Milestone affiché** | Le nom du milestone actuel est affiché sur l'AdventureCardActive. **Jamais** de progression numérique (pas de "2/4", pas de "%"). Cf. UX Cartography §7.1 principe 6.                                                                                             |
-| **Onglet Aventure**   | L'onglet `⚔️ Aventure` dans la tab bar / sidebar n'apparaît que si une aventure est en cours. Il sert de raccourci direct vers E10.                                                                                                                               |
+| **Onglet Aventure**   | L'onglet `⚔️ Aventure` dans la tab bar / sidebar n'apparaît que si au moins une aventure est en cours. Si 1 aventure → raccourci direct vers E10. Si plusieurs → scroll vers la section "Aventures en cours" du Hub.                                                 |
 | **Empty state**       | Si aucune aventure (ni en cours, ni terminée) : afficher l'EmptyState avec CTA engageant (WF-E8-02). Les ActionCards "Scénario" et "Aléatoire" restent accessibles via le lien secondaire.                                                                        |
 | **Historique**        | Trié par date de complétion (plus récent en premier). Limité aux ~4/5 dernières sur le Hub, page complète via "Tout >".                                                                                                                                           |
 | **Cache**             | Le MetaCharacterBanner est mis en cache pour un affichage instantané au retour. Les données d'aventures sont rafraîchies en arrière-plan (stale-while-revalidate).                                                                                                |

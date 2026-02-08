@@ -15,14 +15,14 @@
 
 ### Fichiers disponibles
 
-| Fichier                                                | Écran                   | Statut                | Priorité |
-| ------------------------------------------------------ | ----------------------- | --------------------- | -------- |
-| [`E10-session-de-jeu.md`](E10-session-de-jeu.md)       | E10 — Session de jeu    | Terminé (v0.1)        | P1       |
-| [`E8-hub.md`](E8-hub.md)                               | E8 — Hub                | Terminé (v0.1)        | P1       |
-| [`E5-E6-E7-onboarding.md`](E5-E6-E7-onboarding.md)     | E5/E6/E7 — Onboarding   | Terminé (v0.1)        | P1       |
-| [`E9-lancement-aventure.md`](E9-lancement-aventure.md) | E9 — Lancement aventure | To be reviewed (v0.1) | P1       |
-| [`E11-ecran-de-fin.md`](E11-ecran-de-fin.md)           | E11 — Ecran de fin      | To be reviewed (v0.1) | P1       |
-| [`E1-E2-auth.md`](E1-E2-auth.md)                       | E1/E2 — Auth (+ E3/E4)  | Terminé (v0.1)        | P1       |
+| Fichier                                                | Écran                   | Statut         | Priorité |
+| ------------------------------------------------------ | ----------------------- | -------------- | -------- |
+| [`E10-session-de-jeu.md`](E10-session-de-jeu.md)       | E10 — Session de jeu    | Terminé (v0.1) | P1       |
+| [`E8-hub.md`](E8-hub.md)                               | E8 — Hub                | Terminé (v0.1) | P1       |
+| [`E5-E6-E7-onboarding.md`](E5-E6-E7-onboarding.md)     | E5/E6/E7 — Onboarding   | Terminé (v0.1) | P1       |
+| [`E9-lancement-aventure.md`](E9-lancement-aventure.md) | E9 — Lancement aventure | Terminé (v0.1) | P1       |
+| [`E11-ecran-de-fin.md`](E11-ecran-de-fin.md)           | E11 — Ecran de fin      | Terminé (v0.1) | P1       |
+| [`E1-E2-auth.md`](E1-E2-auth.md)                       | E1/E2 — Auth (+ E3/E4)  | Terminé (v0.1) | P1       |
 
 ### Ordre de conception UX
 
