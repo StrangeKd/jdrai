@@ -1,0 +1,382 @@
+# E11 — Écran de fin
+
+**Route :** `/adventure/:id/summary`
+**Priorité :** P1
+**Complexité :** Moyenne
+**Référence composants :** UX Cartography §5.7
+**Parent :** [`wireframes/README.md`](README.md)
+
+---
+
+## Table des matières
+
+1. [Décisions spécifiques Écran de fin](#1-décisions-spécifiques-écran-de-fin)
+2. [Anatomie de l'écran](#2-anatomie-de-lécran)
+3. [Wireframes mobile (< 768px)](#3-wireframes-mobile--768px)
+4. [États d'erreur et edge cases](#4-états-derreur-et-edge-cases)
+5. [Wireframes desktop (> 1024px)](#5-wireframes-desktop--1024px)
+6. [Interactions et transitions](#6-interactions-et-transitions)
+7. [Règles de comportement](#7-règles-de-comportement)
+
+---
+
+## 1. Décisions spécifiques Écran de fin
+
+| Décision          | Choix                                                         | Alternatives écartées          | Raison                                                                                                             |
+| ----------------- | ------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Ton               | **Célébration narrative**                                     | Tableau de bord / stats brutes | Prolonger l'immersion jusqu'au bout. La fin d'aventure est un moment émotionnel, pas un rapport.                   |
+| Structure         | **Scroll vertical : résumé → milestones → récompenses → CTA** | Onglets / carousel             | Un flow linéaire de haut en bas crée une montée en puissance naturelle (récit → accomplissements → gratification). |
+| Milestones        | **Récap par milestones atteints (P1)**                        | Récap chronologique brut       | Les milestones structurent le récapitulatif. Events découverts ajoutés en P2+.                                     |
+| XP et récompenses | **Animation de gain visible**                                 | Affichage statique             | L'animation renforce le sentiment d'accomplissement (cf. UX Cartography §7.1 principe 5).                          |
+| Sidebar / Tab bar | **Visibles**                                                  | Masquées                       | L'aventure est terminée — le joueur retrouve la navigation libre.                                                  |
+| Accès ultérieur   | **Accessible depuis l'historique du Hub**                     | Page éphémère                  | Le joueur peut revoir le résumé de ses aventures passées. URL persistante (`/adventure/:id/summary`).              |
+
+---
+
+## 2. Anatomie de l'écran
+
+```
+┌─────────────────────────────────┐
+│  Aventure terminée !            │ ← Header célébration
+├─────────────────────────────────┤
+│                                 │
+│  SummaryCard (résumé narratif)  │ ← Texte généré par le MJ
+│                                 │
+│  Milestones atteints            │ ← Liste des jalons
+│                                 │
+│  Récompenses                    │ ← XP + succès + cosmétiques
+│                                 │
+│  [CTA Retour au Hub]            │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Composants :** SummaryCard, MilestoneRecap, RewardList, XPGainAnimation, ReturnToHubCTA, Bouton secondaire
+
+---
+
+## 3. Wireframes mobile (< 768px)
+
+### WF-E11-01 — Écran de fin (état principal)
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│              🎉                     │ ← Animation de célébration
+│                                     │   (confettis / éclat doré)
+│     Aventure terminée !             │
+│                                     │
+│     "La Crypte des Ombres"          │ ← Nom de l'aventure
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │  📜 Résumé de l'aventure    │    │ ← SummaryCard
+│  │                             │    │   texte narratif généré
+│  │  Vous avez bravé les       │    │   par le MJ en fin de
+│  │  profondeurs de la crypte,  │    │   session (2-4 phrases)
+│  │  déjoué les pièges de      │    │
+│  │  l'ancien gardien et       │    │
+│  │  ramené la relique au      │    │
+│  │  village. Les habitants    │    │
+│  │  vous acclament.           │    │
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Votre parcours                  │ ← Titre section milestones
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │  🏴 Réception de la quête   │    │ ← MilestoneRecap
+│  │     ✓                       │    │   nom + check
+│  ├─────────────────────────────┤    │
+│  │  🏴 Entrée dans la crypte   │    │
+│  │     ✓                       │    │
+│  ├─────────────────────────────┤    │
+│  │  🏴 Confrontation finale    │    │
+│  │     ✓                       │    │
+│  ├─────────────────────────────┤    │
+│  │  🏴 Résolution              │    │
+│  │     ✓                       │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Récompenses                     │ ← Titre section récompenses
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │  ⭐ Expérience              │    │ ← XPGainAnimation
+│  │  ████████████░░░░░░         │    │   barre qui se remplit
+│  │  +120 XP                    │    │   avec animation
+│  │                             │    │
+│  ├─────────────────────────────┤    │
+│  │  🏆 Succès débloqués        │    │ ← RewardList
+│  │                             │    │
+│  │  ┌─────┐  Premier donjon    │    │   badges / succès obtenus
+│  │  │ 🏰  │  terminé           │    │   pendant l'aventure
+│  │  └─────┘                    │    │
+│  │  ┌─────┐  Diplomate         │    │
+│  │  │ 🤝  │  Négociation       │    │
+│  │  └─────┘  réussie           │    │
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     ┌───────────────────────┐       │
+│     │   RETOUR AU HUB       │       │ ← CTA primaire
+│     └───────────────────────┘       │
+│                                     │
+│     Rejouer ce scénario             │ ← Lien secondaire
+│                                     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- Le scroll suit un arc narratif : célébration → récit → parcours → gratification → action
+- L'animation de célébration se joue une seule fois à l'arrivée sur l'écran
+- Le SummaryCard contient un texte narratif généré par le MJ (pas un tableau de stats)
+- Les milestones sont listés dans l'ordre avec un check — pas de numérotation (règle de visibilité : jamais "2/4")
+- La barre XP se remplit avec une animation fluide (XPGainAnimation)
+- "Rejouer ce scénario" relance une aventure avec les mêmes paramètres (nouveau seed narratif)
+
+### WF-E11-02 — Skeleton loading
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│              🎉                     │ ← Animation jouée immédiatement
+│                                     │   (ne dépend pas du chargement)
+│     Aventure terminée !             │
+│                                     │
+│     "La Crypte des Ombres"          │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │  ░░░░░░░░░░░░░░░░░░░░░░░   │    │ ← Skeleton SummaryCard
+│  │  ░░░░░░░░░░░░░░░░░░░       │    │   le résumé est généré
+│  │  ░░░░░░░░░░░░░░░░░░░░░░░   │    │   par le LLM (peut prendre
+│  │  ░░░░░░░░░░░░░░░            │    │   quelques secondes)
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Votre parcours                  │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │  ░░░░░░░░░░░░░░░░           │    │ ← Skeleton milestones
+│  ├─────────────────────────────┤    │   (structure connue,
+│  │  ░░░░░░░░░░░░░░░░           │    │   contenu en chargement)
+│  ├─────────────────────────────┤    │
+│  │  ░░░░░░░░░░░░░░░░           │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Récompenses                     │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │  ░░░░░░░░░░░░░░░░           │    │ ← Skeleton récompenses
+│  └─────────────────────────────┘    │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- L'animation de célébration et le titre s'affichent immédiatement (pas de dépendance serveur)
+- Le nom de l'aventure est connu localement (affiché instantanément)
+- Les skeletons montrent la structure attendue pour réduire le layout shift
+- Les données arrivent en cascade : milestones (rapide, en base) → récompenses (calcul côté serveur) → résumé narratif (LLM, le plus lent)
+
+---
+
+## 4. États d'erreur et edge cases
+
+### WF-E11-03 — Erreur de chargement du résumé
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│              🎉                     │
+│                                     │
+│     Aventure terminée !             │
+│                                     │
+│     "La Crypte des Ombres"          │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │  ⚠️ Le résumé n'a pas pu    │    │ ← Erreur inline
+│  │  être généré.               │    │   dans le SummaryCard
+│  │                             │    │
+│  │  Réessayer                  │    │ ← Lien retry
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Votre parcours                  │ ← Le reste de l'écran
+│     (milestones affichés)           │   fonctionne normalement
+│                                     │
+│     Récompenses                     │
+│     (XP + succès affichés)          │
+│                                     │
+│     ┌───────────────────────┐       │
+│     │   RETOUR AU HUB       │       │
+│     └───────────────────────┘       │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- L'erreur ne concerne que le résumé narratif (dépendant du LLM)
+- Les milestones et récompenses sont indépendants (données en base) et s'affichent normalement
+- Le retry ne recharge que le résumé, pas toute la page
+- L'écran reste fonctionnel même sans résumé — la gratification (XP, succès) est préservée
+
+### WF-E11-04 — Aventure abandonnée (accès depuis historique)
+
+Quand le joueur consulte le résumé d'une aventure **abandonnée** (non terminée normalement) :
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│     Aventure inachevée              │ ← Pas de célébration
+│                                     │   ton neutre
+│     "La Crypte des Ombres"          │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │  📜 Vous avez quitté cette  │    │ ← SummaryCard adapté
+│  │  aventure avant sa          │    │   texte court, factuel
+│  │  conclusion.                │    │
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│     Votre parcours                  │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │  🏴 Réception de la quête ✓ │    │
+│  ├─────────────────────────────┤    │
+│  │  🏴 Entrée dans la crypte ✓ │    │ ← Milestones atteints
+│  ├─────────────────────────────┤    │
+│  │  🏴 Confrontation finale    │    │ ← Milestone non atteint
+│  │     ✗ (non atteint)         │    │   marqueur différent
+│  └─────────────────────────────┘    │
+│                                     │
+│     Pas de récompenses              │ ← Section récompenses
+│     pour cette aventure.            │   absente ou message explicite
+│                                     │
+│     ┌───────────────────────┐       │
+│     │   RETOUR AU HUB       │       │
+│     └───────────────────────┘       │
+│                                     │
+│     Retenter ce scénario            │ ← Relancer avec mêmes params
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- Pas d'animation de célébration ni d'emoji festif
+- Le titre change : "Aventure inachevée" au lieu de "Aventure terminée !"
+- Les milestones non atteints sont visibles avec un marqueur différent (✗)
+- Pas de récompenses XP ni succès pour une aventure abandonnée
+- Le CTA "Retenter ce scénario" permet de relancer la même aventure
+
+---
+
+## 5. Wireframes desktop (> 1024px)
+
+### WF-E11-05 — Desktop
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────┐                                                           │
+│  │  JDRAI         │   🎉 Aventure terminée !                                 │
+│  ├───────────────┤   "La Crypte des Ombres"                                  │
+│  │  🏠 Hub         │                                                           │
+│  │  👤 Profil      │   ┌────────────────────────────────────────────────────┐  │
+│  │  ⚔️ Aventure    │   │                                                    │  │
+│  │               │   │  COLONNE GAUCHE          │  COLONNE DROITE          │  │
+│  │               │   │                          │                          │  │
+│  │               │   │  📜 Résumé               │  Votre parcours          │  │
+│  │               │   │                          │                          │  │
+│  │               │   │  Vous avez bravé les     │  🏴 Réception quête  ✓   │  │
+│  │               │   │  profondeurs de la       │  🏴 Entrée crypte    ✓   │  │
+│  │               │   │  crypte, déjoué les      │  🏴 Confrontation   ✓   │  │
+│  │               │   │  pièges de l'ancien      │  🏴 Résolution      ✓   │  │
+│  │               │   │  gardien et ramené la    │                          │  │
+│  │               │   │  relique au village.     │                          │  │
+│  ├───────────────┤   │                          │                          │  │
+│  │  ⚙️ Paramètres  │   ├──────────────────────────┴──────────────────────────┤  │
+│  │  🚪 Déconnexion │   │                                                    │  │
+│  └───────────────┘   │  Récompenses                                        │  │
+│                      │                                                    │  │
+│                      │  ⭐ +120 XP  ████████████░░░░  │  🏆 Premier donjon │  │
+│                      │                                │  🏆 Diplomate      │  │
+│                      │                                                    │  │
+│                      │        ┌───────────────────────────┐               │  │
+│                      │        │     RETOUR AU HUB         │               │  │
+│                      │        └───────────────────────────┘               │  │
+│                      │        Rejouer ce scénario                         │  │
+│                      │                                                    │  │
+│                      └────────────────────────────────────────────────────┘  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Notes :**
+
+- Sidebar visible (navigation libre)
+- Layout en 2 colonnes : résumé narratif à gauche, milestones à droite
+- Récompenses en bande pleine largeur sous les 2 colonnes (XP à gauche, succès à droite)
+- Le CTA et le lien secondaire sont centrés en bas
+- L'animation de célébration est au-dessus du contenu (dans le header)
+
+---
+
+## 6. Interactions et transitions
+
+### Flow d'accès
+
+```
+E10 (Session) ──[MJ conclut l'aventure]──► E11 (Écran de fin)
+                                                │
+                                     ┌──────────┴──────────┐
+                                     │                     │
+                              [Retour au Hub]    [Rejouer ce scénario]
+                                     │                     │
+                                     ▼                     ▼
+                                Hub (E8)           E9-04 (Loading)
+                                                   mêmes paramètres
+                                                        │
+                                                        ▼
+                                                   E10 (Session)
+
+Hub (Historique) ──[Tap carte aventure]──► E11 (consultation)
+```
+
+### Détail des interactions
+
+| Action utilisateur                       | Résultat                                                                                                                               |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Arrivée sur E11 (depuis E10)             | Animation de célébration jouée. Données chargées en cascade (titre instantané → milestones → récompenses → résumé LLM).                |
+| Scroll vers le bas                       | Découverte progressive : résumé → milestones → récompenses → CTA. L'animation XP se déclenche quand la section entre dans le viewport. |
+| Tap "Retour au Hub"                      | Navigation vers E8. L'aventure est archivée dans l'historique.                                                                         |
+| Tap "Rejouer ce scénario"                | Navigation vers WF-E9-04 (loading) avec les mêmes paramètres (thème, durée, difficulté). Nouveau seed narratif.                        |
+| Tap "Réessayer" (WF-E11-03)              | Relance uniquement la génération du résumé narratif. Le reste de la page reste intact.                                                 |
+| Tap carte aventure depuis historique Hub | Navigation vers E11 en mode consultation (pas d'animation de célébration, données déjà en cache).                                      |
+
+---
+
+## 7. Règles de comportement
+
+| Règle                   | Description                                                                                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Animation unique**    | L'animation de célébration ne se joue qu'à la première visite (arrivée depuis E10). Les visites ultérieures (depuis l'historique) affichent directement le contenu statique.                     |
+| **Résumé narratif**     | Généré par le LLM en fin de session. Texte immersif de 2-4 phrases résumant les moments clés. Si la génération échoue, le reste de l'écran fonctionne normalement (cf. WF-E11-03).               |
+| **Milestones (P1)**     | Listés dans l'ordre narratif avec un marqueur ✓. Pas de numérotation, pas de progression numérique. Les milestones non atteints (aventure abandonnée) sont marqués ✗.                            |
+| **Events (P2+)**        | En P2, les events découverts seront affichés sous chaque milestone (détail dépliable). En P1, seuls les milestones sont visibles.                                                                |
+| **XP et succès**        | L'XP est calculée côté serveur à la fin de l'aventure. L'animation de la barre se déclenche au scroll (intersection observer). Les succès sont des badges avec icône + nom + description courte. |
+| **Aventure abandonnée** | Ton neutre (pas de célébration). Milestones non atteints visibles. Pas de récompenses. CTA "Retenter" au lieu de "Rejouer".                                                                      |
+| **Rejouer**             | Relance une aventure avec les mêmes paramètres mais un seed narratif différent. Le joueur ne revit pas la même histoire.                                                                         |
+| **Persistance**         | L'écran est accessible indéfiniment depuis l'historique du Hub (URL persistante). Les données sont stockées en base, pas éphémères.                                                              |
+| **Compagnon (P3)**      | Emplacement réservé entre les récompenses et le CTA. Message de félicitations personnalisé (_"Pas mal ! J'ai noté ça dans vos annales."_). En P1, cet espace est vide.                           |
+
+---
+
+**Document généré via BMAD Method — Phase UX Phase 2 (Sally, UX Expert)**
