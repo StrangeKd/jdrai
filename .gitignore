@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment
+.env
+.env*.local
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary
+.tmp/
+tmp/
+temp/
+
+# BMAD outputs (generated content)
+_bmad-output/
+
+# BMAD v4 archived (kept for reference, not tracked)
+bmad-v4/
+
+# IMPORTANT: DO NOT IGNORE these BMAD files (critical for project):
+# ✅ _bmad/ (core BMAD installation)
+# ✅ .cursor/commands/ (agent commands)
+# ✅ .cursor/rules/ (agent customizations)
+# ✅ .claude/ (Claude Code customizations)
+# ✅ _bmad/_memory/ (project context)

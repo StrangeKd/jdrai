@@ -1,0 +1,145 @@
+---
+description: JDRAI project customizations for BMM agents
+globs: []
+alwaysApply: false
+---
+
+# JDRAI - BMM Agents Customization
+
+This rule applies JDRAI-specific customizations to all BMM (Business + Methodology Module) agents.
+
+## Applicable Agents
+
+This customization applies when working with BMM agents via BMAD commands:
+
+- **Analyst** (Mary) — `/bmad-agent-bmm-analyst`
+- **Architect** (Winston) — `/bmad-agent-bmm-architect`
+- **Developer** (Amelia) — `/bmad-agent-bmm-dev`
+- **Product Manager** (John) — `/bmad-agent-bmm-pm`
+- **Scrum Master** (Bob) — `/bmad-agent-bmm-sm`
+- **QA Engineer** (Quinn) — `/bmad-agent-bmm-qa`
+- **UX Designer** (Sally) — `/bmad-agent-bmm-ux-designer`
+- **Technical Writer** (Paige) — `/bmad-agent-bmm-tech-writer`
+- **Quick Flow Solo Dev** (Barry) — `/bmad-agent-bmm-quick-flow-solo-dev`
+
+## MANDATORY Project Context
+
+**CRITICAL**: When any BMM agent is activated, you MUST immediately read:
+
+```
+_bmad/_memory/project-context.md
+```
+
+This file contains project-specific rules that take **ABSOLUTE PRECEDENCE** over any conflicting instructions from your base agent definition.
+
+## CRITICAL Customization Rules
+
+### Rule #1: Architecture Documentation Protocol
+
+When architecture information is needed, you MUST follow this exact sequence:
+
+**Step 1**: Read the architecture index
+
+```
+docs/architecture/README.md
+```
+
+**Step 2**: Based on the index, load ONLY the specific files needed:
+
+- `docs/architecture/data-models.md` — Database schemas, DTOs, shared types
+- `docs/architecture/api.md` — REST endpoints, errors, response formats
+- `docs/architecture/frontend.md` — React architecture, routing, client auth, UX
+- `docs/architecture/backend.md` — API structure, LLM, auth service, middleware
+- `docs/architecture/infrastructure.md` — Docker, security, dev workflow, monitoring
+- `docs/architecture/testing-conventions.md` — Tests, code conventions
+- `docs/architecture/checklist.md` — Phase validation (P1, P2, P3)
+
+**Step 3**: Apply these constraints:
+
+- **NEVER** load all architecture files at once
+- **NEVER** load files without consulting README.md first
+- Load maximum 3 files unless explicitly approved by user
+- If unsure which files to load, **ASK USER FOR CLARIFICATION**
+
+**Rationale**: The architecture is modular (8 files) to optimize LLM context usage. Loading everything wastes tokens and reduces effectiveness.
+
+### Rule #2: UX Documentation Protocol
+
+When UX information is needed, you MUST follow this exact sequence:
+
+**Step 1**: Read the UX index
+
+```
+docs/ux/README.md
+```
+
+**Step 2**: Based on the index, load ONLY the specific files needed:
+
+- `docs/ux/ux-cartography.md` — Phase 1: flows, screens, components, narrative structure
+- `docs/ux/wireframes/README.md` — Phase 2 index: wireframe organization
+- Specific wireframe files:
+  - `docs/ux/wireframes/E1-E2-auth.md`
+  - `docs/ux/wireframes/E5-E6-E7-onboarding.md`
+  - `docs/ux/wireframes/E8-hub.md`
+  - `docs/ux/wireframes/E9-lancement-aventure.md`
+  - `docs/ux/wireframes/E10-session-de-jeu.md`
+  - `docs/ux/wireframes/E11-ecran-de-fin.md`
+
+**Step 3**: Apply these constraints:
+
+- **NEVER** load all UX files at once
+- **NEVER** load files without consulting README.md first
+- Load maximum 3 files unless explicitly approved by user
+- If unsure which files to load, **ASK USER FOR CLARIFICATION**
+
+**Rationale**: UX documentation is structured in phases (cartography → wireframes) to prevent context overload.
+
+### Rule #3: Communication Standards
+
+**Language**:
+
+- **Default**: French (fr-FR) for all user communication
+- **Code**: English for code, comments, and technical artifacts (standard practice)
+- **Documentation**: French for user-facing docs, English for technical specs
+- **Exception**: Respond in English only if user explicitly requests it
+
+**Tone**:
+
+- Professional and direct
+- Action-oriented (prioritize doing over explaining)
+- Concise responses (respect token limits)
+
+## Compliance Requirements
+
+These customizations are **MANDATORY** and override any conflicting base agent instructions.
+
+**When in doubt**:
+
+1. Check `_bmad/_memory/project-context.md`
+2. Read relevant README.md before loading specific files
+3. ASK USER FOR CLARIFICATION rather than loading excessive documentation
+4. Communicate in French by default
+
+**Violation consequences**:
+
+- Loading all architecture/UX files at once → Context waste, reduced effectiveness
+- Skipping README.md → Loading wrong files, inefficient workflow
+- Not asking for clarification → Wasting time on wrong files
+
+## Quick Reference
+
+**Architecture docs**: `docs/architecture/` (8 files, always start with README.md)
+**UX docs**: `docs/ux/` (cartography + wireframes/, always start with README.md)
+**Project context**: `_bmad/_memory/project-context.md` (load first)
+**Language**: French (default)
+
+## Related Files
+
+- **Project context**: `_bmad/_memory/project-context.md`
+- **GDS agents customization**: `.claude/jdrai-gds-agents.md`
+- **BMAD config**: `_bmad/_config/config.yaml`
+- **Migration guide**: `_bmad/MIGRATION-V4-TO-V6.md`
+
+**Maintained by**: Ryan
+**Last updated**: 2026-02-10
+**Version**: 1.0
