@@ -1,0 +1,293 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialisation du monorepo Turborepo + pnpm workspaces",
+        "description": "Mettre en place la structure monorepo avec Turborepo, pnpm workspaces, et la configuration TypeScript de base pour les trois packages : apps/web, apps/api, packages/shared.",
+        "details": "1. Créer `package.json` racine avec `workspaces: ['apps/*', 'packages/*']` et scripts Turborepo.\n2. Installer Turborepo : `pnpm add -D turbo` + créer `turbo.json` avec pipelines `build`, `dev`, `lint`, `test`.\n3. Créer `apps/web/package.json` (React+Vite), `apps/api/package.json` (Express), `packages/shared/package.json`.\n4. Configurer `tsconfig.json` à la racine + `tsconfig.json` dans chaque workspace avec `extends` vers la config racine.\n5. Ajouter `.gitignore`, `.env.example` global, `pnpm-workspace.yaml`.\n6. Vérifier que `pnpm install` depuis la racine installe tout correctement.\n7. Configurer les scripts `dev` (Turborepo watch) et `build` dans le `package.json` racine.",
+        "testStrategy": "Exécuter `pnpm install` et `pnpm run build` depuis la racine — tous les workspaces doivent se construire sans erreur. Vérifier que `turbo run dev` lance les 3 packages en parallèle.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Configuration Docker + PostgreSQL pour le développement",
+        "description": "Mettre en place l'environnement Docker avec PostgreSQL pour le développement local, incluant le docker-compose, les scripts de démarrage et les variables d'environnement.",
+        "details": "1. Créer `docker/docker-compose.yml` avec service PostgreSQL (image: postgres:16-alpine), volumes persistants, networks.\n2. Configurer les variables d'env : `POSTGRES_DB=jdrai`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT=5432`.\n3. Créer `.env.example` avec toutes les variables requises (DB, Better Auth secret, LLM API keys).\n4. Ajouter script `docker:up` / `docker:down` dans `package.json` racine.\n5. Créer `apps/api/.env.example` avec `DATABASE_URL=postgresql://user:password@localhost:5432/jdrai`.\n6. Documenter la procédure de démarrage dans un `README.md` minimal (commandes pour lancer l'env de dev).\n7. Configurer un healthcheck PostgreSQL dans docker-compose.",
+        "testStrategy": "Exécuter `docker-compose up -d` et vérifier que PostgreSQL répond sur le port 5432. Tester la connexion avec `psql` ou un client DB.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Initialisation du backend Express + TypeScript",
+        "description": "Créer la structure de base de l'application Express dans apps/api avec TypeScript, middleware essentiels, et configuration de démarrage.",
+        "details": "1. Dans `apps/api/`, installer : `express`, `typescript`, `ts-node-dev`, `@types/express`, `cors`, `helmet`, `dotenv`, `zod`.\n2. Structure : `src/index.ts` (point d'entrée), `src/app.ts` (configuration Express), `src/routes/` (routeurs), `src/middleware/` (auth, error, validation), `src/db/` (connexion), `src/services/`.\n3. Configurer `cors` (origin: `http://localhost:5173`), `helmet`, body-parser JSON, `express.urlencoded`.\n4. Créer middleware de gestion d'erreurs global (`src/middleware/error.ts`) retournant `{ error: string, code: string }`.\n5. Route de santé : `GET /health` retournant `{ status: 'ok', timestamp: string }`.\n6. Configurer `ts-node-dev --respawn --transpile-only` pour le hot-reload dev.\n7. Port par défaut : `3001` (configurable via `PORT` env).",
+        "testStrategy": "Lancer `pnpm dev` dans apps/api et appeler `GET /health` — doit retourner 200 avec le JSON attendu. Tester le middleware d'erreur avec une route inexistante (404).",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Configuration Drizzle ORM + schémas de base de données",
+        "description": "Mettre en place Drizzle ORM avec drizzle-zod dans apps/api, définir les schémas PostgreSQL pour les entités principales (users, adventures, meta_characters) et configurer les migrations.",
+        "details": "1. Installer dans apps/api : `drizzle-orm`, `drizzle-kit`, `drizzle-zod`, `pg`, `@types/pg`.\n2. Créer `src/db/schema/` avec les tables :\n   - `users.ts` : id (uuid), email, emailVerified, name (pseudo), createdAt, updatedAt\n   - `sessions.ts` : id, userId, expiresAt, token (pour Better Auth)\n   - `accounts.ts` : id, userId, provider, providerAccountId (pour Better Auth)\n   - `verifications.ts` : table de vérification email Better Auth\n   - `metaCharacters.ts` : id, userId, name, level, xp, createdAt, updatedAt\n   - `adventures.ts` : id, userId, status (active/completed/abandoned), theme, difficulty, duration, currentMilestone, createdAt, updatedAt\n   - `adventureMessages.ts` : id, adventureId, role (user/assistant), content, createdAt\n3. Créer `src/db/index.ts` : connexion Drizzle avec `pg` driver + `drizzle(pool, { schema })`.\n4. Configurer `drizzle.config.ts` à la racine de apps/api.\n5. Script `db:migrate` et `db:generate` dans package.json.\n6. Créer `src/db/seeds/` avec des données de développement.",
+        "testStrategy": "Exécuter `pnpm db:generate` puis `pnpm db:migrate` — les tables doivent être créées dans PostgreSQL. Vérifier avec un client DB que le schéma est correct.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Package shared : DTOs, schémas Zod partagés et types",
+        "description": "Créer le package packages/shared avec les DTOs TypeScript et les schémas Zod partagés entre frontend et backend.",
+        "details": "1. Dans `packages/shared/src/` créer :\n   - `schemas/auth.ts` : `RegisterSchema` (email, password, name), `LoginSchema` (email, password)\n   - `schemas/adventure.ts` : `CreateAdventureSchema` (theme, difficulty, duration), `AdventureSchema` (DTO complet)\n   - `schemas/metaCharacter.ts` : `MetaCharacterSchema` (DTO)\n   - `schemas/message.ts` : `MessageSchema` (role, content)\n   - `types/` : Types TypeScript inférés des schémas Zod + types utilitaires\n   - `index.ts` : exports centralisés\n2. Utiliser `drizzle-zod` pour générer des schémas de base à partir des tables Drizzle, puis les raffiner dans shared.\n3. Types DTO distincts des types DB (pas d'infos sensibles côté client).\n4. Configurer les exports dans `package.json` : `\"main\": \"dist/index.js\"`, `\"types\": \"dist/index.d.ts\"`.\n5. Dans apps/web et apps/api : ajouter `\"@jdrai/shared\": \"workspace:*\"` dans les dépendances.",
+        "testStrategy": "Importer un schéma dans apps/web et apps/api — TypeScript doit résoudre correctement les types. Tester la validation Zod avec `schema.safeParse(data)` en jest.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implémentation de l'authentification avec Better Auth",
+        "description": "Intégrer Better Auth côté backend (Express) et frontend (React) avec inscription email/password, connexion, déconnexion, session persistante via cookies httpOnly, et vérification email non-bloquante.",
+        "details": "1. Installer `better-auth` dans apps/api et apps/web.\n2. **Backend** : Créer `src/lib/auth.ts` avec `betterAuth({ database: drizzleAdapter(db), secret, emailAndPassword: { enabled: true }, emailVerification: { sendOnSignUp: true, autoSignInAfterVerification: true } })`.\n3. Monter le handler Better Auth : `app.all('/api/auth/*', toNodeHandler(auth))`.\n4. Créer `src/middleware/requireAuth.ts` : middleware vérifiant la session via `auth.api.getSession()`.\n5. **Frontend** : Créer `src/lib/auth-client.ts` avec `createAuthClient({ baseURL: import.meta.env.VITE_API_URL })`.\n6. Exposer hooks : `useSession()`, `authClient.signIn.email()`, `authClient.signUp.email()`, `authClient.signOut()`.\n7. Email de vérification non-bloquant : l'utilisateur accède au hub directement après inscription. Bandeau de rappel si `emailVerified === false`.\n8. Récupération de mot de passe : implémenter le flow Better Auth `forgetPassword` + `resetPassword`.\n9. Configurer CSRF automatique (Better Auth le gère nativement avec cookies httpOnly).",
+        "testStrategy": "Tester via curl/Postman : POST /api/auth/sign-up, POST /api/auth/sign-in, GET /api/auth/get-session, POST /api/auth/sign-out. Vérifier que le cookie de session est httpOnly. Tester la récupération de mot de passe avec un service d'email de test.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Initialisation du frontend React + Vite + TanStack Router",
+        "description": "Créer la structure de base de l'application React dans apps/web avec Vite, TypeScript, TanStack Router, Tailwind CSS et ShadCN/UI.",
+        "details": "1. Bootstrapper avec `pnpm create vite apps/web --template react-ts`.\n2. Installer : `@tanstack/react-router`, `@tanstack/react-query`, `tailwindcss`, `@shadcn/ui`, `zustand`, `react-hook-form`, `@hookform/resolvers`, `zod`, `axios`.\n3. Configurer Tailwind : `tailwind.config.ts` avec les chemins src/ et ShadCN.\n4. Initialiser ShadCN : `npx shadcn@latest init` (mode New York, CSS variables).\n5. Configurer TanStack Router avec fichiers de route (`src/routes/`) :\n   - `__root.tsx` : layout racine avec providers (QueryClient, Router)\n   - `_auth.tsx` : layout pour routes authentifiées (vérifie session)\n   - `_auth/hub.tsx`, `_auth/adventure/$id.tsx`, `_auth/profile.tsx`\n   - `auth/login.tsx`, `auth/register.tsx`, `auth/forgot-password.tsx`\n   - `onboarding/` : welcome, profile-setup, tutorial\n6. Configurer `src/lib/query-client.ts` et `src/lib/api.ts` (axios instance avec base URL).\n7. Variables d'env Vite : `VITE_API_URL=http://localhost:3001`.",
+        "testStrategy": "Lancer `pnpm dev` dans apps/web — l'application doit s'ouvrir sur localhost:5173. Naviguer vers /auth/login et /hub — les routes doivent être accessibles (avec redirect si non auth).",
+        "priority": "high",
+        "dependencies": [
+          1,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Pages d'authentification (Login, Register, Forgot/Reset Password)",
+        "description": "Implémenter les pages d'authentification front-end avec React Hook Form, Zod, et Better Auth client, en respectant les wireframes E1-E2.",
+        "details": "1. **Register** (`/auth/register`) : champs email, password, name (pseudo). Validation Zod (`RegisterSchema` de shared). Submit → `authClient.signUp.email()` → redirect vers `/onboarding/welcome`.\n2. **Login** (`/auth/login`) : champs email, password. Submit → `authClient.signIn.email()` → redirect vers `/hub`. Lien 'Mot de passe oublié'.\n3. **Forgot Password** (`/auth/forgot-password`) : champ email, submit → `authClient.forgetPassword()`, confirmation par message.\n4. **Reset Password** (`/auth/reset-password?token=...`) : nouveaux mot de passe + confirmation, submit → `authClient.resetPassword()`.\n5. Composants ShadCN : `<Card>`, `<Form>`, `<Input>`, `<Button>`, `<Alert>`.\n6. Gestion des erreurs inline (email déjà utilisé, credentials invalides).\n7. Loading states sur les boutons de submit.\n8. Layout responsive mobile-first (card centrée, max-w-md).\n9. Redirect automatique vers /hub si déjà authentifié.",
+        "testStrategy": "Tester le flow complet : inscription → email reçu → connexion → déconnexion. Tester les cas d'erreur (email existant, mauvais password). Vérifier le comportement responsive sur mobile (375px).",
+        "priority": "high",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Flow d'onboarding (Welcome, Profile-Setup, Tutorial)",
+        "description": "Implémenter les 3 étapes de l'onboarding : Welcome, Profile-Setup (pseudo) et déclenchement du tutoriel, avec la possibilité de skip.",
+        "details": "1. **Welcome** (`/onboarding/welcome`) : écran de bienvenue, présentation concept JDRAI, boutons 'Commencer' et 'Passer (déjà rôliste)'. Skip → /hub avec flag `onboardingSkipped`.\n2. **Profile-Setup** (`/onboarding/profile-setup`) : champ pseudo (pré-rempli depuis le `name` de l'inscription), upload avatar optionnel. Validation minimum : pseudo non vide. Submit → PATCH `/api/users/me` puis → /onboarding/tutorial (ou /hub si skip).\n3. **Tutorial** (`/onboarding/tutorial`) : présente le concept MJ IA, explique l'interface de jeu, bouton 'Lancer ma première aventure' → crée une aventure en mode tutoriel, redirect /adventure/:id. Bouton 'Passer le tutoriel' → /hub.\n4. Guard de route : si l'utilisateur a déjà complété l'onboarding (`user.onboardingCompleted`), redirect /hub.\n5. Ajouter champ `onboardingCompleted: boolean` dans le schéma user.\n6. Rappel non-intrusif dans le hub si onboarding incomplet.\n7. Tutorial accessible depuis le Hub (lien 'Reprendre le tutoriel').",
+        "testStrategy": "Tester le parcours complet sans skip. Tester chaque point de skip. Vérifier que retourner à /onboarding/welcome après complétion redirige vers /hub. Tester le rappel dans le Hub.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Hub central (page principale post-authentification)",
+        "description": "Implémenter le Hub, l'écran central post-auth affichant le résumé du méta-personnage, la liste des aventures actives, et les actions principales.",
+        "details": "1. Layout Hub (`/hub`) : navigation bottom tab bar (mobile) + sidebar (desktop) avec onglets Hub, Profil, Paramètres.\n2. Sections du Hub :\n   - Résumé méta-personnage (nom, niveau, XP) — placeholder si non créé\n   - Aventures actives (liste, max 5) avec nom du milestone en cours + bouton 'Reprendre'\n   - Bouton 'Nouvelle aventure' (désactivé si 5 aventures actives, avec message explicatif)\n   - Historique des aventures terminées (liste condensée)\n3. Bandeau de rappel si email non vérifié (dismissable temporairement, stocké Zustand).\n4. Rappel non-intrusif si onboarding incomplet.\n5. Navigation : `<BottomTabBar>` (mobile, fixed bottom), `<Sidebar>` (desktop, sticky left).\n6. Utiliser TanStack Query pour fetcher : `GET /api/adventures?status=active`, `GET /api/users/me`.\n7. Empty state pour première visite (illustration + CTA 'Lancer une aventure').\n8. Responsive : grid 1 colonne mobile, 2 colonnes desktop.",
+        "testStrategy": "Vérifier l'affichage avec 0, 3 et 5 aventures actives. Tester la désactivation du bouton 'Nouvelle aventure' à 5 aventures. Vérifier le responsive sur 375px et 1280px.",
+        "priority": "high",
+        "dependencies": [
+          7,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "API aventures : CRUD et gestion des limites",
+        "description": "Implémenter les endpoints REST pour la gestion des aventures : création (avec limite 5), lecture, sauvegarde automatique, reprise et abandon.",
+        "details": "1. Routes dans `src/routes/adventures.ts` (protégées par `requireAuth`) :\n   - `POST /api/adventures` : crée une aventure (vérifie limite 5 actives → 400 si dépassée), valide avec `CreateAdventureSchema`\n   - `GET /api/adventures` : liste par status (active/completed/abandoned)\n   - `GET /api/adventures/:id` : détail d'une aventure (messages inclus)\n   - `PATCH /api/adventures/:id` : update status, currentMilestone, etc.\n   - `DELETE /api/adventures/:id` : abandon (soft delete, status='abandoned')\n2. Middleware de vérification ownership : l'aventure doit appartenir à l'utilisateur.\n3. Sauvegarde automatique : à chaque message, updater `updatedAt` et `currentMilestone`.\n4. Limites : max 5 aventures avec status='active' par userId.\n5. DTOs de réponse : filtrer les champs sensibles, utiliser les types de `packages/shared`.\n6. Gestion des erreurs avec codes : `ADVENTURE_LIMIT_REACHED`, `ADVENTURE_NOT_FOUND`, `UNAUTHORIZED`.",
+        "testStrategy": "Tests d'intégration : créer 5 aventures → la 6ème doit retourner 400. Tester CRUD complet. Vérifier que l'isolation par userId est respectée (user A ne peut pas accéder aux aventures de user B).",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Intégration LLM multi-provider avec streaming",
+        "description": "Implémenter l'abstraction LLM multi-provider dans le backend avec streaming des réponses, gestion des tokens, et fallback en cas d'indisponibilité.",
+        "details": "1. Créer `src/services/llm/` avec :\n   - `LLMService.ts` : interface abstraite `{ stream(messages, options): AsyncIterable<string> }`\n   - `providers/anthropic.ts`, `providers/openai.ts`, `providers/openrouter.ts` implémentant l'interface\n   - `LLMFactory.ts` : sélectionne le provider selon `LLM_PROVIDER` env + fallback automatique\n2. Format messages : `[{ role: 'system'|'user'|'assistant', content: string }]`.\n3. System prompt MJ IA : définir le prompt de base du Maître du Jeu (rôle, format de réponse avec choix, milestones).\n4. Streaming via `res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Transfer-Encoding': 'chunked' })` + SSE.\n5. Gestion rate limiting (429) : retry avec backoff exponentiel (1s, 2s, 4s), max 3 retries, retourner erreur 503 avec `Retry-After` header.\n6. Gestion des tokens : estimer le coût, logger l'usage.\n7. Variables d'env : `LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`.",
+        "testStrategy": "Tester le streaming avec un appel réel au LLM (tokens minimum). Tester le fallback en simulant une 429 du provider principal. Vérifier que le SSE arrive progressivement côté client.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Session de jeu : API de messages et structure Milestones",
+        "description": "Implémenter l'endpoint de conversation MJ IA avec gestion des milestones narratifs, historique des messages, et sauvegarde automatique de l'état.",
+        "details": "1. `POST /api/adventures/:id/messages` (streaming SSE) :\n   - Valide que l'aventure est active et appartient à l'user\n   - Construit le contexte LLM : system prompt MJ + historique messages de l'aventure\n   - Stream la réponse LLM via SSE (`data: {content}\\n\\n`)\n   - À la fin du stream, sauvegarde le message en DB + détecte les milestones\n2. System prompt MJ structuré :\n   - Rôle : Maître du Jeu IA narratif\n   - Format de réponse : narration + 2-4 choix numérotés + \"OU tapez votre action\"\n   - Structure milestones : le MJ doit annoncer chaque milestone avec `[MILESTONE: Nom du jalon]`\n   - Difficulté et thème injectés depuis les paramètres de l'aventure\n3. Détection milestone : parser les balises `[MILESTONE: ...]` dans la réponse LLM + updater `currentMilestone` en DB.\n4. `GET /api/adventures/:id/messages` : retourne l'historique paginé groupé par milestone.\n5. Gestion déconnexion : le dernier état est toujours en DB, reprise automatique.",
+        "testStrategy": "Tester un échange complet de 5 messages avec un LLM réel. Vérifier que les milestones sont détectés et sauvegardés. Tester la reprise d'une aventure après 'déconnexion' (nouveau GET messages).",
+        "priority": "high",
+        "dependencies": [
+          11,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Interface de session de jeu (composant principal)",
+        "description": "Implémenter l'interface de session de jeu côté frontend : affichage des messages, input hybride (choix + texte libre), streaming temps réel, navigation immersive.",
+        "details": "1. Page `/adventure/:id` avec layout immersif (sidebar masquée, navigation cachée).\n2. Composants :\n   - `<MessageList>` : affiche les messages MJ (assistant) et joueur (user), scroll auto vers le bas, affichage progressif du streaming\n   - `<ChoicesPanel>` : affiche les 2-4 choix suggérés comme boutons cliquables\n   - `<TextInput>` : input texte libre avec bouton envoi, disabled pendant streaming (+ message rate limiting)\n   - `<SessionMenu>` : bouton menu style jeu vidéo (icône haut-droite) → drawer avec 'Quitter', 'Sauvegarder', 'Paramètres MJ'\n   - `<MilestoneHeader>` : affiche le nom du milestone en cours (discret, en haut)\n3. Streaming : utiliser `EventSource` ou `fetch` avec `ReadableStream` pour consommer le SSE.\n4. Confirmation de sortie : `beforeunload` + TanStack Router `onBeforeNavigate` → dialog de confirmation.\n5. Zustand store pour l'état de session : `useAdventureStore` (messages, isStreaming, currentMilestone, isMenuOpen).\n6. Gestion 429 : désactiver l'input, afficher message 'MJ en réflexion...', réactiver après délai.\n7. Mobile-first : input fixé en bas, messages en scroll, choix au-dessus de l'input.",
+        "testStrategy": "Tester une session complète sur mobile (375px) et desktop. Vérifier l'affichage progressif du streaming. Tester la confirmation de sortie via le bouton Quitter et via la navigation browser.",
+        "priority": "high",
+        "dependencies": [
+          7,
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Écran de lancement d'aventure (paramètres et templates)",
+        "description": "Implémenter l'écran de configuration du lancement d'aventure : choix du thème, durée, difficulté, ou sélection d'un template, ou génération aléatoire.",
+        "details": "1. Page `/adventure/new` avec 3 modes :\n   - **Personnalisée** : sélecteur de thème (fantasy médiéval, etc.), durée (courte 2-3 milestones, moyenne 4-5, longue 6+), difficulté (indulgent/normal/difficile/impitoyable)\n   - **Template** : grille de scénarios prédéfinis (3-6 templates avec titre, description, durée estimée)\n   - **Aléatoire** : bouton 'Aventure Surprise' → génère des paramètres aléatoires\n2. Form avec React Hook Form + Zod (`CreateAdventureSchema`).\n3. Composant `<DurationSelector>` : affiche les durées avec label et nb milestones estimés.\n4. Limite 5 aventures : si déjà 5 actives, afficher modal/bannière explicative avant même la page.\n5. Option 'Création de personnage' : toggle pour créer un personnage dédié (P2, grisé avec tooltip 'Bientôt disponible') ou jouer avec méta-personnage comme base.\n6. Submit → `POST /api/adventures` → redirect `/adventure/:id`.\n7. Guard : redirect /hub si limite atteinte.",
+        "testStrategy": "Tester les 3 modes de lancement. Vérifier la validation du formulaire. Tester le comportement avec 5 aventures actives. Vérifier que la création d'aventure redirige vers la session de jeu.",
+        "priority": "medium",
+        "dependencies": [
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Historique en session et drawer milestones",
+        "description": "Implémenter le drawer d'historique en session de jeu affichant les messages groupés par milestones, accessible depuis le menu de jeu.",
+        "details": "1. Composant `<HistoryDrawer>` : drawer latéral (Radix UI via ShadCN `<Sheet>`) accessible depuis le `<SessionMenu>`.\n2. Structure de l'historique : messages groupés par milestone, chaque groupe avec le nom du milestone en en-tête (style timeline).\n3. Règle UX : afficher le nom du milestone (ex: 'Réception de la quête') mais JAMAIS de progression numérique ('2/4' ou '50%').\n4. Scroll dans le drawer indépendant du scroll principal.\n5. Format de chaque message : avatar (MJ icône, Joueur initiale), contenu, timestamp discret.\n6. Choix sélectionnés visibles dans l'historique (avec indicateur visuel distinct du texte libre).\n7. Mise à jour en temps réel : le drawer reflète les nouveaux messages via le Zustand store.\n8. Performance : virtualisation si historique long (react-virtual).",
+        "testStrategy": "Ouvrir le drawer avec une aventure de 10+ messages et 2+ milestones. Vérifier le groupage. Tester la mise à jour en temps réel pendant une session active.",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Écran de fin d'aventure et récompenses",
+        "description": "Implémenter l'écran de fin d'aventure avec le résumé narratif, les récompenses XP, et le retour vers le Hub.",
+        "details": "1. Déclenchement de fin : le MJ IA signale la fin avec une balise `[END_ADVENTURE]` → frontend redirige vers `/adventure/:id/end`.\n2. Page `adventure/:id/end` :\n   - Résumé narratif généré par le LLM (1-2 paragraphes)\n   - Liste des milestones complétés (sans numérotation)\n   - Récompenses : XP gagnée (calculée selon nb milestones + durée)\n   - Statistiques légères : durée de l'aventure, nb d'actions\n3. Animation de récompense : compteur XP animé (Framer Motion ou CSS).\n4. Boutons : 'Retour au Hub', 'Nouvelle aventure'.\n5. Backend : `PATCH /api/adventures/:id` avec `{ status: 'completed' }` + calculer et attribuer l'XP au méta-personnage (si P2 activé).\n6. Placeholder méta-personnage (P1) : afficher XP gagnée sans système de progression réel → stocker pour P2.\n7. Guard : redirect /hub si aventure pas en status 'completed'.",
+        "testStrategy": "Terminer une aventure complète et vérifier l'écran de fin. Tester le calcul XP. Vérifier que le status 'completed' est bien sauvegardé. Tester le bouton retour Hub.",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Méta-personnage : création, progression et page Profil",
+        "description": "Implémenter le système de méta-personnage P2 : création intégrée à l'onboarding, niveaux, XP, succès, et page Profil dédiée.",
+        "details": "1. **Schéma DB** : `metaCharacters` déjà défini (tâche 4). Ajouter : `avatarUrl`, `backgroundStory`, `titles: json[]`, `badges: json[]`, `level`, `xp`, `totalAdventures`, `completedAdventures`.\n2. **API** :\n   - `GET /api/users/me/meta-character` : retourne le méta-personnage de l'user\n   - `PATCH /api/users/me/meta-character` : update nom, avatar, background\n   - `POST /api/users/me/meta-character/xp` : ajoute de l'XP + calcule nouveau niveau\n3. **Calcul XP/Niveau** : niveaux 1-20, courbe exponentielle, formule `xpRequired(level) = level * 100`.\n4. **Succès** : table `achievements` + `userAchievements`. Créer 5-10 succès de base (Première aventure, 5 aventures, etc.).\n5. **Page Profil** (`/profile`) :\n   - Section Identité : avatar, nom, background, niveau\n   - Section Progression : XP bar, niveau, total aventures\n   - Section Succès : grille de badges\n   - Section Cosmétiques : titres disponibles (placeholder P2)\n6. **Hub** : afficher résumé méta-personnage (avatar, nom, niveau, XP bar).\n7. Création lors de l'onboarding : le personnage de la première aventure = base du méta-personnage.",
+        "testStrategy": "Tester gain d'XP après aventure, passage de niveau. Vérifier la page Profil avec différents niveaux de complétion. Tester les succès débloquables.",
+        "priority": "medium",
+        "dependencies": [
+          9,
+          10,
+          17
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Personnalisation du MJ et paramètres utilisateur",
+        "description": "Implémenter les paramètres de personnalisation du MJ IA (ton, difficulté, style) avec distinction verrouillé/ajustable en session, et les paramètres utilisateur basiques.",
+        "details": "1. **Paramètres MJ** dans le schéma `adventures` : `mjSettings: json { tone, difficulty, rulesStrictness, narrativeStyle, responseLength }`.\n2. **Drawer Paramètres MJ** en session (via `<SessionMenu>`) :\n   - Ajustables en session : tone (sérieux/humoristique/épique/sombre), narrativeStyle (concis/descriptif), responseLength (court/moyen/long)\n   - Verrouillés en session : difficulty, rulesStrictness — afficher tooltip explicatif\n   - Ces paramètres sont injectés dans le system prompt LLM\n3. **API** : `PATCH /api/adventures/:id/settings` pour les paramètres ajustables uniquement.\n4. **Écran de lancement** : permettre la configuration initiale de tous les paramètres MJ avant de commencer.\n5. **Paramètres utilisateur** (`/settings`) :\n   - Compte : email (read-only), bouton changer mot de passe, bouton supprimer compte\n   - Préférences : thème (clair/sombre/système) stocké Zustand + localStorage, langue\n   - Thème : implémenter avec Tailwind dark mode (`class` strategy) + Zustand `useThemeStore`.\n6. **API** : `PATCH /api/users/me` pour email et préférences (langue).\n7. Confirmation modale pour suppression de compte.",
+        "testStrategy": "Changer le ton en session et vérifier l'impact sur la prochaine réponse LLM. Tester que difficulty est bien refusé en session. Tester le changement de thème (persistance après refresh).",
+        "priority": "medium",
+        "dependencies": [
+          14,
+          18
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Résilience, gestion des erreurs et polish final",
+        "description": "Implémenter la résilience de session (gestion 429, reconnexion), le bouton 'MJ bloqué', la confirmation de sortie, et le polish UX final pour rendre l'application testable de bout en bout.",
+        "details": "1. **Gestion 429 (Rate Limiting)** côté frontend :\n   - Détecter SSE error avec code 429\n   - Désactiver l'input texte + choix\n   - Afficher message non-bloquant : 'Le MJ réfléchit... (réessai dans Xs)'\n   - Auto-réactivation avec countdown visible\n2. **Reconnexion basique** :\n   - Détecter perte de connexion avec `navigator.onLine` + `offline` event\n   - Toast non-bloquant 'Connexion perdue'\n   - Auto-reconnexion avec TanStack Query `refetchOnReconnect`\n   - Reprendre depuis le dernier message sauvegardé\n3. **Bouton 'MJ bloqué'** (dans SessionMenu) :\n   - Envoie `POST /api/adventures/:id/reset-context`\n   - Backend : vide les N derniers messages du contexte LLM (garde les milestones), injecte un prompt de reset\n   - Feedback utilisateur : 'Le MJ reprend ses esprits...'\n4. **Confirmation de sortie** :\n   - TanStack Router `onBeforeNavigate` → dialog ShadCN `<AlertDialog>`\n   - `beforeunload` event pour fermeture onglet\n   - Sauvegarder avant de quitter (auto-save)\n5. **Seeds de développement** : créer un script `pnpm db:seed` avec user de test + aventures à différents stades.\n6. **README.md** : documenter les commandes de démarrage (`docker:up`, `pnpm dev`, `pnpm db:migrate`).",
+        "testStrategy": "Simuler une 429 avec un mock et vérifier le comportement. Tester la reconnexion en coupant le WiFi. Tester le reset contexte sur une aventure bloquée. Vérifier que la confirmation de sortie s'affiche sur navigation et fermeture onglet.",
+        "priority": "medium",
+        "dependencies": [
+          14,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-02-16T11:58:31.789Z",
+      "updated": "2026-02-16T11:58:31.789Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

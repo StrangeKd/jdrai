@@ -146,3 +146,7 @@ Ce projet utilise **BMAD v6.0** (Beta.8) pour le développement assisté par IA.
 ### Documentation
 
 `docs/` — PRD, architecture, UX cartography, stories (`{epicNum}.{storyNum}.story.md`)
+
+## Task Master AI Instructions
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md
