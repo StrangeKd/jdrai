@@ -109,15 +109,24 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
 }
 ```
 
+### Context7 pendant l’implémentation des tâches
+
+Use **Context7** (resolve-library-id then query-docs) only when it is clearly useful, to limit context consumption:
+
+- **Strategic libraries**: when the task depends on a core or critical library (e.g. ORM, auth, LLM client) and up-to-date API/docs matter.
+- **Performance or optimization**: when the task explicitly involves performance, optimization, or non-trivial patterns where current best practices are needed.
+
+Do **not** invoke Context7 on every code write or for routine implementation; reserve it for these targeted cases.
+
 ### MCP Tool Tiers
 
 Default: `core` (7 tools). Set via `TASK_MASTER_TOOLS` env var.
 
-| Tier | Count | Tools |
-|------|-------|-------|
-| `core` | 7 | `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task` |
-| `standard` | 14 | core + `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report` |
-| `all` | 44+ | standard + dependencies, tags, research, autopilot, scoping, models, rules |
+| Tier       | Count | Tools                                                                                                                                  |
+| ---------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `core`     | 7     | `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`                                  |
+| `standard` | 14    | core + `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report` |
+| `all`      | 44+   | standard + dependencies, tags, research, autopilot, scoping, models, rules                                                             |
 
 **Upgrade when tool unavailable:** Edit MCP config, change `TASK_MASTER_TOOLS` from `"core"` to `"standard"` or `"all"`, restart MCP.
 
@@ -231,14 +240,7 @@ Add to `.claude/settings.json`:
 
 ```json
 {
-  "allowedTools": [
-    "Edit",
-    "Bash(task-master *)",
-    "Bash(git commit:*)",
-    "Bash(git add:*)",
-    "Bash(npm run *)",
-    "mcp__task_master_ai__*"
-  ]
+  "allowedTools": ["Edit", "Bash(task-master *)", "Bash(git commit:*)", "Bash(git add:*)", "Bash(npm run *)", "mcp__task_master_ai__*"]
 }
 ```
 

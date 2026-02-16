@@ -5,76 +5,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Core Configuration
 
 - **Language**: Respond in French (fr-FR) by default unless specified otherwise.
-- **Always use Context7 MCP** for library/API docs, code generation, setup/config steps without explicit request.
+- **Context7 MCP**: Use **Context7** (resolve-library-id then query-docs) only when it is clearly useful, to limit context consumption:
+  - **Strategic libraries**: when the task depends on a core or critical library (e.g. ORM, auth, LLM client) and up-to-date API/docs matter.
+  - **Performance or optimization**: when the task explicitly involves performance, optimization, or non-trivial patterns where current best practices are needed.
+  Do **not** invoke Context7 on every code write or for routine implementation; reserve it for these targeted cases.
 - **Token Limit**: Keep responses concise; prioritize action over explanation.
 
 ## Project Overview
 
-**JDRAI** est une plateforme de jeu de rôle (type D&D) avec un MJ IA, permettant de jouer en solo ou en multijoueur.
+**JDRAI** is a tabletop RPG platform (D&D-style) with an AI game master, for solo or multiplayer play.
 
-### Statut actuel
+### Current Status
 
-🔄 **Projet en reconstruction** — L'ancienne codebase (`jdrai-api/`, `jdrai-front/`) est abandonnée, et est d'ailleurs supprimée du projet depuis le commit `a81a97`. Le projet repart de zéro avec une nouvelle stack technique.
+🔄 **Project under reconstruction** — The previous codebase (`jdrai-api/`, `jdrai-front/`) has been abandoned and removed from the project since commit `a81a97`. The project is starting over with a new tech stack.
 
-- **PRD validé** : `docs/prd.md` v1.4 (source de vérité pour les fonctionnalités)
-- **Architecture validée** : `docs/architecture/` v1.4 (8 fichiers modulaires, voir `docs/architecture/README.md`)
-- **UX validée** : `docs/ux/` (1 fichier cartographie, 6 fichiers wireframes, voir `docs/ux/README.md`)
-- **Maquettes UX** : `mockups/` (inspiration libre, cf. UX cartography §1.2)
-- **Phase actuelle** : Discovery + Architecture + UX Phase 1 terminées, wireframes P1 terminées (UX Phase 2), epics et stories en cours (SM + PO)
+- **Validated PRD**: `docs/prd.md` v1.4 (source of truth for features)
+- **Validated architecture**: `docs/architecture/` v1.4 (8 modular files; see `docs/architecture/README.md`)
+- **Validated UX**: `docs/ux/` (1 cartography file, 6 wireframe files; see `docs/ux/README.md`)
+- **UX mockups**: `mockups/` (free inspiration; see UX cartography §1.2)
+- **Current phase**: Discovery + Architecture + UX Phase 1 done; P1 wireframes done (UX Phase 2); epics and stories in progress (SM + PO)
 
-### Utilisation de la documentation architecture
+### Using the Architecture Documentation
 
-⚠️ **IMPORTANT** : La documentation architecture est maintenant modulaire pour optimiser le contexte.
+⚠️ **IMPORTANT**: Architecture documentation is modular to optimize context usage.
 
-**Règle obligatoire (quand l'architecture est concernée) :**
+**Mandatory rule (when architecture is involved):**
 
-1. **TOUJOURS** commencer par lire `docs/architecture/README.md` pour identifier les fichiers pertinents
-2. **NE JAMAIS** charger tous les fichiers d'un coup — sélectionner UNIQUEMENT les sections nécessaires
-3. **Si incertain** sur les fichiers à charger, demander une clarification à l'utilisateur
-4. **Consulter les fichiers spécifiques** selon le besoin :
+1. **ALWAYS** start by reading `docs/architecture/README.md` to identify relevant files.
+2. **NEVER** load all files at once — select ONLY the sections you need.
+3. **If unsure** which files to load, ask the user for clarification.
+4. **Open specific files** as needed:
 
-- `data-models.md` — Schémas DB, DTOs, types partagés
-- `api.md` — Endpoints REST, erreurs, formats de réponse
-- `frontend.md` — Architecture React, routing, auth client, UX
-- `backend.md` — Structure API, LLM, auth service, middleware
-- `infrastructure.md` — Docker, sécurité, workflow dev, monitoring
-- `testing-conventions.md` — Tests, conventions de code
-- `checklist.md` — Validation par phase (P1, P2, P3)
+- `data-models.md` — DB schemas, DTOs, shared types
+- `api.md` — REST endpoints, errors, response formats
+- `frontend.md` — React architecture, routing, auth client, UX
+- `backend.md` — API structure, LLM, auth service, middleware
+- `infrastructure.md` — Docker, security, dev workflow, monitoring
+- `testing-conventions.md` — Tests, code conventions
+- `checklist.md` — Phase validation (P1, P2, P3)
 
-### Utilisation de la documentation UX
+### Using the UX Documentation
 
-⚠️ **IMPORTANT** : La documentation UX est maintenant modulaire pour optimiser le contexte.
+⚠️ **IMPORTANT**: UX documentation is modular to optimize context usage.
 
-**Règle obligatoire (quand l'UX est concernée) :**
+**Mandatory rule (when UX is involved):**
 
-1. **TOUJOURS** commencer par lire `docs/ux/README.md` pour identifier les fichiers pertinents
-2. **NE JAMAIS** charger tous les fichiers wireframes d'un coup — sélectionner UNIQUEMENT les écrans nécessaires
-3. **Si incertain** sur les fichiers à charger, demander une clarification à l'utilisateur
-4. **Consulter les fichiers spécifiques** selon le besoin :
+1. **ALWAYS** start by reading `docs/ux/README.md` to identify relevant files.
+2. **NEVER** load all wireframe files at once — select ONLY the screens you need.
+3. **If unsure** which files to load, ask the user for clarification.
+4. **Open specific files** as needed:
 
-- `ux-cartography.md` — Flows utilisateur, arborescence, inventaire composants, edge cases transversaux
-- `wireframes/README.md` — Index wireframes + décisions de design transversales (mobile-first, milestones & events)
+- `ux-cartography.md` — User flows, tree, component inventory, cross-cutting edge cases
+- `wireframes/README.md` — Wireframe index + cross-cutting design decisions (mobile-first, milestones & events)
 - `wireframes/E1-E2-auth.md` — Auth (login, register, forgot/reset pwd)
-- `wireframes/E5-E6-E7-onboarding.md` — Onboarding (welcome, pseudo, tutoriel)
-- `wireframes/E8-hub.md` — Hub (écran central post-auth)
-- `wireframes/E9-lancement-aventure.md` — Lancement aventure (config, templates, aléatoire)
-- `wireframes/E10-session-de-jeu.md` — Session de jeu (cœur produit)
-- `wireframes/E11-ecran-de-fin.md` — Écran de fin (résumé, milestones, récompenses)
+- `wireframes/E5-E6-E7-onboarding.md` — Onboarding (welcome, nickname, tutorial)
+- `wireframes/E8-hub.md` — Hub (main post-auth screen)
+- `wireframes/E9-lancement-aventure.md` — Adventure launch (config, templates, random)
+- `wireframes/E10-session-de-jeu.md` — Game session (core product)
+- `wireframes/E11-ecran-de-fin.md` — End screen (summary, milestones, rewards)
 
-### Nouvelle stack (à implémenter)
+### New Stack (to implement)
 
-| Couche   | Technologie                               |
-| -------- | ----------------------------------------- |
-| Monorepo | pnpm workspaces / Turborepo               |
-| Frontend | React + Vite + TanStack Router/Query      |
-| UI       | Tailwind + ShadCN + React Hook Form + Zod |
-| Backend  | Express + TypeScript                      |
-| ORM      | Drizzle + drizzle-zod                     |
-| Auth     | Better Auth (cookies httpOnly)            |
-| BDD      | PostgreSQL (Docker)                       |
-| LLM      | Multi-provider                            |
+| Layer    | Technology                          |
+| -------- | ----------------------------------- |
+| Monorepo | pnpm workspaces / Turborepo         |
+| Frontend | React + Vite + TanStack Router/Query|
+| UI      | Tailwind + ShadCN + React Hook Form + Zod |
+| Backend  | Express + TypeScript                |
+| ORM      | Drizzle + drizzle-zod               |
+| Auth     | Better Auth (httpOnly cookies)      |
+| DB       | PostgreSQL (Docker)                 |
+| LLM      | Multi-provider                      |
 
-### Structure cible
+### Target Structure
 
 ```
 jdrai/
@@ -82,24 +85,24 @@ jdrai/
 │   ├── web/          # React + Vite
 │   └── api/          # Express
 ├── packages/
-│   └── shared/       # Schémas Zod, types partagés
-├── docs/             # Documentation BMAD
-└── mockups/          # Maquettes UX/UI
+│   └── shared/       # Zod schemas, shared types
+├── docs/             # BMAD documentation
+└── mockups/         # UX/UI mockups
 ```
 
 ## BMAD Methodology
 
-Ce projet utilise **BMAD v6.0** (Beta.8) pour le développement assisté par IA.
+This project uses **BMAD v6.0** (Beta.8) for AI-assisted development.
 
-### Modules installés
+### Installed Modules
 
-- ✅ **CORE** : bmad-master, tâches éditoriales, party-mode
-- ✅ **BMM** (Business + Methodology Module) : Agents Agile pour l'implémentation
-- ✅ **GDS** (Game Dev Studio) : Agents game design pour conception RPG
+- ✅ **CORE**: bmad-master, editorial tasks, party-mode
+- ✅ **BMM** (Business + Methodology Module): Agile agents for implementation
+- ✅ **GDS** (Game Dev Studio): Game design agents for RPG conception
 
-### Agents disponibles
+### Available Agents
 
-**BMM Agents** (implémentation) :
+**BMM Agents** (implementation):
 
 - `/bmad-agent-bmm-analyst` — Mary (Business Analyst)
 - `/bmad-agent-bmm-architect` — Winston (Architect)
@@ -111,42 +114,44 @@ Ce projet utilise **BMAD v6.0** (Beta.8) pour le développement assisté par IA.
 - `/bmad-agent-bmm-tech-writer` — Paige (Technical Writer)
 - `/bmad-agent-bmm-quick-flow-solo-dev` — Barry (Quick Flow Solo Dev)
 
-**GDS Agents** (game design) — _Pertinents pour JDRAI_ :
+**GDS Agents** (game design) — _Relevant for JDRAI_:
 
 - `/bmad-agent-gds-game-designer` — Samus Shepard (Game Designer)
 - `/bmad-agent-gds-tech-writer` — Paige (Technical Writer)
 
-**Core Agents** :
+**Core Agents**:
 
-- `/bmad-agent-bmad-master` — BMad Master (Orchestrateur)
+- `/bmad-agent-bmad-master` — BMad Master (Orchestrator)
 
-**Note** : Les agents GDS spécifiques aux moteurs de jeu (game-dev, game-qa, game-architect, etc.) sont installés mais NON pertinents pour JDRAI (plateforme web). Utiliser BMM pour l'implémentation.
+**Note**: GDS agents for game engines (game-dev, game-qa, game-architect, etc.) are installed but NOT relevant for JDRAI (web platform). Use BMM for implementation.
 
-### Customisations JDRAI
+### JDRAI Customizations
 
-**Fichiers de customisation** :
+**Customization files**:
 
-- `_bmad/_memory/project-context.md` — Contexte projet + règles critiques (chargé automatiquement par agents)
-- `.cursor/rules/jdrai-bmm-agents.md` — Customisations agents BMM (Cursor)
-- `.cursor/rules/jdrai-gds-agents.md` — Customisations agents GDS (Cursor)
-- `.claude/jdrai-bmm-agents.md` — Customisations agents BMM (Claude Code)
-- `.claude/jdrai-gds-agents.md` — Customisations agents GDS (Claude Code)
+- `_bmad/_memory/project-context.md` — Project context + critical rules (auto-loaded by agents)
+- `.cursor/rules/jdrai-bmm-agents.md` — BMM agent customizations (Cursor)
+- `.cursor/rules/jdrai-gds-agents.md` — GDS agent customizations (Cursor)
+- `.claude/jdrai-bmm-agents.md` — BMM agent customizations (Claude Code)
+- `.claude/jdrai-gds-agents.md` — GDS agent customizations (Claude Code)
 
-**Règles critiques** (déjà intégrées dans les customisations) :
+**Critical rules** (already included in customizations):
 
-1. Architecture : Toujours lire `docs/architecture/README.md` en premier (structure modulaire)
-2. UX : Toujours lire `docs/ux/README.md` en premier (structure modulaire)
-3. Charger UNIQUEMENT les fichiers spécifiques nécessaires (ne jamais tout charger d'un coup)
-4. Demander clarification si >3 fichiers semblent nécessaires
+1. Architecture: Always read `docs/architecture/README.md` first (modular structure).
+2. UX: Always read `docs/ux/README.md` first (modular structure).
+3. Load ONLY the specific files needed (never load everything at once).
+4. Ask for clarification if more than 3 files seem necessary.
 
-**Support IDE** :
-- ✅ Cursor : Customisations dans `.cursor/rules/`
-- ✅ Claude Code : Customisations dans `.claude/`
+**IDE support**:
+
+- ✅ Cursor: Customizations in `.cursor/rules/`
+- ✅ Claude Code: Customizations in `.claude/`
 
 ### Documentation
 
 `docs/` — PRD, architecture, UX cartography, stories (`{epicNum}.{storyNum}.story.md`)
 
 ## Task Master AI Instructions
+
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
