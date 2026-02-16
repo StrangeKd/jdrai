@@ -24,6 +24,10 @@ out/
 .DS_Store
 Thumbs.db
 
+# MCP config (local / per-IDE)
+.mcp.json
+**/mcp.json
+
 # IDE
 .vscode/*
 !.vscode/settings.json
