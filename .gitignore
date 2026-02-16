@@ -61,6 +61,9 @@ bmad-v4/
 
 logs
 dev-debug.log
+# Turbo
+.turbo/
+
 # Dependency directories
 # Environment variables
 # Editor directories and files
