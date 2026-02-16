@@ -10,7 +10,11 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "docker:down:volumes": "docker-compose -f docker/docker-compose.yml down -v",
+    "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f postgres"
   },
   "devDependencies": {
     "turbo": "^2.8.9"

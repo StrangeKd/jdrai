@@ -103,7 +103,7 @@ pnpm shared:generate
 # .env.example
 
 # Database
-DATABASE_URL=postgresql://jdrai:jdrai@localhost:5432/jdrai
+DATABASE_URL=postgresql://jdrai:jdrai@localhost:5433/jdrai
 
 # Better Auth
 BETTER_AUTH_SECRET=your-super-secret-key-min-32-chars-change-in-production
@@ -145,7 +145,7 @@ services:
       POSTGRES_PASSWORD: jdrai
       POSTGRES_DB: jdrai
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
