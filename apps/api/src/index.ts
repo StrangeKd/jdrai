@@ -1,19 +1,22 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
 import 'dotenv/config';
+import app from './app';
 
-const app = express();
-const PORT = process.env.PORT ?? 3000;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+const server = app.listen(PORT, () => {
+  console.log(`[API] Server running on port ${PORT}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`JDRAI API running on port ${PORT}`);
+process.on('SIGTERM', () => {
+  server.close(() => {
+    console.log('[API] Server stopped (SIGTERM)');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  server.close(() => {
+    console.log('[API] Server stopped (SIGINT)');
+    process.exit(0);
+  });
 });
