@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { env } from './config/env';
 import router from './routes';
 import { errorHandler } from './middleware/error';
 
@@ -9,7 +10,7 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: env.corsOrigin,
     credentials: true,
   })
 );

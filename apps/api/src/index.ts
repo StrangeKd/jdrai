@@ -1,10 +1,9 @@
 import 'dotenv/config';
+import { env } from './config/env';
 import app from './app';
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
-
-const server = app.listen(PORT, () => {
-  console.log(`[API] Server running on port ${PORT}`);
+const server = app.listen(env.port, () => {
+  console.log(`[API] Server running on port ${env.port}`);
 });
 
 process.on('SIGTERM', () => {
