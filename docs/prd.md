@@ -1,10 +1,11 @@
 # JDRAI - Product Requirements Document (PRD)
 
-**Version:** 1.4
-**Date:** 2026-02-08
+**Version:** 1.5
+**Date:** 2026-02-17
 **Statut:** Validé par CEO
-**Dernière mise à jour:** Audit cohérence wireframes/architecture — limite 5 aventures (F3), email verification non-bloquante (F1)
+**Dernière mise à jour:** Alignement GDD v1.0 — D20 décision (F2), Heroic Fantasy P1 (F2), noms difficulté (F2), §11 Q1 résolu
 **Auteur:** PM (BMAD Method)
+**Références :** `docs/game-design.md` (source de vérité pour les mécaniques de jeu et l'expérience joueur)
 
 ---
 
@@ -185,15 +186,15 @@ AVENTURE
 #### F2. Session solo MJ IA
 
 - Lancement d'aventure avec paramètres :
-  - Thème/ambiance
+  - **Thème/ambiance** : Heroic Fantasy uniquement en P1 (appliqué par défaut, pas de sélecteur). Genres additionnels → P4 (cf. §4.4 F17)
   - Durée estimée (courte, moyenne, longue) — corrélée au nombre de milestones (courte = 2-3, longue = 6+)
-  - Difficulté
-- OU sélection d'un scénario template
+  - Difficulté : 4 niveaux — Facile, Normal, Difficile, Cauchemar (cf. GDD §9). Verrouillée en session
+- OU sélection d'un scénario template (2 templates contrastés en P1 — cf. GDD GD-008)
 - OU génération aléatoire
 - **Structure par milestones** : Chaque aventure est découpée en jalons narratifs obligatoires (cf. §3.4). Le MJ IA utilise cette structure pour piloter la durée et la progression narrative
-- Interaction hybride : choix suggérés + texte libre
-- Narration textuelle immersive
-- Système de règles maison (mécaniques à tester : dés visibles vs cachés)
+- Interaction hybride : choix suggérés (2-4) + texte libre
+- Narration textuelle immersive — MJ IA persona "Le Chroniqueur" (cf. GDD §4)
+- **Système de résolution D20** : Un dé 20 faces est lancé en arrière-plan à chaque action significative. Le résultat est injecté dans le prompt MJ — jamais visible pour le joueur en P1. Visibilité optionnelle post-MVP (cf. GDD GD-001)
 - **Navigation en session** : La sidebar/navigation classique est masquée. Un bouton de menu intégré à l'interface de jeu (style jeu vidéo, pas burger menu classique) donne accès aux actions : quitter, sauvegarder, paramètres MJ
 - **Confirmation de sortie** : Toute action quittant le mode aventure (changement de page, déconnexion, fermeture onglet) déclenche une fenêtre de confirmation pour éviter la perte de progression involontaire
 - Gestion du rate limiting (429) : désactivation temporaire de la saisie, message utilisateur, réactivation après délai
@@ -611,7 +612,7 @@ Les pages marketing (landing, features, pricing, blog) seront gérées via **Web
 
 ### Gameplay
 
-1. **Mécaniques de dés** : Dés visibles vs calculs cachés — à tester avec utilisateurs
+1. ~~**Mécaniques de dés** : Dés visibles vs calculs cachés — à tester avec utilisateurs~~ → **RÉSOLU (GDD GD-001)** : D20 caché en P1, résultat injecté dans le prompt MJ. Visibilité optionnelle post-MVP (style Baldur's Gate 3). Implémentation : backend génère le roll D20 avant chaque appel LLM ; résultat transmis dans le prompt système, invisible côté frontend.
 2. **Progression in-aventure** : ~~XP/niveaux vs milestones narratifs~~ → **Milestones narratifs retenus** (cf. §3.4). Pas de progression numérique visible. Reste à définir : impact des milestones sur les récompenses XP méta-personnage
 3. **Taille max groupe multijoueur** : À définir selon retours
 4. **Sync vs Async multijoueur** : À définir selon retours
@@ -681,3 +682,4 @@ Référence complète : `docs/architecture.md`
 - v1.2 (2026-02-06) : Audit de cohérence post-UX cartography — Auth corrigée (Better Auth), ajout Zustand, navigation mobile-first (P1), résilience session (P1), paramètres utilisateur (P2), page profil (P2), personnalisation MJ verrouillé/ajustable (P2), compagnon d'interface (P3), détection double onglet (P3), roadmap réalignée
 - v1.3 (2026-02-06) : Intégration structure narrative Milestones & Events (UX §2.6) — §3.4 concept, milestones P1, events P2, F2/F3 mis à jour, glossaire enrichi, question progression résolue, référence wireframes ajoutée
 - v1.4 (2026-02-08) : Audit cohérence wireframes/architecture — F1 ajout vérification email non-bloquante, F3 ajout limite 5 aventures solo actives
+- v1.5 (2026-02-17) : Alignement GDD v1.0 — F2 : D20 caché P1 (GDD-001 résolu), Heroic Fantasy uniquement P1, 4 niveaux difficulté nommés (Facile/Normal/Difficile/Cauchemar), persona MJ "Le Chroniqueur". §11.1 Q1 marqué résolu. Référence GDD ajoutée.

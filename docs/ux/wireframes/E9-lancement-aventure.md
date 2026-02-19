@@ -80,7 +80,7 @@
 │                                     │
 │     Quel défi souhaitez-vous ?      │ ← Titre immersif
 │                                     │
-│     Indulgent ━━●━━ Impitoyable    │ ← DifficultySlider
+│     Facile ━━●━━━━━━ Cauchemar      │ ← DifficultySlider
 │                                     │   4 crans, labels aux extrêmes
 │     💬 Le MJ adapte la difficulté   │ ← Description dynamique
 │        au niveau choisi. Les        │   change selon le cran
@@ -114,7 +114,7 @@
 │     ┌─────────────────────────┐     │
 │     │  🏚️ La Crypte des Ombres │     │ ← TemplateCard
 │     │                         │     │
-│     │  Dark fantasy · ~45 min │     │   Thème + durée + description
+│     │  Heroic fantasy · ~45 min│    │   Thème + durée + description
 │     │  Difficulté : Équilibrée│     │   courte
 │     │                         │     │
 │     │  Explorez les profondeurs│    │
@@ -434,7 +434,7 @@ S'affiche uniquement si le joueur a choisi "Révéler mon destin" sur WF-E9-03b.
 │  │  ⚙️ Paramètres  │   │  │                      │ │                      │ │
 │  │  🚪 Déconnexion │   │  │                      │ │                      │ │
 │  └───────────────┘   │  │                      │ │                      │ │
-│                      │  │ ⚡ Courte   ~20 min   │ │ Indulgent ━●━━━     │ │
+│                      │  │ ⚡ Courte   ~20 min   │ │ Facile ━●━━━━━━     │ │
 │                      │  │ ⚔️ Moyenne  ~45 min   │ │                      │ │
 │                      │  │ 📖 Longue   ~1h+      │ │ 💬 Le MJ est         │ │
 │                      │  └──────────────────────┘ │    bienveillant...    │ │
@@ -516,7 +516,7 @@ Hub (ActionCard "Aléatoire") →  WF-E9-03b (Choix surprise)
 
 | Règle                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Valeurs par défaut**         | Durée = Moyenne, Difficulté = Normal (cran 2/4). Thème = Heroic Fantasy (unique en P1, pas de sélecteur — P4 : genres additionnels). Le CTA est toujours actif — le joueur peut lancer immédiatement sans rien toucher.                                                                                                                                                                                                                                          |
+| **Valeurs par défaut**         | Durée = Moyenne, Difficulté = Normal (cran 2/4 — label "Normal"). Thème = Heroic Fantasy (unique en P1, pas de sélecteur — P4 : genres additionnels). Le CTA est toujours actif — le joueur peut lancer immédiatement sans rien toucher.                                                                                                                                                                                                                         |
 | **Max 5 aventures solo**       | Le joueur peut avoir jusqu'à 5 aventures solo actives simultanément. Au-delà, WF-E9-06 (limite atteinte) bloque la création. Cette limite évite l'accumulation de contenu inachevé. Le multi (P2+) aura son propre compteur séparé.                                                                                                                                                                                                                              |
 | **Confirmation**               | Tous les chemins passent par un écran de confirmation avant la génération. Chemins personnalisée/template → WF-E9-03 (récap). Chemin aléatoire → WF-E9-03b (choix surprise) puis éventuellement WF-E9-03c (récap si révélé).                                                                                                                                                                                                                                     |
 | **Mode surprise**              | En mode aléatoire, le choix surprise/révéler se fait **avant** toute révélation de paramètres (WF-E9-03b). Si "Accepter l'inconnu", le joueur ne voit jamais les paramètres — ni sur l'écran de choix, ni dans le loading. Il découvre l'univers directement en jeu.                                                                                                                                                                                             |
@@ -525,7 +525,7 @@ Hub (ActionCard "Aléatoire") →  WF-E9-03b (Choix surprise)
 | **Aléatoire**                  | Le système tire au sort thème + durée + difficulté (pondéré vers des valeurs équilibrées). Le joueur passe par WF-E9-03b (choix surprise) puis WF-E9-03c (révélation) ou directement au loading (surprise).                                                                                                                                                                                                                                                      |
 | **Génération LLM**             | Retry automatique x2 (invisible). Après 3 échecs, affichage WF-E9-05. Timeout indicatif : 10-15s pour la génération initiale.                                                                                                                                                                                                                                                                                                                                    |
 | **Durée et milestones**        | L'utilisateur choisit une durée (Courte ~20 min, Moyenne ~45 min, Longue ~1h+). Le système corrèle en interne au nombre de milestones (2-3, 4-5, 6+). Le nombre de milestones n'est **jamais** affiché.                                                                                                                                                                                                                                                          |
-| **Difficulty descriptions**    | Le slider a 4 crans avec descriptions dynamiques : 1. _Indulgent — Le MJ est bienveillant, les combats sont faciles_ / 2. _Normal — Un bon équilibre entre narration et défi_ / 3. _Difficile — Les erreurs coûtent cher, restez vigilant_ / 4. _Impitoyable — Chaque erreur peut être fatale_                                                                                                                                                                   |
+| **Difficulty descriptions**    | Le slider a 4 crans avec descriptions dynamiques correspondant aux noms officiels (GDD §9.1) : 1. _Facile — L'histoire avant le défi. Le MJ est bienveillant, les échecs sont doux._ / 2. _Normal — Équilibre narration et défi. Les erreurs ont des conséquences surmontables._ / 3. _Difficile — Le défi est réel. Les erreurs coûtent cher, restez vigilant._ / 4. _Cauchemar — Survie narrative. Le MJ est impitoyable, chaque erreur peut être fatale._       |
 | **Compagnon (P3)**             | Emplacements réservés sur WF-E9-04 (loading : message d'encouragement). En P1, le loading est silencieux.                                                                                                                                                                                                                                                                                                                                                        |
 
 ---

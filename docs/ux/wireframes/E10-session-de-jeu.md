@@ -36,6 +36,8 @@
 ┌─────────────────────────────────┐
 │  SessionHeader                  │ ← Fixe en haut
 │  (titre + icône menu pause)     │
+│  CharacterPanel                 │ ← Fixe sous le header (compact)
+│  (nom · classe  ❤️ HP/HPmax)    │   Visible dès P1 (GDD GD-006)
 ├─────────────────────────────────┤
 │                                 │
 │  NarrationPanel                 │ ← Zone principale, scrollable
@@ -50,7 +52,7 @@
 └─────────────────────────────────┘
 ```
 
-**Composants impliqués :** SessionHeader, NarrationPanel, ChoiceList, ChoiceButton, FreeInput, StreamingText, LoadingNarration, AutosaveIndicator
+**Composants impliqués :** SessionHeader, CharacterPanel, NarrationPanel, ChoiceList, ChoiceButton, FreeInput, StreamingText, LoadingNarration, AutosaveIndicator, MilestoneOverlay
 
 ---
 
@@ -61,7 +63,8 @@
 ```
 ┌─────────────────────────────────────┐
 │  ⚔️ La Crypte des Ombres    [⚙]  │ ← SessionHeader
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │    titre tronqué + icône menu
+│  🧙 Aldric · Aventurier  ❤️ 18/20 │ ← CharacterPanel (compact, fixe)
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │    séparateur
 │                                     │
 │  ┌─────────────────────────────┐    │
 │  │                             │    │
@@ -328,6 +331,74 @@
 - Lecture seule — le joueur ne peut pas revenir en arrière
 - Accessible via le bouton `📜` dans le FreeInput ou via le menu pause
 
+### WF-E10-12 — Milestone atteint (overlay célébration)
+
+> **Source** : GDD §10.2 — Célébrations UX P1
+
+Overlay affiché brièvement (2-3 secondes) lorsque le MJ signale `[MILESTONE_COMPLETE:nom]`. S'affiche par-dessus la narration, puis fond enchaîne vers la suite.
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️ La Crypte des Ombres    [⚙]  │
+│  🧙 Aldric · Aventurier  ❤️ 18/20 │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │
+│                                     │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │ ← Fond assombri semi-transparent
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │   (la narration reste visible
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │   en arrière-plan, floutée)
+│  ░░░░                         ░░░░  │
+│  ░░░  ✦ Entrée dans la crypte ✦  ░░│ ← Nom du milestone
+│  ░░░                           ░░░  │   texte doré, centré
+│  ░░░  Un nouveau chapitre      ░░░  │ ← Sous-titre court (optionnel)
+│  ░░░  commence...              ░░░  │   style RPG classique
+│  ░░░░                         ░░░░  │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- Durée d'affichage : 2-3 secondes. Disparaît automatiquement (fade-out) — pas de clic requis
+- Le joueur ne peut pas interagir pendant l'overlay (input déjà désactivé pendant le streaming)
+- Le nom du milestone provient directement du champ `Milestone.name` (stocké en base)
+- **Pas d'overlay** pour le premier milestone (il est activé dès le lancement — pas une transition)
+- **P2** : L'overlay pourrait être désactivable dans les paramètres MJ
+
+### WF-E10-13 — Introduction d'aventure (premier affichage de session)
+
+> **Source** : GDD §10.2 — Célébrations UX P1
+
+Lors du **premier affichage** de la session (transition depuis E9-04 loading), avant la première narration du MJ, un texte d'introduction apparaît en fade-in progressif. Remplace l'état loading et s'enchaîne vers WF-E10-01.
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│                                     │
+│                                     │
+│                                     │
+│                                     │
+│     Il était une fois...            │ ← Texte d'introduction
+│                                     │   fade-in progressif, mot par mot
+│     une âme en quête d'aventure.    │   style "Il était une fois..."
+│                                     │   typographie immersive, centrée
+│                                     │
+│                                     │
+│                                     │
+│                                     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Notes :**
+
+- Plein écran, navigation masquée (même état que le loading E9-04)
+- Le texte est court (1-2 phrases) — généré par le MJ IA dans sa première réponse, ou fixe P1
+- S'enchaîne automatiquement vers le streaming de la première narration MJ (WF-E10-02)
+- Ne s'affiche que lors du **premier lancement** — pas lors de la reprise d'une aventure sauvegardée
+- **P3** : Le compagnon pourrait intervenir ici avant de laisser place au MJ
+
 ---
 
 ## 4. États d'erreur et edge cases
@@ -429,8 +500,8 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  ⚔️ La Crypte des Ombres              ✓ Sauvegardé        [⚙ Menu]   │
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │
+│  ⚔️ La Crypte des Ombres   🧙 Aldric · Aventurier  ❤️ 18/20   ✓ Sauvegardé   [⚙ Menu]  │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │
 │                                                                          │
 │  ┌──────────────────────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
@@ -501,6 +572,9 @@
 | **Historique**         | Stocké côté client (+ serveur via save). Organisé par milestones → events → échanges (cf. wireframes/README.md §Milestones & Events). |
 | **Navigation bloquée** | Aucune navigation hors session sans confirmation. Inclut : liens, bouton retour, refresh, fermeture.                                  |
 | **Keyboard desktop**   | Touches 1-4 pour sélectionner un choix. Enter pour envoyer le texte libre. Escape pour ouvrir le menu pause.                          |
+| **CharacterPanel**     | Bande fixe compacte sous le SessionHeader. Affiche : nom · classe · ❤️ currentHp/maxHp. Mise à jour en temps réel quand le GameService reçoit un signal `[HP_CHANGE:x]` du LLM. En P2, s'enrichira (stats, équipement). Source : GDD GD-006. |
+| **Milestone overlay**  | Quand le MJ émet `[MILESTONE_COMPLETE:nom]`, un overlay "titre doré sur fond assombri" s'affiche 2-3 secondes (WF-E10-12). Disparaît automatiquement, enchaîne vers la narration suivante. P1. |
+| **Intro session**      | Au premier lancement d'une nouvelle aventure (pas à la reprise), un texte fade-in court s'affiche avant la première narration MJ (WF-E10-13). Style "Il était une fois...". P1. |
 
 ---
 

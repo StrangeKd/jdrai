@@ -111,10 +111,80 @@ export class LLMService {
 
 Le MJ IA utilise un système de prompts structuré :
 
-1. **System Prompt** : Définit la personnalité, les règles, le ton
+1. **System Prompt** : Persona "Le Chroniqueur" (cf. GDD §4) — ton adapté à la difficulté configurée, règles de narration (tutoiement, présent, jamais de 4e mur, jamais de mécaniques explicites), instructions fail state selon difficulté (cf. GDD §6)
 2. **Milestone Context** : Liste des milestones avec statuts, milestone actif, objectif narratif en cours
-3. **Context Window** : Historique récent + état du jeu compressé
-4. **User Action** : Action du joueur (choix ou texte libre)
+3. **Context Window** : Historique récent + état du jeu compressé (`worldState`)
+4. **D20 Injection** : Résultat du lancer D20 + DC calculé + consigne de narration (invisible joueur) — cf. §D20 ci-dessous
+5. **User Action** : Action du joueur (choix ou texte libre)
+
+### Injection D20 dans le Prompt MJ
+
+> **Source** : GDD GD-001 et §3.4
+
+À chaque action significative du joueur, le `GameService` calcule le contexte de résolution **avant** l'appel LLM et l'injecte dans le prompt :
+
+```
+[SYSTÈME — INVISIBLE AU JOUEUR]
+Action du joueur : "Je tente de crocheter la serrure"
+Lancer D20 : {roll}                     ← Généré par le serveur (Math.random)
+DC contextuel : {baseDC} ({actionType}) + {difficultyModifier} ({difficulty}) = {finalDC}
+Bonus personnage : {characterBonus} ({reason})
+Résultat final : {roll + characterBonus} vs DC {finalDC} → {OUTCOME}
+Consigne : {narrativeInstruction}        ← Ne jamais mentionner le dé, le DC ni le score
+```
+
+**Valeurs OUTCOME et narrativeInstruction :**
+
+| Condition | OUTCOME | narrativeInstruction |
+|---|---|---|
+| roll = 20 | SUCCÈS CRITIQUE | Narrer une réussite exceptionnelle avec bonus narratif |
+| roll + bonus ≥ finalDC | SUCCÈS NET | Narrer un succès clair et satisfaisant |
+| roll + bonus entre finalDC-1 et finalDC-5 | SUCCÈS PARTIEL | Narrer un succès avec une complication narrative |
+| roll + bonus < finalDC-5 | ÉCHEC NARRATIF | Narrer un échec qui ouvre une nouvelle voie (fail forward) |
+| roll = 1 | ÉCHEC CRITIQUE | Narrer un échec avec conséquences notables |
+
+**Modificateurs DC par difficulté (GDD §3.2) :**
+
+| Difficulté | Code | Modificateur DC |
+|---|---|---|
+| Facile | `easy` | -3 |
+| Normal | `normal` | 0 |
+| Difficile | `hard` | +2 |
+| Cauchemar | `nightmare` | +4 |
+
+**Bonus personnage P1 (GDD §3.3) — implicites, déterminés par le GameService :**
+
+| Situation | Bonus |
+|---|---|
+| Action liée à la classe du personnage | +2 |
+| Action cohérente avec le contexte narratif | +1 |
+| Répétition d'une action déjà échouée | -2 |
+
+**DC de base par type d'action :**
+
+| Type | DC | Exemples |
+|---|---|---|
+| Triviale | 5 | Ouvrir une porte non verrouillée |
+| Facile | 8 | Escalader un mur bas |
+| Moyenne | 12 | Crocheter une serrure |
+| Difficile | 15 | Désamorcer un piège |
+| Très difficile | 18 | Forcer une porte enchantée |
+
+> **Règle P1** : Le roll D20 est exécuté côté serveur (`GameService`). Le résultat est stocké dans `Message.metadata` pour la feature "dés visibles" P2 (cf. data-models.md). Il n'est jamais exposé au frontend en P1.
+
+### Signaux structurés dans la réponse LLM
+
+Le MJ IA communique des événements structurés via des marqueurs dans sa réponse, parsés par le `GameService` après réception :
+
+| Marqueur | Usage | Action GameService |
+|---|---|---|
+| `[MILESTONE_COMPLETE:nom]` | Milestone narratif atteint | Passe le milestone en `completed`, active le suivant en `active` |
+| `[HP_CHANGE:-5]` | Dégâts subis par le personnage | Met à jour `AdventureCharacter.currentHp` (ne peut pas descendre sous 0) |
+| `[HP_CHANGE:+3]` | Soin du personnage | Met à jour `AdventureCharacter.currentHp` (ne peut pas dépasser `maxHp`) |
+| `[ADVENTURE_COMPLETE]` | Dernière scène narrée, aventure conclue | Déclenche la génération du résumé E11 et passe l'aventure en `completed` |
+| `[GAME_OVER]` | Fin d'aventure par échec (Hard/Nightmare) | Idem `ADVENTURE_COMPLETE` — distingué uniquement par le ton narratif et le contexte |
+
+> **Note** : Les marqueurs sont toujours sur une ligne séparée et supprimés du texte affiché au joueur. Le `GameService` parse avec une regex avant streaming/affichage.
 
 ### Gestion des Milestones par le LLM
 

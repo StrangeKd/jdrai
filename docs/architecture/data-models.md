@@ -264,6 +264,22 @@ export interface MilestoneDTO {
 // packages/shared/src/types/game.ts
 export type MessageRole = "user" | "assistant" | "system";
 
+/**
+ * Métadonnées stockées dans Message.metadata (JSONB).
+ * Le roll D20 est toujours stocké pour la feature "dés visibles" P2.
+ * Il n'est jamais exposé au frontend en P1 (champ absent du GameMessageDTO).
+ */
+export interface MessageMetadata {
+  // Résolution D20 (cf. GDD GD-001 et backend.md §D20)
+  roll?: number; // Valeur du D20 (1-20)
+  dc?: number; // DC final après modificateurs
+  bonus?: number; // Bonus personnage appliqué
+  outcome?: "critical_success" | "success" | "partial_success" | "failure" | "critical_failure";
+  // Signaux parsés depuis la réponse LLM
+  milestoneCompleted?: string; // Nom du milestone complété (si [MILESTONE_COMPLETE:x])
+  hpChange?: number; // Variation HP (si [HP_CHANGE:x])
+}
+
 export interface GameMessageDTO {
   id: string;
   role: MessageRole;
@@ -271,6 +287,7 @@ export interface GameMessageDTO {
   milestone?: string; // Nom du milestone associé (pour regroupement historique)
   createdAt: string;
   choices?: SuggestedAction[];
+  // Note : MessageMetadata n'est PAS exposé en P1 — ajouté au DTO en P2 pour "dés visibles"
 }
 
 export interface SuggestedAction {
