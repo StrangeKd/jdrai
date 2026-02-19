@@ -24,6 +24,11 @@ out/
 .DS_Store
 Thumbs.db
 
+
+# MCP config (local / per-IDE)
+.mcp.json
+**/mcp.json
+
 # IDE
 .vscode/*
 !.vscode/settings.json
@@ -58,3 +63,18 @@ bmad-v4/
 # ✅ .cursor/rules/ (agent customizations)
 # ✅ .claude/ (Claude Code customizations)
 # ✅ _bmad/_memory/ (project context)
+
+logs
+dev-debug.log
+
+# Dependency directories
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
