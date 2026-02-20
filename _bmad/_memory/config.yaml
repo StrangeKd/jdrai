@@ -3,9 +3,8 @@
 # Version: 6.0.0-Beta.8
 # Date: 2026-02-10T07:05:37.933Z
 
-
 # Core Configuration Values
 user_name: Ryan
 communication_language: French
-document_output_language: French
+document_output_language: English
 output_folder: "{project-root}/_bmad-output"

@@ -17,5 +17,5 @@ primary_platform:
 # Core Configuration Values
 user_name: Ryan
 communication_language: French
-document_output_language: French
+document_output_language: English
 output_folder: "{project-root}/_bmad-output"
