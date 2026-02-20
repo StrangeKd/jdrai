@@ -8,6 +8,9 @@ coverage/
 *.lcov
 .nyc_output
 
+# Turbo cache (local build artifacts)
+.turbo/
+
 # Build outputs
 dist/
 build/
