@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+
 import type { AppConfig } from "@jdrai/shared";
 
 // AppConfig imported to validate @jdrai/shared is resolvable from web — used in later stories
@@ -14,5 +15,5 @@ createRoot(rootEl).render(
       <h1>JDRAI</h1>
       <p>Plateforme de jeu de rôle avec MJ IA</p>
     </div>
-  </StrictMode>
+  </StrictMode>,
 );

@@ -23,6 +23,9 @@ out/
 .env*.local
 !.env.example
 
+# Docker volumes
+docker/volumes
+
 # OS
 .DS_Store
 Thumbs.db
