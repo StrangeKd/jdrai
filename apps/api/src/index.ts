@@ -4,12 +4,14 @@ import helmet from "helmet";
 
 import type { AppConfig } from "@jdrai/shared";
 
+import { env } from "@/config/env";
+
 const app = express();
 
 // Security & CORS — configured per environment in Story 2.x (Better Auth integration)
 app.use(helmet());
 app.use(cors());
-const PORT = Number(process.env["API_PORT"] ?? 3000);
+const PORT = env.API_PORT;
 
 // Placeholder — AppConfig will be used in later stories
 const _config: AppConfig = {

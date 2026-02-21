@@ -10,7 +10,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:generate": "turbo run db:generate --filter=@jdrai/api",
+    "db:migrate": "turbo run db:migrate --filter=@jdrai/api",
+    "db:push": "turbo run db:push --filter=@jdrai/api",
+    "db:studio": "turbo run db:studio --filter=@jdrai/api",
+    "db:seed": "turbo run db:seed --filter=@jdrai/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
