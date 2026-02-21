@@ -182,7 +182,7 @@ Epic 1 ─ Fondation technique
 - [ ] Tables Better Auth auto-générées (`user`, `session`, `account`) + champs additionnels JDRAI (`username` nullable, `role` enum, `onboardingCompleted` boolean)
 - [ ] `IAuthService` interface + `BetterAuthService` implémentation (register, login, logout, validateSession, setUsername, requestPasswordReset, resetPassword)
 - [ ] `requireAuth` et `optionalAuth` middleware fonctionnels (`apps/api/src/middleware/auth.middleware.ts`)
-- [ ] Handler Better Auth monté : `app.all("/api/auth/*", toNodeHandler(auth))` — avant `express.json()`
+- [ ] Préfixe `/api` monté une seule fois (`app.use("/api", apiRouter)`), et handler Better Auth monté dans le routeur : `apiRouter.all("/auth/*", toNodeHandler(auth))` — avant `apiRouter.use(express.json())`
 - [ ] Email verification configuré : `sendOnSignUp: true`, non-bloquante (`requireEmailVerification: false`)
 - [ ] Session : cookies httpOnly, 7 jours, refresh après 1 jour, CSRF actif
 - [ ] `UserDTO` et `UserCreateInput` exportés dans `packages/shared`

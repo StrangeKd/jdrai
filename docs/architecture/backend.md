@@ -45,6 +45,9 @@ apps/api/
 │   │   ├── error.middleware.ts
 │   │   ├── validation.middleware.ts
 │   │   └── rate-limit.middleware.ts
+│   ├── routes/
+│   │   ├── api.router.ts     # Better Auth handler + montage /v1 (AUCUNE logique métier)
+│   │   └── v1.router.ts      # Groupement de toutes les routes v1 (users, adventures, game…)
 │   ├── utils/
 │   │   ├── logger.ts
 │   │   └── errors.ts
@@ -448,26 +451,80 @@ export const authService: IAuthService = new BetterAuthService();
 
 ## Intégration Express
 
+### Pattern de routing : Grouped + Versioned
+
+Le routing suit un pattern en **deux niveaux** :
+
+1. **`app.ts`** — Setup Express uniquement (sécurité, CORS, erreurs). Monte `apiRouter` sur `/api`.
+2. **`routes/api.router.ts`** — Handler Better Auth + montage du routeur versionné. Aucune logique métier.
+3. **`routes/v1.router.ts`** — Regroupe toutes les routes v1 par module. Un fichier de routes par domaine métier dans `modules/`.
+
+Ce pattern permet :
+- Un préfixe `/api` déclaré une seule fois dans `app.ts`
+- Une migration future vers `/api/v2` sans toucher à `app.ts` ni à `api.router.ts`
+- Une séparation claire des responsabilités à chaque niveau
+
 ```typescript
-// apps/api/src/index.ts
+// apps/api/src/app.ts
+import cors from "cors";
 import express from "express";
+import helmet from "helmet";
+
+import { env } from "./config/env";
+import { errorHandler } from "./middleware/error.middleware";
+import { apiRouter } from "./routes/api.router";
+
+export const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+
+// Préfixe /api appliqué une seule fois
+app.use("/api", apiRouter);
+
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+app.use(errorHandler);
+```
+
+```typescript
+// apps/api/src/routes/api.router.ts
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./lib/auth";
-import { requireAuth } from "./middleware/auth.middleware";
+import express, { Router } from "express";
 
-const app = express();
+import { auth } from "../lib/auth";
+import { v1Router } from "./v1.router";
 
-// Better Auth handler - DOIT être avant express.json()
-app.all("/api/auth/*", toNodeHandler(auth));
+export const apiRouter = Router();
 
-// Middleware JSON pour les autres routes
-app.use(express.json());
+// ⚠️ CONTRAINTE CRITIQUE — NE PAS MODIFIER L'ORDRE
+// Better Auth gère son propre body parsing via `toNodeHandler`.
+// Si express.json() est placé avant ce handler, Better Auth ne peut plus
+// lire le body des requêtes d'auth → toutes les routes /auth/* cassent silencieusement.
+// Règle : apiRouter.all("/auth/*", ...) doit TOUJOURS précéder apiRouter.use(express.json()).
+apiRouter.all("/auth/*", toNodeHandler(auth));
 
-// Routes protégées
-app.use("/api/v1/adventures", requireAuth, adventuresRouter);
-app.use("/api/v1/meta-character", requireAuth, metaCharacterRouter);
+// JSON middleware pour toutes les routes versionnées
+apiRouter.use(express.json());
 
-app.listen(3000);
+// Routes versionnées — ajouter /v2 ici le moment venu sans toucher à app.ts
+apiRouter.use("/v1", v1Router);
+```
+
+```typescript
+// apps/api/src/routes/v1.router.ts
+import { Router } from "express";
+
+import { requireAuth } from "../middleware/auth.middleware";
+import { usersRouter } from "../modules/users/users.router";
+// import { adventuresRouter } from "../modules/adventures/adventures.router";
+// import { gameRouter } from "../modules/game/game.router";
+
+export const v1Router = Router();
+
+v1Router.use("/users", requireAuth, usersRouter);
+// v1Router.use("/adventures", requireAuth, adventuresRouter);
+// v1Router.use("/game", requireAuth, gameRouter);
 ```
 
 ---
