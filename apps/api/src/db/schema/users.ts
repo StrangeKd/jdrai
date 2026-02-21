@@ -24,8 +24,8 @@ export const users = pgTable("user", {
     .$onUpdate(() => new Date()),
   // JDRAI custom fields
   username: text("username").unique(), // Nullable — set at onboarding (E6)
-  role: userRoleEnum("role").default("user"),
-  onboardingCompleted: boolean("onboarding_completed").default(false),
+  role: userRoleEnum("role").notNull().default("user"),
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
 });
 
 // Better Auth session table
@@ -85,6 +85,7 @@ export const verifications = pgTable(
     expiresAt: timestamp("expires_at").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
+      .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
   },

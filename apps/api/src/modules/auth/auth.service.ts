@@ -1,48 +1,39 @@
-import type { UserDTO } from "@jdrai/shared";
+import type { UserCreateInput, UserDTO, UserLoginInput } from "@jdrai/shared";
 
-import { auth } from "../../lib/auth";
-import { AppError } from "../../utils/errors";
+import { auth } from "@/lib/auth";
+import { AppError } from "@/utils/errors";
+
+import { type BetterAuthUser, mapBetterAuthUserToDTO } from "./auth.dto";
 import type { IAuthService } from "./auth.interface";
 
-type BetterAuthUser = Record<string, unknown> & {
-  id: string;
-  email: string;
-  createdAt: Date;
-};
-
-function mapToDTO(user: BetterAuthUser): UserDTO {
-  return {
-    id: user.id,
-    email: user.email,
-    username: (user.username as string | null) ?? null,
-    role: ((user.role as "user" | "admin") ?? "user"),
-    onboardingCompleted: (user.onboardingCompleted as boolean) ?? false,
-    createdAt: user.createdAt instanceof Date
-      ? user.createdAt.toISOString()
-      : (user.createdAt as string),
-  };
-}
-
 export class BetterAuthService implements IAuthService {
-  async register(email: string, password: string): Promise<UserDTO> {
-    const name = email.split("@").at(0) ?? email;
+  async register(
+    data: UserCreateInput,
+    headers?: Record<string, string>,
+  ): Promise<UserDTO> {
+    const name = data.email.split("@").at(0) ?? data.email;
     const result = await auth.api.signUpEmail({
-      body: { email, password, name },
+      body: { email: data.email, password: data.password, name },
+      ...(headers ? { headers } : {}),
     });
     if (!result?.user) {
       throw new AppError(500, "INTERNAL_ERROR", "Registration failed");
     }
-    return mapToDTO(result.user as BetterAuthUser);
+    return mapBetterAuthUserToDTO(result.user as BetterAuthUser);
   }
 
-  async login(email: string, password: string): Promise<UserDTO> {
+  async login(
+    data: UserLoginInput,
+    headers?: Record<string, string>,
+  ): Promise<UserDTO> {
     const result = await auth.api.signInEmail({
-      body: { email, password },
+      body: { email: data.email, password: data.password },
+      ...(headers ? { headers } : {}),
     });
     if (!result?.user) {
       throw new AppError(401, "UNAUTHORIZED", "Invalid credentials");
     }
-    return mapToDTO(result.user as BetterAuthUser);
+    return mapBetterAuthUserToDTO(result.user as BetterAuthUser);
   }
 
   async logout(headers: Record<string, string>): Promise<void> {
@@ -54,7 +45,25 @@ export class BetterAuthService implements IAuthService {
   ): Promise<UserDTO | null> {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return null;
-    return mapToDTO(session.user as BetterAuthUser);
+    return mapBetterAuthUserToDTO(session.user as BetterAuthUser);
+  }
+
+  async setUsername(
+    headers: Record<string, string>,
+    username: string,
+  ): Promise<UserDTO> {
+    const result = await auth.api.updateUser({
+      body: { username, name: username },
+      headers,
+    });
+    if (!result?.status) {
+      throw new AppError(500, "INTERNAL_ERROR", "Failed to update user");
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) {
+      throw new AppError(401, "UNAUTHORIZED", "Invalid session");
+    }
+    return mapBetterAuthUserToDTO(session.user as BetterAuthUser);
   }
 
   async requestPasswordReset(email: string): Promise<void> {

@@ -1,15 +1,11 @@
 import { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
-import { AppError } from "../utils/errors";
+import { AppError } from "@/utils/errors";
+import { logger } from "@/utils/logger";
 
-export const errorHandler = (
-  err: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) => {
-  console.error(err);
+export const errorHandler = (err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  logger.error(err);
 
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -17,7 +13,7 @@ export const errorHandler = (
       error: {
         code: "VALIDATION_ERROR",
         message: "Invalid request data",
-        details: err.flatten(),
+        details: z.treeifyError(err),
         timestamp: new Date().toISOString(),
       },
     });

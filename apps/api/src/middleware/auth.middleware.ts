@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 
-import { auth } from "../lib/auth";
-import { AppError } from "../utils/errors";
+import { auth } from "@/lib/auth";
+import { type BetterAuthUser, mapBetterAuthUserToDTO } from "@/modules/auth/auth.dto";
+import { AppError } from "@/utils/errors";
+import { toRecordStringHeaders } from "@/utils/http";
 
 export const requireAuth = async (
   req: Request,
@@ -10,20 +12,12 @@ export const requireAuth = async (
 ) => {
   try {
     const session = await auth.api.getSession({
-      headers: req.headers as Record<string, string>,
+      headers: toRecordStringHeaders(req.headers),
     });
     if (!session?.user) {
       return next(new AppError(401, "UNAUTHORIZED", "Authentication required"));
     }
-    req.user = {
-      id: session.user.id,
-      email: session.user.email,
-      username: (session.user as Record<string, unknown>).username as string | null ?? null,
-      role: ((session.user as Record<string, unknown>).role as "user" | "admin") ?? "user",
-      onboardingCompleted:
-        ((session.user as Record<string, unknown>).onboardingCompleted as boolean) ?? false,
-      createdAt: session.user.createdAt.toISOString(),
-    };
+    req.user = mapBetterAuthUserToDTO(session.user as BetterAuthUser);
     next();
   } catch {
     next(new AppError(401, "UNAUTHORIZED", "Invalid session"));
@@ -37,18 +31,10 @@ export const optionalAuth = async (
 ) => {
   try {
     const session = await auth.api.getSession({
-      headers: req.headers as Record<string, string>,
+      headers: toRecordStringHeaders(req.headers),
     });
     if (session?.user) {
-      req.user = {
-        id: session.user.id,
-        email: session.user.email,
-        username: (session.user as Record<string, unknown>).username as string | null ?? null,
-        role: ((session.user as Record<string, unknown>).role as "user" | "admin") ?? "user",
-        onboardingCompleted:
-          ((session.user as Record<string, unknown>).onboardingCompleted as boolean) ?? false,
-        createdAt: session.user.createdAt.toISOString(),
-      };
+      req.user = mapBetterAuthUserToDTO(session.user as BetterAuthUser);
     }
   } catch {
     /* continue without user */

@@ -1,4 +1,4 @@
-import { type IRouter,Router } from "express";
+import { type IRouter, Router } from "express";
 
 import { getMe, updateMe } from "./users.controller";
 
