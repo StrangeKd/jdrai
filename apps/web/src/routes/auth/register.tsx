@@ -43,7 +43,9 @@ function RegisterPage() {
     setGlobalError(null);
     try {
       await registerUser(data.email, data.password);
+      console.log("[RegisterPage] redirecting to /onboarding/welcome");
       router.navigate({ to: "/onboarding/welcome" });
+      console.log("[RegisterPage] redirected to /onboarding/welcome");
     } catch {
       // Avoid account enumeration: always show a generic message
       setGlobalError("Erreur lors de l'inscription.");

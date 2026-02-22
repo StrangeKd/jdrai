@@ -17,9 +17,9 @@ function IndexRedirect() {
       return;
     }
 
-    // Authenticated but no username → onboarding
+    // Authenticated but no username → welcome page (start of onboarding funnel)
     if (!auth.user?.username) {
-      void navigate({ to: "/onboarding/profile-setup", replace: true });
+      void navigate({ to: "/onboarding/welcome", replace: true });
       return;
     }
 

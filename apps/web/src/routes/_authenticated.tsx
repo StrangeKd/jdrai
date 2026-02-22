@@ -15,8 +15,10 @@ export const Route = createFileRoute("/_authenticated")({
       });
     }
 
-    // Redirect to onboarding if username not set, but NOT when already on an onboarding route
-    // (prevents infinite redirect loop for profile-setup under _authenticated)
+    // Redirect to profile-setup if username not set, but NOT when already on an onboarding route.
+    // New users reach /onboarding/welcome via register.tsx (explicit navigate) or route-guards.ts
+    // (register race condition) — both guarantee E5 is seen before E6.
+    // Returning users who land here have already seen E5 — send directly to profile-setup.
     if (!context.auth.user?.username && !location.pathname.startsWith("/onboarding")) {
       throw redirect({ to: "/onboarding/profile-setup" });
     }
