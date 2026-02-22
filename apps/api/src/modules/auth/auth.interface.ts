@@ -1,14 +1,10 @@
-import type { UserCreateInput, UserDTO, UserLoginInput } from "@jdrai/shared";
+import type { UserDTO } from "@jdrai/shared";
 
+/**
+ * Server-side auth operations not covered by Better Auth's direct endpoints.
+ * Auth flows (register, login, logout, password reset) are handled by Better Auth
+ * at /api/auth/* — the frontend calls these directly via the Better Auth client.
+ */
 export interface IAuthService {
-  register(data: UserCreateInput, headers?: Record<string, string>): Promise<UserDTO>;
-  login(data: UserLoginInput, headers?: Record<string, string>): Promise<UserDTO>;
-  logout(headers: Record<string, string>): Promise<void>;
-  validateSession(headers: Record<string, string>): Promise<UserDTO | null>;
-  setUsername(
-    headers: Record<string, string>,
-    username: string,
-  ): Promise<UserDTO>;
-  requestPasswordReset(email: string): Promise<void>;
-  resetPassword(token: string, newPassword: string): Promise<void>;
+  setUsername(headers: Record<string, string>, username: string): Promise<UserDTO>;
 }
