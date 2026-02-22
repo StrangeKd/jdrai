@@ -5,11 +5,7 @@ import { type BetterAuthUser, mapBetterAuthUserToDTO } from "@/modules/auth/auth
 import { AppError } from "@/utils/errors";
 import { toRecordStringHeaders } from "@/utils/http";
 
-export const requireAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const requireAuth = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const session = await auth.api.getSession({
       headers: toRecordStringHeaders(req.headers),
@@ -24,11 +20,7 @@ export const requireAuth = async (
   }
 };
 
-export const optionalAuth = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-) => {
+export const optionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const session = await auth.api.getSession({
       headers: toRecordStringHeaders(req.headers),

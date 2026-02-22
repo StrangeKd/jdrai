@@ -633,25 +633,44 @@ Epic 1 ─ Fondation technique
 
 ---
 
-#### Story 6.3 : GameService — signaux LLM, milestones et auto-save
+#### Story 6.3a : GameService Core — Socket.io, traitement des actions & auto-save
 
 **En tant que** développeur,
-**je veux** un GameService qui orchestre le cycle de jeu (signaux LLM, milestones, sauvegarde),
-**afin de** maintenir l'état de l'aventure de manière cohérente.
+**je veux** un GameService qui traite les actions joueur de bout en bout (D20, LLM streaming, parsing signaux, transitions milestones, auto-save) via Socket.io,
+**afin que** le joueur reçoive des réponses narratives en temps réel et que l'état de l'aventure soit persisté après chaque échange.
 
 **Critères d'acceptation :**
 
-- [ ] `GameService` orchestre : réception action joueur → D20 → appel LLM → parsing réponse → mise à jour état → réponse client
-- [ ] Parsing signaux LLM par regex : `[MILESTONE_COMPLETE:nom]` → milestone `completed` + suivant `active`, `[HP_CHANGE:x]` → update `currentHp` (clamp 0 à maxHp), `[ADVENTURE_COMPLETE]` → aventure `completed`, `[GAME_OVER]` → aventure `completed` (contexte échec)
-- [ ] Signaux supprimés du texte affiché au joueur (nettoyage avant streaming/affichage)
-- [ ] Gestion milestones : création initiale au lancement (LLM génère noms + descriptions basés sur `estimatedDuration`), premier milestone `active`, transitions via signaux
-- [ ] Auto-save : sauvegarde état après chaque échange complet (choix joueur + réponse MJ) dans `Adventure.state` jsonb
-- [ ] `POST /api/adventures/:id/action` : endpoint action joueur (texte libre ou choiceId)
-- [ ] `GET /api/adventures/:id/state` : état actuel (GameStateDTO : adventure + messages + milestones + isStreaming)
-- [ ] `GET /api/adventures/:id/messages` avec filtre `?milestoneId=` (pour HistoryDrawer)
-- [ ] Messages stockés avec `milestoneId` FK (taggés avec le milestone actif au moment de la création)
+- [ ] Socket.io initialisé sur le serveur HTTP avec middleware d'authentification Better Auth sur `connection`
+- [ ] `game.socket.ts` : handlers `game:join` (salle aventure) et `game:resync` (placeholder Story 6.8)
+- [ ] `GameService.processAction()` orchestre : `classifyAction` → D20 → prompt → LLM stream → `game:chunk` events → `parseSignals` sur réponse complète → `game:response-complete` (cleanText + choices + stateChanges) → `applySignals` → `insertMessage` → `autoSave`
+- [ ] `parseSignals()` supprime les 4 signaux par regex et extrait les choix `[CHOIX]...[/CHOIX]`
+- [ ] `applySignals()` : HP_CHANGE → SQL clamp + `game:state-update` ; MILESTONE_COMPLETE → `transitionMilestone()` + `game:state-update` ; ADVENTURE_COMPLETE/GAME_OVER → `completeAdventure()` + `game:state-update`
+- [ ] Auto-save : `Adventure.state` JSONB mis à jour après chaque échange (`lastPlayerAction`, `currentHp`, `activeMilestoneId`, `worldState`)
+- [ ] Requêtes DB : `insertMessage()`, `updateCharacterHp()` (clamp SQL), `updateAdventureState()`, `completeAdventure()`, `getMilestones()`, `getActiveMilestone()`, `transitionMilestone()`
+- [ ] `POST /api/adventures/:id/action` : body Zod-validé `{ action, choiceId? }`, retourne `{ success: true, data: { messageId } }`
 
-**Réf. architecture :** `backend.md` §Signaux structurés, §Gestion Milestones, `data-models.md` §GameStateDTO, `api.md` §Game
+**Réf. architecture :** `backend.md` §Signaux structurés, §Gestion Milestones, `api.md` §Game
+
+---
+
+#### Story 6.3b : Gestion des Milestones — Initialisation LLM & Endpoints d'état
+
+**En tant que** développeur,
+**je veux** que le GameService initialise les milestones d'aventure via LLM et expose les endpoints d'état et de messages,
+**afin que** la progression narrative soit structurée dès le premier chargement de session et accessible depuis l'interface de jeu.
+
+**Critères d'acceptation :**
+
+- [ ] `initializeMilestones()` appelée depuis `getState()` quand `milestones.length === 0` — appel LLM non-streaming pour générer la liste de milestones
+- [ ] Réponse LLM validée avec Zod, milestones insérés en DB avec `sortOrder` 0-indexé, premier milestone `status = "active"`
+- [ ] Fallback LLM (après 1 retry) : 3 milestones génériques ("Prologue", "Le Cœur de l'Aventure", "Épilogue") — ne jamais bloquer l'entrée en session
+- [ ] Corrélation durée estimée / nombre de milestones : courte = 2-3, moyenne = 4-5, longue = 6+
+- [ ] `GET /api/adventures/:id/state` : appelle `getState()` (déclenche `initializeMilestones()` si besoin), retourne `GameStateDTO`
+- [ ] `GET /api/adventures/:id/messages?milestoneId=` : messages filtrés pour HistoryDrawer ; sans filtre → tous les messages (limite 100, ordre `createdAt ASC`)
+
+**Réf. architecture :** `backend.md` §Gestion des Milestones par le LLM, `data-models.md` §GameStateDTO, `api.md` §Game
+**Réf. GDD :** §5.2 — corrélation durée-milestones
 
 ---
 
