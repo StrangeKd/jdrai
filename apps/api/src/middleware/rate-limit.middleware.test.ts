@@ -33,7 +33,7 @@ describe("authRateLimit", () => {
     expect(res.body.error.timestamp).toBeDefined();
   });
 
-  it("429 response includes RateLimit standard headers", async () => {
+  it("429 response includes Retry-After and RateLimit standard headers", async () => {
     const app = createTestApp();
 
     for (let i = 0; i < 10; i++) {
@@ -42,10 +42,10 @@ describe("authRateLimit", () => {
 
     const res = await request(app).post("/test");
     expect(res.status).toBe(429);
-    expect(
-      res.headers["ratelimit-limit"] ??
-      res.headers["x-ratelimit-limit"] ??
-      res.headers["retry-after"],
-    ).toBeDefined();
+    // With standardHeaders enabled, express-rate-limit sends IETF RateLimit-* headers (draft-6)
+    // and sets Retry-After on blocked requests.
+    expect(res.headers["retry-after"]).toBeDefined();
+    expect(res.headers["ratelimit-limit"]).toBeDefined();
+    expect(res.headers["ratelimit-policy"]).toBeDefined();
   });
 });

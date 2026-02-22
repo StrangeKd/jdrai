@@ -1,14 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Must mock the module to inject VITE_API_URL before module evaluation
-vi.mock("@/services/api", async (importOriginal) => {
-  // Patch import.meta.env before module runs
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (import.meta as any).env = { ...import.meta.env, VITE_API_URL: "http://localhost:3000" };
-  return importOriginal<typeof import("@/services/api")>();
-});
-
-import { api, ApiError, rateLimitEmitter,RateLimitError } from "@/services/api";
+import { api, ApiError, rateLimitEmitter, RateLimitError } from "@/services/api";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);

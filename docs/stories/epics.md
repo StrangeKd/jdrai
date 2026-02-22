@@ -247,13 +247,13 @@ Epic 1 ─ Fondation technique
 
 **Critères d'acceptation :**
 
-- [ ] Route layout `_authenticated` avec `beforeLoad` : redirect `/auth/login` si non authentifié, redirect `/onboarding/profile-setup` si username absent
-- [ ] Routes auth (`/auth/*`) : redirect `/hub` si déjà authentifié (avec username)
-- [ ] Structure de routes TanStack Router complète P1 : auth/, _authenticated/ (hub, adventure, onboarding, settings placeholder), index redirect
-- [ ] `credentials: "include"` sur toutes les requêtes API (cookie de session)
-- [ ] Error middleware global (`apps/api/src/middleware/error.middleware.ts`) avec gestion ZodError et AppError
-- [ ] Rate limiting middleware basique (`express-rate-limit`) sur les endpoints auth
-- [ ] CORS configuré avec whitelist (`FRONTEND_URL`)
+- [x] Route layout `_authenticated` avec `beforeLoad` : redirect `/auth/login` si non authentifié, redirect `/onboarding/profile-setup` si username absent
+- [x] Routes auth (`/auth/*`) : redirect `/hub` si déjà authentifié (avec username)
+- [x] Structure de routes TanStack Router complète P1 : auth/, _authenticated/ (hub, adventure, onboarding, settings placeholder), index redirect
+- [x] `credentials: "include"` sur toutes les requêtes API (cookie de session)
+- [x] Error middleware global (`apps/api/src/middleware/error.middleware.ts`) avec gestion ZodError et AppError
+- [x] Rate limiting middleware basique (`express-rate-limit`) sur les endpoints auth
+- [x] CORS configuré avec whitelist (`FRONTEND_URL`)
 
 **Réf. architecture :** `frontend.md` §Routing, `backend.md` §Middleware, `api.md` §Format Erreur, `infrastructure.md` §Sécurité
 

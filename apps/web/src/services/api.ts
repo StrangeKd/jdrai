@@ -1,6 +1,12 @@
 import { EventEmitter } from "eventemitter3";
 
-const API_BASE = import.meta.env.VITE_API_URL as string;
+// Prefer same-origin (/api proxied) by default. Set VITE_API_URL only for explicit cross-origin setups.
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+
+function buildUrl(endpoint: string) {
+  if (!API_BASE) return endpoint;
+  return `${API_BASE}${endpoint}`;
+}
 
 // Emitter for rate-limiting events — consumed by game UI (Story 6.8)
 export const rateLimitEmitter = new EventEmitter<{
@@ -26,7 +32,7 @@ export class RateLimitError extends Error {
 }
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(buildUrl(endpoint), {
     ...options,
     credentials: "include", // Always send session cookies
     headers: {
