@@ -45,6 +45,8 @@ export default defineConfig(
       "**/dist/**",
       "**/.turbo/**",
       "**/node_modules/**",
+      // Vite pre-bundling cache — generated, not hand-written
+      "**/.vite/**",
       // shadcn/ui — vendor code, not linted
       "**/components/ui/**",
     ],
