@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { AuthCard } from "@/components/auth/AuthCard";
 import { Button } from "@/components/ui/button";
@@ -16,14 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { type LoginFormValues, loginSchema } from "@/lib/auth-schemas";
 import { router } from "@/router";
-
-const loginSchema = z.object({
-  email: z.string().email("Adresse email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -34,7 +27,12 @@ function LoginPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+    defaultValues: { email: "", password: "" },
+  });
 
   const onSubmit = async (data: LoginFormValues) => {
     setGlobalError(null);
