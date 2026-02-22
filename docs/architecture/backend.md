@@ -298,15 +298,19 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false, // Non-bloquant en P1 (le joueur accède directement à l'onboarding)
     sendResetPassword: async ({ user, url }) => {
-      // Envoi email de réinitialisation (cf. infra §Email)
+      // P1 (internal dev/test only): log reset link to console
+      // P2: replace with EmailService.sendPasswordReset() — see infrastructure.md §Email
+      console.log(`[DEV] Password reset link for ${user.email}: ${url}`);
     },
   },
   emailVerification: {
-    sendOnSignUp: true, // Envoie un email de vérification à l'inscription
+    sendOnSignUp: true, // Sends a verification email on signup
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60, // 1h
     sendVerificationEmail: async ({ user, url }) => {
-      // Envoi email de vérification (intégration email provider)
+      // P1 (internal dev/test only): log verification link to console
+      // P2: replace with EmailService.sendEmailVerification() — see infrastructure.md §Email
+      console.log(`[DEV] Email verification link for ${user.email}: ${url}`);
     },
   },
   session: {

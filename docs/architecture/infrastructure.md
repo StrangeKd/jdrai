@@ -292,6 +292,75 @@ app.use(
 
 ---
 
+## Email (Transactionnel)
+
+### P1 — Comportement actuel (dev/test interne uniquement)
+
+Les callbacks Better Auth (`sendResetPassword`, `sendVerificationEmail`) loggent les liens en console. **Suffisant pour P1 car le déploiement est interne uniquement.**
+
+```typescript
+// apps/api/src/lib/auth.ts — P1
+sendResetPassword: async ({ user, url }) => {
+  console.log(`[DEV] Password reset link for ${user.email}: ${url}`);
+},
+sendVerificationEmail: async ({ user, url }) => {
+  console.log(`[DEV] Email verification link for ${user.email}: ${url}`);
+},
+```
+
+> ⚠️ **Prérequis P2** : L'intégration d'un provider email réel est obligatoire avant toute ouverture à des utilisateurs externes (beta ou production).
+
+---
+
+### P2 — Pattern d'intégration (décision provider différée)
+
+Quelle que soit la solution choisie, un **EmailService abstrait** isole le provider du reste de l'application — même philosophie que `IAuthService`.
+
+```typescript
+// apps/api/src/modules/email/email.interface.ts
+export interface IEmailService {
+  sendPasswordReset(to: string, resetUrl: string): Promise<void>;
+  sendEmailVerification(to: string, verifyUrl: string): Promise<void>;
+}
+```
+
+```typescript
+// apps/api/src/modules/email/email.service.ts — implémentation provider (P2)
+export class EmailService implements IEmailService {
+  async sendPasswordReset(to: string, resetUrl: string): Promise<void> {
+    // Integration provider ici
+  }
+  async sendEmailVerification(to: string, verifyUrl: string): Promise<void> {
+    // Integration provider ici
+  }
+}
+```
+
+**Variables d'environnement (à ajouter en P2) :**
+
+```bash
+EMAIL_API_KEY=...          # Clé API du provider choisi
+EMAIL_FROM=noreply@jdrai.app
+```
+
+---
+
+### Shortlist providers — Décision en P2
+
+Évaluer sur la base des critères suivants au moment du choix : deliverability réelle, pricing au volume prévu, conformité RGPD, retours communauté.
+
+| Provider | Points forts | Points d'attention |
+| -------- | ------------ | ------------------ |
+| **Brevo** | EU/RGPD natif, free tier généreux (~9 000/mois), transactionnel + marketing | Plateforme plus lourde que les alternatives |
+| **Postmark** | Deliverability excellente, fiable, spécialiste transactionnel, bien noté | Payant dès le départ (pas de free tier significatif) |
+| **Mailgun** | API-first, flexible, bon track record | Rachat par Sinch — évolution produit incertaine |
+| **Resend** | DX/UI excellente, SDK TypeScript natif, React Email | Retours mitigés sur fiabilité et délais d'envoi |
+| **SendGrid** | Très répandu, battle-tested, large écosystème | Lourd, pricing complexe, orienté entreprise |
+
+> Le pattern `IEmailService` garantit qu'un changement de provider n'impacte qu'une seule classe d'implémentation.
+
+---
+
 ## Monitoring (Post-MVP)
 
 ### Stack Recommandée
