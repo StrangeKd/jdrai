@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
 import { router } from "@/router";
+import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
 
 // AC-7: typed search params — `reset` for post-reset banner, `redirect` for Story 2.4 auth guard
 export const Route = createFileRoute("/auth/login")({

@@ -10,12 +10,32 @@ export const { signIn, signUp, signOut, useSession, getSession } = authClient;
 // These are not natively inferred in createAuthClient({}) without server type sharing.
 // They call /api/auth/* directly via the Vite proxy.
 
-type AuthResult<T = null> = { data: T; error: null } | { data: null; error: { message: string | undefined; status: number } };
+type AuthError = {
+  message: string | undefined;
+  status: number;
+  code: string | undefined;
+};
 
-/** Sends a password reset email. Resolves regardless of whether the email is registered. */
-export async function forgetPassword(body: {
+type AuthResult<T = null> = { data: T; error: null } | { data: null; error: AuthError };
+
+function parseAuthError(payload: unknown, status: number): AuthError {
+  const asRecord = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : undefined;
+  const nestedError = asRecord?.error && typeof asRecord.error === "object" ? (asRecord.error as Record<string, unknown>) : undefined;
+
+  const messageRaw = nestedError?.message ?? asRecord?.message;
+  const codeRaw = nestedError?.code ?? asRecord?.code;
+
+  return {
+    status,
+    message: typeof messageRaw === "string" ? messageRaw : undefined,
+    code: typeof codeRaw === "string" ? codeRaw : undefined,
+  };
+}
+
+/** Better Auth naming: requests a password reset email. */
+export async function requestPasswordReset(body: {
   email: string;
-  redirectTo: string;
+  redirectTo?: string;
 }): Promise<AuthResult> {
   const res = await fetch("/api/auth/request-password-reset", {
     method: "POST",
@@ -24,8 +44,8 @@ export async function forgetPassword(body: {
     credentials: "include",
   });
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    return { data: null, error: { message: err.message, status: res.status } };
+    const errPayload = (await res.json().catch(() => ({}))) as unknown;
+    return { data: null, error: parseAuthError(errPayload, res.status) };
   }
   return { data: null, error: null };
 }
@@ -42,8 +62,8 @@ export async function resetPassword(body: {
     credentials: "include",
   });
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    return { data: null, error: { message: err.message, status: res.status } };
+    const errPayload = (await res.json().catch(() => ({}))) as unknown;
+    return { data: null, error: parseAuthError(errPayload, res.status) };
   }
   return { data: null, error: null };
 }

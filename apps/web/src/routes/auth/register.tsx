@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { type RegisterFormValues, registerSchema } from "@/schemas/auth";
 import { router } from "@/router";
+import { type RegisterFormValues, registerSchema } from "@/schemas/auth";
 
 export const Route = createFileRoute("/auth/register")({
   component: RegisterPage,

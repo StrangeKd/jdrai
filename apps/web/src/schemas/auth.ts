@@ -46,8 +46,12 @@ export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 // Login route search params (also used by Story 2.4 auth guard)
 export const loginSearchSchema = z.object({
-  reset: z.string().optional(),
-  redirect: z.string().optional(),
+  // Keep route resilient: invalid values are ignored instead of throwing.
+  reset: z.preprocess(
+    (v) => (v === "success" ? "success" : undefined),
+    z.enum(["success"]).optional(),
+  ),
+  redirect: z.preprocess((v) => (typeof v === "string" ? v : undefined), z.string().optional()),
 });
 export type LoginSearch = z.infer<typeof loginSearchSchema>;
 

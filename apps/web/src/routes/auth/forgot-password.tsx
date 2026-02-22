@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { forgetPassword } from "@/lib/auth-client";
+import { requestPasswordReset } from "@/lib/auth-client";
 import { type ForgotPasswordFormValues, forgotPasswordSchema } from "@/schemas/auth";
 
 export const Route = createFileRoute("/auth/forgot-password")({
@@ -33,7 +33,7 @@ function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     // Always show confirmation regardless of whether the email exists (anti-enumeration)
-    await forgetPassword({
+    await requestPasswordReset({
       email: data.email,
       redirectTo: `${window.location.origin}/auth/reset-password`,
     }).catch(() => {

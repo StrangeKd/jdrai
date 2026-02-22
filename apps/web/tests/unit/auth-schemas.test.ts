@@ -114,6 +114,11 @@ describe("loginSearchSchema", () => {
     expect(result.reset).toBe("success");
   });
 
+  it("ignores invalid reset value", () => {
+    const result = loginSearchSchema.parse({ reset: "nope" });
+    expect(result.reset).toBeUndefined();
+  });
+
   it("parses redirect string", () => {
     const result = loginSearchSchema.parse({ redirect: "/hub" });
     expect(result.redirect).toBe("/hub");

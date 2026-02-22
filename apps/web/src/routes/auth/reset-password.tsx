@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/lib/auth-client";
-import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
 import { router } from "@/router";
+import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
 
 // AC-7: typed search params via TanStack Router validateSearch
 export const Route = createFileRoute("/auth/reset-password")({
@@ -57,6 +57,7 @@ function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [tokenError, setTokenError] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
@@ -71,19 +72,39 @@ function ResetPasswordPage() {
   }
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
-    const result = await resetPassword({
-      newPassword: data.password,
-      token,
-    });
+    setGlobalError(null);
+    try {
+      const result = await resetPassword({
+        newPassword: data.password,
+        token,
+      });
 
-    if (result.error) {
-      // AC-4: token invalid, expired, or already used
-      setTokenError(true);
-      return;
+      if (result.error) {
+        const looksLikeInvalidToken =
+          result.error.code === "INVALID_TOKEN" ||
+          result.error.message?.includes("INVALID_TOKEN") === true ||
+          (result.error.status === 400 && result.error.message?.toLowerCase().includes("token") === true);
+
+        if (looksLikeInvalidToken) {
+          // AC-4: token invalid, expired, or already used
+          setTokenError(true);
+          return;
+        }
+
+        if (result.error.status === 429) {
+          setGlobalError("Trop de requêtes, veuillez patienter…");
+          return;
+        }
+
+        setGlobalError("Une erreur est survenue. Veuillez réessayer.");
+        return;
+      }
+
+      // AC-3: on success, redirect to login with success indicator
+      router.navigate({ to: "/auth/login", search: { reset: "success" } });
+    } catch {
+      setGlobalError("Une erreur réseau est survenue. Veuillez réessayer.");
     }
-
-    // AC-3: on success, redirect to login with success indicator
-    router.navigate({ to: "/auth/login", search: { reset: "success" } });
   };
 
   // WF-E4-01 — Reset form
@@ -92,6 +113,12 @@ function ResetPasswordPage() {
       <h2 className="mb-6 font-serif text-xl font-semibold text-amber-300">
         Nouveau mot de passe
       </h2>
+
+      {globalError && (
+        <div className="mb-4 rounded border border-red-500 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+          ⚠️ {globalError}
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
