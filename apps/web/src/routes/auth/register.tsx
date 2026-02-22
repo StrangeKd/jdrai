@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { AuthCard } from "@/components/auth/AuthCard";
 import { Button } from "@/components/ui/button";
@@ -17,20 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { type RegisterFormValues, registerSchema } from "@/lib/auth-schemas";
 import { router } from "@/router";
-
-const registerSchema = z
-  .object({
-    email: z.string().email("Adresse email invalide"),
-    password: z.string().min(8, "Min. 8 caractères"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Les mots de passe ne correspondent pas",
-    path: ["confirmPassword"],
-  });
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export const Route = createFileRoute("/auth/register")({
   component: RegisterPage,
@@ -42,20 +29,20 @@ function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const form = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+  });
 
   const onSubmit = async (data: RegisterFormValues) => {
     setGlobalError(null);
     try {
       await registerUser(data.email, data.password);
       router.navigate({ to: "/onboarding/welcome" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erreur lors de l'inscription.";
-      const isConflict =
-        message.toLowerCase().includes("already") || message.toLowerCase().includes("exist");
-      setGlobalError(
-        isConflict ? "Un compte existe déjà avec cet email." : "Erreur lors de l'inscription.",
-      );
+    } catch {
+      // Avoid account enumeration: always show a generic message
+      setGlobalError("Erreur lors de l'inscription.");
     }
   };
 
