@@ -41,6 +41,12 @@ export default defineConfig(
     },
   },
   {
-    ignores: ["**/dist/**", "**/.turbo/**", "**/node_modules/**"],
+    ignores: [
+      "**/dist/**",
+      "**/.turbo/**",
+      "**/node_modules/**",
+      // shadcn/ui — vendor code, not linted
+      "**/components/ui/**",
+    ],
   },
 );
