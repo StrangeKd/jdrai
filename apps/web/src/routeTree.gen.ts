@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingWelcomeRouteImport } from './routes/onboarding/welcome'
 import { Route as OnboardingProfileSetupRouteImport } from './routes/onboarding/profile-setup'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
@@ -35,6 +36,11 @@ const OnboardingWelcomeRoute = OnboardingWelcomeRouteImport.update({
 const OnboardingProfileSetupRoute = OnboardingProfileSetupRouteImport.update({
   id: '/onboarding/profile-setup',
   path: '/onboarding/profile-setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
   '/onboarding/welcome': typeof OnboardingWelcomeRoute
   '/hub/': typeof AuthenticatedHubIndexRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
   '/onboarding/welcome': typeof OnboardingWelcomeRoute
   '/hub': typeof AuthenticatedHubIndexRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
   '/onboarding/welcome': typeof OnboardingWelcomeRoute
   '/_authenticated/hub/': typeof AuthenticatedHubIndexRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/auth/reset-password'
     | '/onboarding/profile-setup'
     | '/onboarding/welcome'
     | '/hub/'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/auth/reset-password'
     | '/onboarding/profile-setup'
     | '/onboarding/welcome'
     | '/hub'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/auth/reset-password'
     | '/onboarding/profile-setup'
     | '/onboarding/welcome'
     | '/_authenticated/hub/'
@@ -124,6 +136,7 @@ export interface RootRouteChildren {
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   OnboardingProfileSetupRoute: typeof OnboardingProfileSetupRoute
   OnboardingWelcomeRoute: typeof OnboardingWelcomeRoute
 }
@@ -156,6 +169,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding/profile-setup'
       fullPath: '/onboarding/profile-setup'
       preLoaderRoute: typeof OnboardingProfileSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/register': {
@@ -207,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   OnboardingProfileSetupRoute: OnboardingProfileSetupRoute,
   OnboardingWelcomeRoute: OnboardingWelcomeRoute,
 }

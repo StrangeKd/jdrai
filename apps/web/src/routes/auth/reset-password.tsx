@@ -15,40 +15,105 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
+import { resetPassword } from "@/lib/auth-client";
 import { router } from "@/router";
-import { type RegisterFormValues, registerSchema } from "@/schemas/auth";
+import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
 
-export const Route = createFileRoute("/auth/register")({
-  component: RegisterPage,
+// AC-7: typed search params via TanStack Router validateSearch
+export const Route = createFileRoute("/auth/reset-password")({
+  validateSearch: (search: Record<string, unknown>) => resetSearchSchema.parse(search),
+  component: ResetPasswordPage,
 });
 
-function RegisterPage() {
-  const { register: registerUser } = useAuth();
-  const [globalError, setGlobalError] = useState<string | null>(null);
+// WF-AUTH-03 — Token expired / invalid state
+function TokenExpiredState() {
+  return (
+    <AuthCard>
+      <div className="py-4 text-center">
+        <div className="mb-4 text-4xl">⚠️</div>
+        <h2 className="mb-3 font-serif text-xl font-semibold text-amber-300">Lien invalide</h2>
+        <p className="mb-6 text-sm text-amber-200">Ce lien a expiré ou n&apos;est plus valide.</p>
+        <Link
+          to="/auth/forgot-password"
+          className="block w-full rounded bg-amber-700 py-2 text-center font-semibold uppercase tracking-widest text-amber-100 hover:bg-amber-600"
+        >
+          Renvoyer un lien
+        </Link>
+        <div className="mt-4">
+          <Link
+            to="/auth/login"
+            className="text-sm text-amber-400 underline hover:text-amber-300"
+          >
+            Retour à la connexion
+          </Link>
+        </div>
+      </div>
+    </AuthCard>
+  );
+}
+
+function ResetPasswordPage() {
+  const { token } = Route.useSearch();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [tokenError, setTokenError] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+  const form = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
     mode: "onBlur",
     reValidateMode: "onBlur",
-    defaultValues: { email: "", password: "", confirmPassword: "" },
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
-  const onSubmit = async (data: RegisterFormValues) => {
+  // AC-4: no token in URL → immediately show expired state
+  if (!token || tokenError) {
+    return <TokenExpiredState />;
+  }
+
+  const onSubmit = async (data: ResetPasswordFormValues) => {
     setGlobalError(null);
     try {
-      await registerUser(data.email, data.password);
-      router.navigate({ to: "/onboarding/welcome" });
+      const result = await resetPassword({
+        newPassword: data.password,
+        token,
+      });
+
+      if (result.error) {
+        const looksLikeInvalidToken =
+          result.error.code === "INVALID_TOKEN" ||
+          result.error.message?.includes("INVALID_TOKEN") === true ||
+          (result.error.status === 400 && result.error.message?.toLowerCase().includes("token") === true);
+
+        if (looksLikeInvalidToken) {
+          // AC-4: token invalid, expired, or already used
+          setTokenError(true);
+          return;
+        }
+
+        if (result.error.status === 429) {
+          setGlobalError("Trop de requêtes, veuillez patienter…");
+          return;
+        }
+
+        setGlobalError("Une erreur est survenue. Veuillez réessayer.");
+        return;
+      }
+
+      // AC-3: on success, redirect to login with success indicator
+      router.navigate({ to: "/auth/login", search: { reset: "success" } });
     } catch {
-      // Avoid account enumeration: always show a generic message
-      setGlobalError("Erreur lors de l'inscription.");
+      setGlobalError("Une erreur réseau est survenue. Veuillez réessayer.");
     }
   };
 
+  // WF-E4-01 — Reset form
   return (
     <AuthCard>
+      <h2 className="mb-6 font-serif text-xl font-semibold text-amber-300">
+        Nouveau mot de passe
+      </h2>
+
       {globalError && (
         <div className="mb-4 rounded border border-red-500 bg-red-950/50 px-3 py-2 text-sm text-red-300">
           ⚠️ {globalError}
@@ -57,25 +122,6 @@ function RegisterPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-amber-200">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    className="border-amber-900/50 bg-amber-950/30 text-amber-100 focus-visible:border-amber-500"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <FormField
             control={form.control}
             name="password"
@@ -139,23 +185,13 @@ function RegisterPage() {
             )}
           />
 
-          <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
-            {form.formState.isSubmitting ? "Inscription…" : "S'inscrire"}
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="w-full bg-amber-700 font-semibold uppercase tracking-widest text-amber-100 hover:bg-amber-600"
+          >
+            {form.formState.isSubmitting ? "Réinitialisation…" : "Réinitialiser"}
           </Button>
-
-          {/* OAuth separator — P2+ placeholder */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-amber-900/50" />
-            <span className="text-xs text-amber-700">ou</span>
-            <div className="flex-1 border-t border-amber-900/50" />
-          </div>
-
-          <p className="text-center text-sm text-amber-500">
-            Déjà un compte ?{" "}
-            <Link to="/auth/login" className="text-amber-300 underline hover:text-amber-200">
-              Se connecter
-            </Link>
-          </p>
         </form>
       </Form>
     </AuthCard>

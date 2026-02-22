@@ -53,15 +53,21 @@ apps/web/
 │   │   ├── api.ts               # Client API (fetch wrapper + intercepteur 429)
 │   │   ├── adventure.service.ts
 │   │   └── socket.service.ts
+│   ├── schemas/
+│   │   └── auth.ts              # Zod schemas: forms + route search params (auth)
 │   ├── stores/
 │   │   └── ui.store.ts          # État UI (zustand)
 │   ├── lib/
-│   │   └── utils.ts
+│   │   ├── auth-client.ts       # Better Auth client (infrastructure)
+│   │   ├── validation.ts        # Zod base config
+│   │   └── utils.ts             # Utilitaires shadcn/ui (cn, etc.)
 │   └── main.tsx
 ├── public/
 ├── index.html
 └── package.json
 ```
+
+> **Note `schemas/`** : Ce dossier contient les schémas Zod de validation (forms, route search params). Convention : un fichier par domaine (`auth.ts`, `adventure.ts`, etc.). Ne pas mettre les schémas dans `lib/` — `lib/` est réservé à la configuration d'infrastructure (auth-client, validation base, utils). Les schémas partagés entre plusieurs routes ou composants vont dans `schemas/` ; les schémas purement locaux à un composant unique peuvent rester co-localisés.
 
 > **Note composants** : Le dossier `companion/` est créé vide en P1 pour que les points d'intervention (loading, erreurs, empty states) puissent être swappés facilement en P3. Les composants listés dans chaque dossier sont issus de l'inventaire UX Cartography §5.
 

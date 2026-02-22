@@ -15,15 +15,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { type LoginFormValues, loginSchema } from "@/lib/auth-schemas";
 import { router } from "@/router";
+import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
 
+// AC-7: typed search params — `reset` for post-reset banner, `redirect` for Story 2.4 auth guard
 export const Route = createFileRoute("/auth/login")({
+  validateSearch: (search: Record<string, unknown>) => loginSearchSchema.parse(search),
   component: LoginPage,
 });
 
 function LoginPage() {
   const { login } = useAuth();
+  const { reset } = Route.useSearch();
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -49,6 +52,13 @@ function LoginPage() {
 
   return (
     <AuthCard>
+      {/* AC-5: post-reset success banner */}
+      {reset === "success" && (
+        <div className="mb-4 rounded border border-green-600 bg-green-950/50 px-3 py-2 text-sm text-green-300">
+          ✓ Mot de passe modifié. Connectez-vous.
+        </div>
+      )}
+
       {globalError && (
         <div className="mb-4 rounded border border-red-500 bg-red-950/50 px-3 py-2 text-sm text-red-300">
           ⚠️ {globalError}
