@@ -35,7 +35,7 @@ apps/web/
 │   │   #   └── $inviteCode.tsx          # Page d'invitation (P3 — route publique, contexte avant auth)
 │   │   └── index.tsx            # Redirect → /hub (auth) ou /auth/login
 │   ├── components/
-│   │   ├── ui/                  # shadcn components
+│   │   ├── ui/                  # shadcn/ui generated primitives (vendor-like)
 │   │   ├── layout/              # Header, Sidebar, BottomTabBar
 │   │   ├── auth/                # AuthCard, inputs spécialisés
 │   │   ├── onboarding/          # StepIndicator, WelcomeHero, PresetSelector, NarrativeBox
@@ -67,7 +67,28 @@ apps/web/
 
 ---
 
+## UI Primitives (shadcn/ui)
+
+Le design system est basé sur **shadcn/ui** (Tailwind). Convention :
+
+- **Configuration** : `apps/web/components.json`
+- **Primitives générées** : `apps/web/src/components/ui/*`
+- **Statut** : code généré, traité comme “vendor-like” (peu/pas modifié directement). En cas de custom, préférer des wrappers dans `components/` plutôt que de forker massivement `components/ui/`.
+- **Linting** : `components/ui/**` peut être exclu d’ESLint pour éviter des noise diffs sur du code généré.
+
+---
+
 ## Routing (TanStack Router)
+
+### Bundler plugin (Vite)
+
+Pour le file-based routing en Vite, utiliser le plugin **officiel** :
+
+- `@tanstack/router-plugin` (dev dependency)
+- `import { tanstackRouter } from "@tanstack/router-plugin/vite"`
+- Le plugin doit être placé **avant** `@vitejs/plugin-react`
+
+> Note: `@tanstack/router-vite-plugin` existe encore pour compatibilité, mais il est désormais un **proxy** qui ré-exporte le plugin depuis `@tanstack/router-plugin/vite` (migration “unplugin” côté TanStack).
 
 ```typescript
 // apps/web/src/routes/__root.tsx

@@ -1,19 +1,28 @@
+import "./index.css";
+import "./lib/validation"; // global Zod error map (French messages)
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import type { AppConfig } from "@jdrai/shared";
+import { useAuth } from "./hooks/useAuth";
+import { router } from "./router";
 
-// AppConfig imported to validate @jdrai/shared is resolvable from web — used in later stories
-const _appConfig: AppConfig = { apiUrl: "/api", version: "0.0.0" };
+const queryClient = new QueryClient();
 
-const rootEl = document.getElementById("root");
-if (!rootEl) throw new Error("Root element not found");
+function App() {
+  const auth = useAuth();
 
-createRoot(rootEl).render(
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} context={{ queryClient, auth }} />
+    </QueryClientProvider>
+  );
+}
+
+const rootElement = document.getElementById("root")!;
+createRoot(rootElement).render(
   <StrictMode>
-    <div style={{ fontFamily: "sans-serif", textAlign: "center", paddingTop: "4rem" }}>
-      <h1>JDRAI</h1>
-      <p>Plateforme de jeu de rôle avec MJ IA</p>
-    </div>
+    <App />
   </StrictMode>,
 );
