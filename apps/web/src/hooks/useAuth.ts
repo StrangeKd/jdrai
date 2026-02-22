@@ -11,7 +11,7 @@ export function useAuth() {
   };
 
   const register = async (email: string, password: string) => {
-    const result = await signUp.email({ email, password, name: email });
+    const result = await signUp.email({ email, password, name: email.split("@")[0] });
     if (result.error) throw new Error(result.error.message);
     return result.data;
   };
