@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { requestPasswordReset } from "@/lib/auth-client";
+import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { type ForgotPasswordFormValues, forgotPasswordSchema } from "@/schemas/auth";
 
 export const Route = createFileRoute("/auth/forgot-password")({
+  beforeLoad: redirectIfAuthenticated,
   component: ForgotPasswordPage,
 });
 

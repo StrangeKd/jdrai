@@ -29,3 +29,28 @@ describe("health endpoints", () => {
   });
 });
 
+describe("security headers", () => {
+  it("GET /health includes security headers from helmet", async () => {
+    const { app } = await import("./app");
+    const res = await request(app).get("/health");
+    expect(res.headers["x-content-type-options"]).toBeDefined();
+    expect(res.headers["x-frame-options"]).toBeDefined();
+  });
+
+  it("GET /health with matching Origin includes CORS headers", async () => {
+    const { app } = await import("./app");
+    const res = await request(app)
+      .get("/health")
+      .set("Origin", "http://localhost:5173");
+    expect(res.headers["access-control-allow-credentials"]).toBe("true");
+    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+  });
+
+  it("GET /health does NOT set wildcard CORS origin", async () => {
+    // CORS with a specific origin string always echoes that origin (browser enforces the restriction).
+    // We verify it's never a wildcard * which would allow any origin.
+    const { app } = await import("./app");
+    const res = await request(app).get("/health");
+    expect(res.headers["access-control-allow-origin"]).not.toBe("*");
+  });
+});

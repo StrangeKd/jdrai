@@ -16,12 +16,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/lib/auth-client";
+import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { router } from "@/router";
 import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
 
 // AC-7: typed search params via TanStack Router validateSearch
 export const Route = createFileRoute("/auth/reset-password")({
   validateSearch: (search: Record<string, unknown>) => resetSearchSchema.parse(search),
+  beforeLoad: redirectIfAuthenticated,
   component: ResetPasswordPage,
 });
 

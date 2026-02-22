@@ -1,6 +1,21 @@
 import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import { router } from "@/router";
 
+// Better Auth base type extended with additionalFields from the server auth config.
+// These fields are returned at runtime but not in Better Auth's default client types.
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  image?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  username?: string | null;
+  role?: string;
+  onboardingCompleted?: boolean;
+}
+
 export function useAuth() {
   const { data: session, isPending, error } = useSession();
 
@@ -23,7 +38,8 @@ export function useAuth() {
   };
 
   return {
-    user: session?.user ?? null,
+    // Cast to AuthUser so callers can access additional fields (username, role, etc.)
+    user: (session?.user ?? null) as AuthUser | null,
     session: session?.session ?? null,
     isAuthenticated: !!session?.user,
     isLoading: isPending,
