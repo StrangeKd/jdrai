@@ -1,0 +1,10 @@
+---
+description: Enforce English-only code comments (incl. file headers)
+alwaysApply: true
+---
+
+# Code comments language
+
+- **Rule**: Always write code comments in **English**.
+- **Scope**: Inline (`//`), block (`/* */`), JSDoc/TSDoc, and **file header comments**.
+

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Core Configuration
 
 - **Language**: Respond in French (fr-FR) by default unless specified otherwise.
+- **Code comments**: Always write code comments (inline, block, JSDoc) in **English**.
 - **Always use Context7 MCP** for library/API docs, code generation, setup/config steps without explicit request.
 - **Token Limit**: Keep responses concise; prioritize action over explanation.
 

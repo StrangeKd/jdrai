@@ -100,6 +100,7 @@ docs/ux/README.md
 
 - **Default**: French (fr-FR) for all user communication
 - **Code**: English for code, comments, and technical artifacts (standard practice)
+- **Code comments**: Always write code comments (inline, block, JSDoc/TSDoc, and **file header comments**) in **English**.
 - **Documentation**: French for user-facing docs, English for technical specs
 - **Exception**: Respond in English only if user explicitly requests it
 

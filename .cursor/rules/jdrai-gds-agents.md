@@ -180,6 +180,7 @@ When working as a GDS agent on JDRAI, focus on:
 **Language**:
 - **Default**: French (fr-FR) for all user communication
 - **Code**: English for code, comments, and technical artifacts (standard practice)
+- **Code comments**: Always write code comments (inline, block, JSDoc/TSDoc, and **file header comments**) in **English**.
 - **Game Design Docs**: French for JDRAI-specific content
 - **Exception**: Respond in English only if user explicitly requests it
 

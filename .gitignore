@@ -19,6 +19,9 @@ build/
 out/
 *.tsbuildinfo
 
+# Vite cache (dependency pre-bundling)
+**/.vite/
+
 # Environment
 .env
 .env*.local

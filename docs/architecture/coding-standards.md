@@ -5,6 +5,12 @@
 
 ---
 
+## Comments
+
+- All code comments (inline, block, JSDoc) must be written in **English**.
+
+---
+
 ## TypeScript
 
 ### Configuration
