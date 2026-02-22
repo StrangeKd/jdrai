@@ -12,11 +12,19 @@ function IndexRedirect() {
   useEffect(() => {
     if (auth.isLoading) return;
 
-    void navigate({
-      to: auth.isAuthenticated ? "/hub" : "/auth/login",
-      replace: true,
-    });
-  }, [auth.isAuthenticated, auth.isLoading, navigate]);
+    if (!auth.isAuthenticated) {
+      void navigate({ to: "/auth/login", replace: true });
+      return;
+    }
+
+    // Authenticated but no username → onboarding
+    if (!auth.user?.username) {
+      void navigate({ to: "/onboarding/profile-setup", replace: true });
+      return;
+    }
+
+    void navigate({ to: "/hub", replace: true });
+  }, [auth.isAuthenticated, auth.isLoading, auth.user?.username, navigate]);
 
   return null;
 }

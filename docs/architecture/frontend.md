@@ -268,10 +268,13 @@ export const useUIStore = create<UIStore>()(
 
 ```typescript
 // apps/web/src/services/api.ts
-const API_BASE = import.meta.env.VITE_API_URL;
+// Recommended: same-origin `/api/*` via Vite proxy (dev) / reverse proxy (prod).
+// Leave VITE_API_URL empty unless you intentionally switch to cross-origin.
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const url = API_BASE ? `${API_BASE}${endpoint}` : endpoint;
+  const response = await fetch(url, {
     ...options,
     credentials: "include", // Important: envoie les cookies de session
     headers: {

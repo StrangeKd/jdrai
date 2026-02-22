@@ -11,13 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as OnboardingWelcomeRouteImport } from './routes/onboarding/welcome'
-import { Route as OnboardingProfileSetupRouteImport } from './routes/onboarding/profile-setup'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedHubIndexRouteImport } from './routes/_authenticated/hub/index'
+import { Route as AuthenticatedOnboardingWelcomeRouteImport } from './routes/_authenticated/onboarding/welcome'
+import { Route as AuthenticatedOnboardingProfileSetupRouteImport } from './routes/_authenticated/onboarding/profile-setup'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -26,16 +27,6 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingWelcomeRoute = OnboardingWelcomeRouteImport.update({
-  id: '/onboarding/welcome',
-  path: '/onboarding/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingProfileSetupRoute = OnboardingProfileSetupRouteImport.update({
-  id: '/onboarding/profile-setup',
-  path: '/onboarding/profile-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
@@ -58,11 +49,29 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedHubIndexRoute = AuthenticatedHubIndexRouteImport.update({
   id: '/hub/',
   path: '/hub/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedOnboardingWelcomeRoute =
+  AuthenticatedOnboardingWelcomeRouteImport.update({
+    id: '/onboarding/welcome',
+    path: '/onboarding/welcome',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOnboardingProfileSetupRoute =
+  AuthenticatedOnboardingProfileSetupRouteImport.update({
+    id: '/onboarding/profile-setup',
+    path: '/onboarding/profile-setup',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -70,9 +79,10 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
-  '/onboarding/welcome': typeof OnboardingWelcomeRoute
+  '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub/': typeof AuthenticatedHubIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -80,9 +90,10 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
-  '/onboarding/welcome': typeof OnboardingWelcomeRoute
+  '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub': typeof AuthenticatedHubIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -92,9 +103,10 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/onboarding/profile-setup': typeof OnboardingProfileSetupRoute
-  '/onboarding/welcome': typeof OnboardingWelcomeRoute
+  '/_authenticated/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/_authenticated/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/_authenticated/hub/': typeof AuthenticatedHubIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +119,7 @@ export interface FileRouteTypes {
     | '/onboarding/profile-setup'
     | '/onboarding/welcome'
     | '/hub/'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -117,6 +130,7 @@ export interface FileRouteTypes {
     | '/onboarding/profile-setup'
     | '/onboarding/welcome'
     | '/hub'
+    | '/settings'
   id:
     | '__root__'
     | '/'
@@ -125,9 +139,10 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
-    | '/onboarding/profile-setup'
-    | '/onboarding/welcome'
+    | '/_authenticated/onboarding/profile-setup'
+    | '/_authenticated/onboarding/welcome'
     | '/_authenticated/hub/'
+    | '/_authenticated/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,8 +152,6 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  OnboardingProfileSetupRoute: typeof OnboardingProfileSetupRoute
-  OnboardingWelcomeRoute: typeof OnboardingWelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,20 +168,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/welcome': {
-      id: '/onboarding/welcome'
-      path: '/onboarding/welcome'
-      fullPath: '/onboarding/welcome'
-      preLoaderRoute: typeof OnboardingWelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/profile-setup': {
-      id: '/onboarding/profile-setup'
-      path: '/onboarding/profile-setup'
-      fullPath: '/onboarding/profile-setup'
-      preLoaderRoute: typeof OnboardingProfileSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/reset-password': {
@@ -199,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/hub/': {
       id: '/_authenticated/hub/'
       path: '/hub'
@@ -206,15 +212,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHubIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/onboarding/welcome': {
+      id: '/_authenticated/onboarding/welcome'
+      path: '/onboarding/welcome'
+      fullPath: '/onboarding/welcome'
+      preLoaderRoute: typeof AuthenticatedOnboardingWelcomeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/onboarding/profile-setup': {
+      id: '/_authenticated/onboarding/profile-setup'
+      path: '/onboarding/profile-setup'
+      fullPath: '/onboarding/profile-setup'
+      preLoaderRoute: typeof AuthenticatedOnboardingProfileSetupRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedOnboardingProfileSetupRoute: typeof AuthenticatedOnboardingProfileSetupRoute
+  AuthenticatedOnboardingWelcomeRoute: typeof AuthenticatedOnboardingWelcomeRoute
   AuthenticatedHubIndexRoute: typeof AuthenticatedHubIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedOnboardingProfileSetupRoute:
+    AuthenticatedOnboardingProfileSetupRoute,
+  AuthenticatedOnboardingWelcomeRoute: AuthenticatedOnboardingWelcomeRoute,
   AuthenticatedHubIndexRoute: AuthenticatedHubIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -228,8 +255,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
-  OnboardingProfileSetupRoute: OnboardingProfileSetupRoute,
-  OnboardingWelcomeRoute: OnboardingWelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

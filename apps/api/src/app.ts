@@ -6,33 +6,50 @@ import helmet from "helmet";
 import { env } from "./config/env";
 import { auth } from "./lib/auth";
 import { errorHandler } from "./middleware/error.middleware";
+import { authRateLimit } from "./middleware/rate-limit.middleware";
 import { apiRouter } from "./routes/api.router";
 
 export const app: Application = express();
 
-// Security
-app.use(helmet());
-
-// CORS — must allow credentials for httpOnly cookies
+// 1. CORS — must be first (before any handler reads headers)
 app.use(
   cors({
     origin: env.FRONTEND_URL,
-    credentials: true,
+    credentials: true, // Required for httpOnly session cookies
   }),
 );
 
-// Must be at app level (not sub-router): Express strips the /api prefix from req.url
-// inside sub-routers, so Better Auth wouldn't match its /api/auth basePath.
-// Must come before express.json() — Better Auth handles its own body parsing.
+// 2. Helmet — security headers with CSP
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", env.API_URL],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
+// 3. Rate limiting on auth routes — BEFORE Better Auth handler
+app.use("/api/auth/sign-in/email", authRateLimit);
+app.use("/api/auth/sign-up/email", authRateLimit);
+
+// 4. Better Auth handler — BEFORE express.json() (handles its own body parsing)
+// Must be at app level: Express strips /api prefix inside sub-routers
 app.all("/api/auth/*", toNodeHandler(auth));
 
-// API routes (mounted once under /api)
+// 5. API routes (express.json() is mounted inside apiRouter)
 app.use("/api", apiRouter);
 
-// Health check
+// 6. Health check (public)
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Error handler — must be last middleware
+// 7. Error handler — MUST be last
 app.use(errorHandler);

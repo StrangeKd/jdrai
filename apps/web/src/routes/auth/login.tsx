@@ -15,18 +15,21 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { router } from "@/router";
 import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
 
-// AC-7: typed search params — `reset` for post-reset banner, `redirect` for Story 2.4 auth guard
+// AC-1: typed search params — `reset` for post-reset banner, `redirect` for auth guard
+// AC-2: redirect authenticated users away from login
 export const Route = createFileRoute("/auth/login")({
   validateSearch: (search: Record<string, unknown>) => loginSearchSchema.parse(search),
+  beforeLoad: redirectIfAuthenticated,
   component: LoginPage,
 });
 
 function LoginPage() {
   const { login } = useAuth();
-  const { reset } = Route.useSearch();
+  const { reset, redirect: redirectTo } = Route.useSearch();
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -44,7 +47,9 @@ function LoginPage() {
       const returnedUser = result?.user;
       const hasUsername =
         returnedUser && (returnedUser as { username?: string | null }).username;
-      router.navigate({ to: hasUsername ? "/hub" : "/onboarding/profile-setup" });
+      // Honor the redirect param from the _authenticated guard; fallback based on username
+      const destination = redirectTo ?? (hasUsername ? "/hub" : "/onboarding/profile-setup");
+      router.navigate({ to: destination });
     } catch {
       setGlobalError("Identifiants incorrects.");
     }
