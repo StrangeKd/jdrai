@@ -7,7 +7,7 @@ import {
   registerSchema,
   resetPasswordSchema,
   resetSearchSchema,
-} from "@/lib/auth-schemas";
+} from "@/schemas/auth";
 
 describe("auth schemas", () => {
   it("loginSchema validates required fields", () => {

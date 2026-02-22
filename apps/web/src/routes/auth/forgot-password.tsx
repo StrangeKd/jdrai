@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { forgetPassword } from "@/lib/auth-client";
-import { type ForgotPasswordFormValues, forgotPasswordSchema } from "@/lib/auth-schemas";
+import { type ForgotPasswordFormValues, forgotPasswordSchema } from "@/schemas/auth";
 
 export const Route = createFileRoute("/auth/forgot-password")({
   component: ForgotPasswordPage,

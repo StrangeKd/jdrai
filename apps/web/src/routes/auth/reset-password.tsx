@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/lib/auth-client";
-import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/lib/auth-schemas";
+import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
 import { router } from "@/router";
 
 // AC-7: typed search params via TanStack Router validateSearch
