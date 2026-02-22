@@ -97,25 +97,45 @@ pnpm shared:generate
 }
 ```
 
+### Proxy `/api/*` — Développement
+
+Le frontend proxie toutes les requêtes `/api/*` vers le backend via Vite. Cela garantit que les cookies httpOnly Better Auth sont posés sur le domaine frontend (`:5173`) et non sur le backend (`:3000`).
+
+```typescript
+// apps/web/vite.config.ts — déjà configuré
+server: {
+  port: 5173,
+  proxy: {
+    "/api": {
+      target: "http://localhost:3000",
+      changeOrigin: true,
+    },
+  },
+},
+```
+
+> **Règle critique** : ne jamais pointer `createAuthClient({ baseURL: "http://localhost:3000" })` directement. Le client doit utiliser `window.location.origin` (pas de `baseURL`) pour que le proxy fonctionne.
+
 ### Variables d'Environnement
 
 ```bash
-# .env.example
+# .env (racine du monorepo — chargé par l'API via dotenv)
 
 # Database
 DATABASE_URL=postgresql://jdrai:jdrai@localhost:5432/jdrai
 
 # Better Auth
 BETTER_AUTH_SECRET=your-super-secret-key-min-32-chars-change-in-production
-BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:3000   # URL interne du backend
 
 # API
 API_PORT=3000
 API_URL=http://localhost:3000
 
 # Frontend
-FRONTEND_URL=http://localhost:5173
-VITE_API_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173     # Utilisé par CORS (trustedOrigins Better Auth)
+VITE_API_URL=http://localhost:3000     # Utilisé par le service API custom (/api/v1/*)
+                                       # NON utilisé par auth-client.ts (proxy)
 
 # LLM Providers
 OPENAI_API_KEY=sk-...
@@ -125,6 +145,8 @@ LLM_PRIMARY_PROVIDER=openai
 # Environment
 NODE_ENV=development
 ```
+
+> **`VITE_API_URL`** : chargé dans Vite via `envDir` pointant vers la racine (`apps/web/vite.config.ts`). Utilisé par le service API custom (`src/services/api.ts`) pour les appels `/api/v1/*`. L'auth Better Auth n'utilise pas cette variable — elle passe par le proxy.
 
 ---
 
@@ -166,6 +188,63 @@ volumes:
   postgres_data:
   redis_data:
 ```
+
+---
+
+## Reverse Proxy — Production
+
+### Prérequis obligatoire : routage `/api/*`
+
+En production, le frontend est servi en statique (CDN ou nginx) et le backend tourne sur un serveur séparé. **Le reverse proxy doit router `/api/*` vers le backend** — même principe que le proxy Vite en dev.
+
+Sans ce routage, les cookies Better Auth seraient posés sur le domaine backend et inaccessibles au frontend → la session ne fonctionnerait pas.
+
+### Configuration nginx (exemple)
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name jdrai.app;
+
+  # Frontend — fichiers statiques
+  location / {
+    root /var/www/jdrai/dist;
+    try_files $uri $uri/ /index.html;
+  }
+
+  # Backend — toutes les requêtes API (Better Auth + routes custom)
+  location /api/ {
+    proxy_pass http://backend:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Cookies — important pour Better Auth
+    proxy_cookie_path / "/; SameSite=Lax; Secure";
+  }
+
+  # WebSocket — sessions de jeu (Socket.io, P1+)
+  location /socket.io/ {
+    proxy_pass http://backend:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+}
+```
+
+> **Variables d'environnement production** à mettre à jour :
+> - `BETTER_AUTH_URL` → URL publique du backend (ex: `https://api.jdrai.app`) ou URL interne si même domaine
+> - `FRONTEND_URL` → URL publique du frontend (ex: `https://jdrai.app`) — utilisée dans `trustedOrigins`
+> - `BETTER_AUTH_SECRET` → secret fort (32+ chars), différent du dev
+
+### CDN (alternative nginx)
+
+Si le frontend est hébergé sur Vercel/Netlify/Cloudflare :
+- Configurer des **rewrites** : `/api/*` → `https://api.jdrai.app/api/*`
+- Activer `credentials: true` dans les headers de rewrite
+- Vérifier que `sameSite` et `secure` sont compatibles avec le CDN
 
 ---
 

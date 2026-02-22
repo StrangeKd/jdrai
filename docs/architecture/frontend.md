@@ -139,26 +139,44 @@ export const Route = createFileRoute("/_authenticated")({
 
 ## Client Auth (Better Auth)
 
+### Pattern retenu : proxy same-origin
+
+Better Auth pose ses cookies httpOnly sur le domaine de la requête. Si le frontend (`:5173`) appelle le backend (`:3000`) directement, les cookies sont posés sur `:3000` et inaccessibles au frontend — la session ne persiste pas.
+
+**Solution : toutes les requêtes `/api/*` transitent par un proxy qui les redirige vers le backend.** Le client Better Auth est configuré sans `baseURL` — il utilise `window.location.origin` par défaut, et c'est le proxy qui achemine vers le backend.
+
+```
+Frontend (localhost:5173) ──/api/auth/*──▶ Proxy ──▶ Backend (localhost:3000)
+                                                       └─ Better Auth gère la DB
+                                                       └─ Cookie posé sur :5173 ✓
+```
+
+> **En développement** : proxy Vite (`vite.config.ts`).
+> **En production** : reverse proxy nginx/CDN — voir `infrastructure.md`.
+
+### `auth-client.ts`
+
 ```typescript
 // apps/web/src/lib/auth-client.ts
 import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_API_URL,
-});
+// Pas de baseURL — utilise window.location.origin.
+// Le proxy /api/* achemine vers le backend (voir vite.config.ts en dev,
+// nginx/CDN en production).
+export const authClient = createAuthClient({});
 
-// Hooks exportés
 export const { signIn, signUp, signOut, useSession, getSession } = authClient;
 ```
+
+### `useAuth.ts`
 
 ```typescript
 // apps/web/src/hooks/useAuth.ts
 import { useSession, signIn, signUp, signOut } from "@/lib/auth-client";
-import { useNavigate } from "@tanstack/react-router";
+import { router } from "@/router";
 
 export function useAuth() {
   const { data: session, isPending, error } = useSession();
-  const navigate = useNavigate();
 
   const login = async (email: string, password: string) => {
     const result = await signIn.email({ email, password });
@@ -167,17 +185,16 @@ export function useAuth() {
   };
 
   const register = async (email: string, password: string) => {
-    const result = await signUp.email({
-      email,
-      password,
-    });
+    // name est requis par Better Auth — partie locale de l'email en placeholder.
+    // Remplacé par le pseudo choisi en onboarding (Story 3.2 / setUsername).
+    const result = await signUp.email({ email, password, name: email.split("@")[0] });
     if (result.error) throw new Error(result.error.message);
     return result.data;
   };
 
   const logout = async () => {
     await signOut();
-    navigate({ to: "/auth/login" });
+    router.navigate({ to: "/auth/login" });
   };
 
   return {
@@ -192,6 +209,17 @@ export function useAuth() {
   };
 }
 ```
+
+### Responsabilités frontend vs backend
+
+| Opération | Chemin | Responsable |
+|---|---|---|
+| Inscription, connexion, déconnexion | `/api/auth/*` | Better Auth (backend) via proxy |
+| Réinitialisation mot de passe | `/api/auth/*` | Better Auth (backend) via proxy |
+| Gestion session (`useSession`) | cookie httpOnly | Better Auth client (UI state only) |
+| Mise à jour username/profil | `/api/v1/users/*` | Express + `BetterAuthService.setUsername()` |
+
+> **Règle** : le frontend ne contient aucune logique métier liée à l'auth. Il envoie les données de formulaire aux endpoints Better Auth et gère l'état UI via `useSession()`.
 
 ---
 
