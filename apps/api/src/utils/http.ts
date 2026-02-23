@@ -1,8 +1,6 @@
 import type { Request } from "express";
 
-export function toRecordStringHeaders(
-  headers: Request["headers"],
-): Record<string, string> {
+export function toRecordStringHeaders(headers: Request["headers"]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
     if (typeof value === "string") out[key] = value;

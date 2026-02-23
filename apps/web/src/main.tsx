@@ -15,9 +15,11 @@ function App() {
 
   // Force re-evaluation of all route beforeLoad guards when auth state changes.
   // Required because beforeLoad runs on navigation only, not on reactive state changes.
+  // username is included so the guard in _authenticated.tsx sees the updated value
+  // after onboarding profile setup (isAuthenticated/isLoading don't change in that case).
   useEffect(() => {
     void router.invalidate();
-  }, [auth.isAuthenticated, auth.isLoading]);
+  }, [auth.isAuthenticated, auth.isLoading, auth.user?.username]);
 
   return (
     <QueryClientProvider client={queryClient}>

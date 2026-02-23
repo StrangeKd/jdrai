@@ -18,6 +18,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-pas
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedHubIndexRouteImport } from './routes/_authenticated/hub/index'
 import { Route as AuthenticatedOnboardingWelcomeRouteImport } from './routes/_authenticated/onboarding/welcome'
+import { Route as AuthenticatedOnboardingTutorialRouteImport } from './routes/_authenticated/onboarding/tutorial'
 import { Route as AuthenticatedOnboardingProfileSetupRouteImport } from './routes/_authenticated/onboarding/profile-setup'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -66,6 +67,12 @@ const AuthenticatedOnboardingWelcomeRoute =
     path: '/onboarding/welcome',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedOnboardingTutorialRoute =
+  AuthenticatedOnboardingTutorialRouteImport.update({
+    id: '/onboarding/tutorial',
+    path: '/onboarding/tutorial',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedOnboardingProfileSetupRoute =
   AuthenticatedOnboardingProfileSetupRouteImport.update({
     id: '/onboarding/profile-setup',
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub/': typeof AuthenticatedHubIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub': typeof AuthenticatedHubIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -104,6 +113,7 @@ export interface FileRoutesById {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_authenticated/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
+  '/_authenticated/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/_authenticated/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/_authenticated/hub/': typeof AuthenticatedHubIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/onboarding/profile-setup'
+    | '/onboarding/tutorial'
     | '/onboarding/welcome'
     | '/hub/'
     | '/settings/'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/onboarding/profile-setup'
+    | '/onboarding/tutorial'
     | '/onboarding/welcome'
     | '/hub'
     | '/settings'
@@ -140,6 +152,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/_authenticated/onboarding/profile-setup'
+    | '/_authenticated/onboarding/tutorial'
     | '/_authenticated/onboarding/welcome'
     | '/_authenticated/hub/'
     | '/_authenticated/settings/'
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingWelcomeRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/onboarding/tutorial': {
+      id: '/_authenticated/onboarding/tutorial'
+      path: '/onboarding/tutorial'
+      fullPath: '/onboarding/tutorial'
+      preLoaderRoute: typeof AuthenticatedOnboardingTutorialRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/onboarding/profile-setup': {
       id: '/_authenticated/onboarding/profile-setup'
       path: '/onboarding/profile-setup'
@@ -231,6 +251,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedOnboardingProfileSetupRoute: typeof AuthenticatedOnboardingProfileSetupRoute
+  AuthenticatedOnboardingTutorialRoute: typeof AuthenticatedOnboardingTutorialRoute
   AuthenticatedOnboardingWelcomeRoute: typeof AuthenticatedOnboardingWelcomeRoute
   AuthenticatedHubIndexRoute: typeof AuthenticatedHubIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
@@ -239,6 +260,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOnboardingProfileSetupRoute:
     AuthenticatedOnboardingProfileSetupRoute,
+  AuthenticatedOnboardingTutorialRoute: AuthenticatedOnboardingTutorialRoute,
   AuthenticatedOnboardingWelcomeRoute: AuthenticatedOnboardingWelcomeRoute,
   AuthenticatedHubIndexRoute: AuthenticatedHubIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,

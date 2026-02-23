@@ -48,7 +48,7 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as {
+    const body = (await response.json().catch(() => ({}))) as {
       error?: { code?: string; message?: string; details?: Record<string, unknown> };
     };
     throw new ApiError(

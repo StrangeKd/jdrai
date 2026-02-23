@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { getResolvedAuthDestination } from "@/routes/routing.utils";
 
 export const Route = createFileRoute("/_authenticated")({
-  beforeLoad: ({ context, location }) => {
+  beforeLoad: async ({ context, location }) => {
     // Wait for session to resolve — avoid flash redirect on initial load.
     // router.invalidate() in main.tsx re-triggers this once isLoading becomes false.
     if (context.auth.isLoading) return;
@@ -16,9 +16,15 @@ export const Route = createFileRoute("/_authenticated")({
       });
     }
 
-    // Redirect to profile-setup if username not set, but NOT when already on an onboarding route.
-    if (!context.auth.user?.username && !location.pathname.startsWith("/onboarding")) {
-      throw redirect({ to: getNoUsernameOnboardingTarget(context.auth.user?.id) });
+    // Redirect to onboarding if username is missing, but NOT when already on an onboarding route.
+    // Uses fresh /users/me data when session user is stale right after profile update.
+    const destination = await getResolvedAuthDestination(context);
+    if (
+      destination !== "/hub" &&
+      destination !== "/auth/login" &&
+      !location.pathname.startsWith("/onboarding")
+    ) {
+      throw redirect({ to: destination });
     }
   },
   component: AuthenticatedLayout,

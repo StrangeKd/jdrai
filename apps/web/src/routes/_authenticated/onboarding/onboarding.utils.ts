@@ -45,10 +45,3 @@ export function markWelcomeSeen(userId: string | null | undefined) {
   map[userId] = true;
   writeWelcomeSeenMap(storage, map);
 }
-
-export function getNoUsernameOnboardingTarget(
-  userId: string | null | undefined,
-): "/onboarding/welcome" | "/onboarding/profile-setup" {
-  return hasSeenWelcome(userId) ? "/onboarding/profile-setup" : "/onboarding/welcome";
-}
-

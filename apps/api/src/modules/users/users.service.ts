@@ -8,18 +8,26 @@ import { usersRepository } from "./users.repository";
 import type { UpdateUserInput } from "./users.schema";
 import { isUsernameTakenError, normalizeUpdateInput } from "./users.utils";
 
+export type UpdateMeResult = {
+  user: UserDTO;
+  // Set-Cookie header from Better Auth — must be forwarded to the client so the
+  // browser refreshes its cookieCache (maxAge: 5 min) with the updated session data.
+  setCookie: string | null;
+};
+
 export const usersService = {
   updateMe: async (
     userId: string,
     headers: Record<string, string>,
     input: UpdateUserInput,
-  ): Promise<UserDTO> => {
+  ): Promise<UpdateMeResult> => {
     try {
-      const result = await auth.api.updateUser({
+      const response = await auth.api.updateUser({
         body: normalizeUpdateInput(input),
         headers,
+        asResponse: true,
       });
-      if (!result?.status) {
+      if (!response.ok) {
         throw new AppError(500, "INTERNAL_ERROR", "Failed to update user");
       }
 
@@ -28,7 +36,10 @@ export const usersService = {
       if (!updated) {
         throw new AppError(404, "NOT_FOUND", "User not found");
       }
-      return mapDbUserToDTO(updated);
+      return {
+        user: mapDbUserToDTO(updated),
+        setCookie: response.headers.get("set-cookie"),
+      };
     } catch (err) {
       if (isUsernameTakenError(err)) {
         throw new AppError(409, "USERNAME_TAKEN", "Username is already taken");

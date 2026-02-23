@@ -1,5 +1,5 @@
-import { cleanup,fireEvent, render, screen } from "@testing-library/react";
-import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock TanStack Router hooks — route component uses useNavigate
 const mockNavigate = vi.fn();
@@ -27,9 +27,7 @@ describe("WelcomePage (E5 — /onboarding/welcome)", () => {
 
   it("renders the body text without technical jargon (AC-3)", () => {
     render(<WelcomePage />);
-    expect(
-      screen.getByText(/un maître du jeu propulsé par l['']ia/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/un maître du jeu propulsé par l['']ia/i)).toBeInTheDocument();
   });
 
   it("renders the ENTRER CTA button (AC-4)", () => {

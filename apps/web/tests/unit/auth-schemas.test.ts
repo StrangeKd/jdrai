@@ -16,8 +16,10 @@ describe("auth schemas", () => {
     if (result.success) return;
 
     const errors = result.error.flatten().fieldErrors;
-    expect(errors.email?.[0]).toBe("Ce champ est requis");
-    expect(errors.password?.[0]).toBe("Mot de passe requis");
+    // z.email() (zod v4) reports format error even on empty string
+    expect(errors.email?.[0]).toBe("Adresse email invalide");
+    // fields.requiredString() = z.string().min(1) → error map → "Ce champ est requis"
+    expect(errors.password?.[0]).toBe("Ce champ est requis");
   });
 
   it("registerSchema requires 8+ chars password", () => {
@@ -151,4 +153,3 @@ describe("resetSearchSchema", () => {
     expect(result.token).toBe("abc123");
   });
 });
-

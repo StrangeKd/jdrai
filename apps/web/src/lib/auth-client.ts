@@ -9,18 +9,20 @@ export const { signIn, signUp, signOut, useSession, getSession } = authClient;
 // Typed wrappers for password reset endpoints (Better Auth v1.4.18).
 // These are not natively inferred in createAuthClient({}) without server type sharing.
 // They call /api/auth/* directly via the Vite proxy.
-
 type AuthError = {
   message: string | undefined;
   status: number;
   code: string | undefined;
 };
-
 type AuthResult<T = null> = { data: T; error: null } | { data: null; error: AuthError };
 
 function parseAuthError(payload: unknown, status: number): AuthError {
-  const asRecord = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : undefined;
-  const nestedError = asRecord?.error && typeof asRecord.error === "object" ? (asRecord.error as Record<string, unknown>) : undefined;
+  const asRecord =
+    payload && typeof payload === "object" ? (payload as Record<string, unknown>) : undefined;
+  const nestedError =
+    asRecord?.error && typeof asRecord.error === "object"
+      ? (asRecord.error as Record<string, unknown>)
+      : undefined;
 
   const messageRaw = nestedError?.message ?? asRecord?.message;
   const codeRaw = nestedError?.code ?? asRecord?.code;

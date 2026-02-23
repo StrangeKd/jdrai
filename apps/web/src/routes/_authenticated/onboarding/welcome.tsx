@@ -1,12 +1,18 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { WelcomeHero } from "@/components/onboarding/WelcomeHero";
 import { Button } from "@/components/ui/button";
+import { getResolvedAuthDestination } from "@/routes/routing.utils";
 
 import { markWelcomeSeen } from "./onboarding.utils";
 
 export const Route = createFileRoute("/_authenticated/onboarding/welcome")({
+  beforeLoad: async ({ context }) => {
+    if (context.auth.isLoading) return;
+    const destination = await getResolvedAuthDestination(context);
+    if (destination === "/hub") throw redirect({ to: "/hub" });
+  },
   component: WelcomeRoute,
 });
 

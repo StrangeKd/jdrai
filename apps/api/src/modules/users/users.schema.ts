@@ -1,12 +1,9 @@
 import { z } from "zod";
 
-export const updateUserSchema = z.object({
-  username: z
-    .string()
-    .min(3)
-    .max(20)
-    .regex(/^[a-zA-Z0-9_]+$/, "Username must be alphanumeric with underscores")
-    .optional(),
+import { userUpdateSchema } from "@jdrai/shared";
+
+export const updateUserSchema = userUpdateSchema.extend({
+  // Support Better Auth's "name" field updates, while sharing username rules.
   name: z.string().min(1).max(50).optional(),
 });
 

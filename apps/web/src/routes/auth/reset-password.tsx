@@ -16,9 +16,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/lib/auth-client";
-import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { router } from "@/router";
-import { type ResetPasswordFormValues, resetPasswordSchema, resetSearchSchema } from "@/schemas/auth";
+import { redirectIfAuthenticated } from "@/routes/routing.utils";
+import {
+  type ResetPasswordFormValues,
+  resetPasswordSchema,
+  resetSearchSchema,
+} from "@/schemas/auth";
 
 // AC-7: typed search params via TanStack Router validateSearch
 export const Route = createFileRoute("/auth/reset-password")({
@@ -42,10 +46,7 @@ function TokenExpiredState() {
           Renvoyer un lien
         </Link>
         <div className="mt-4">
-          <Link
-            to="/auth/login"
-            className="text-sm text-amber-400 underline hover:text-amber-300"
-          >
+          <Link to="/auth/login" className="text-sm text-amber-400 underline hover:text-amber-300">
             Retour à la connexion
           </Link>
         </div>
@@ -85,7 +86,8 @@ function ResetPasswordPage() {
         const looksLikeInvalidToken =
           result.error.code === "INVALID_TOKEN" ||
           result.error.message?.includes("INVALID_TOKEN") === true ||
-          (result.error.status === 400 && result.error.message?.toLowerCase().includes("token") === true);
+          (result.error.status === 400 &&
+            result.error.message?.toLowerCase().includes("token") === true);
 
         if (looksLikeInvalidToken) {
           // AC-4: token invalid, expired, or already used
@@ -112,9 +114,7 @@ function ResetPasswordPage() {
   // WF-E4-01 — Reset form
   return (
     <AuthCard>
-      <h2 className="mb-6 font-serif text-xl font-semibold text-amber-300">
-        Nouveau mot de passe
-      </h2>
+      <h2 className="mb-6 font-serif text-xl font-semibold text-amber-300">Nouveau mot de passe</h2>
 
       {globalError && (
         <div className="mb-4 rounded border border-red-500 bg-red-950/50 px-3 py-2 text-sm text-red-300">

@@ -70,9 +70,7 @@
         "adventure_templates_name_unique": {
           "name": "adventure_templates_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -123,9 +121,7 @@
         "character_classes_name_unique": {
           "name": "character_classes_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -176,9 +172,7 @@
         "races_name_unique": {
           "name": "races_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -190,21 +184,12 @@
     "public.difficulty": {
       "name": "difficulty",
       "schema": "public",
-      "values": [
-        "easy",
-        "normal",
-        "hard",
-        "nightmare"
-      ]
+      "values": ["easy", "normal", "hard", "nightmare"]
     },
     "public.estimated_duration": {
       "name": "estimated_duration",
       "schema": "public",
-      "values": [
-        "short",
-        "medium",
-        "long"
-      ]
+      "values": ["short", "medium", "long"]
     }
   },
   "schemas": {},

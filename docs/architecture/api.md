@@ -129,6 +129,7 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "USERNAME_TAKEN"
   | "MAX_ACTIVE_ADVENTURES"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"

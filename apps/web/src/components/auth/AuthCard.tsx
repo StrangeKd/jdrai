@@ -11,7 +11,7 @@ export function AuthCard({ children }: AuthCardProps) {
     <div
       className="relative flex min-h-screen items-center justify-center px-4"
       style={{
-        backgroundImage: "url('/backgrounds/auth-bg.jpg')",
+        backgroundImage: "url('/backgrounds/auth-bg.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
