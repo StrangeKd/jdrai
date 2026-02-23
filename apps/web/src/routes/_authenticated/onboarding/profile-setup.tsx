@@ -9,6 +9,7 @@ import { NarrativeBox } from "@/components/onboarding/NarrativeBox";
 import { SkipButton } from "@/components/onboarding/SkipButton";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useUpdateProfile } from "@/hooks/useUpdateProfile";
 import { getErrorMessage } from "@/lib/error-messages";
@@ -33,24 +34,12 @@ export function ProfileSetupPage() {
 
   const updateProfile = useUpdateProfile();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors, isValid },
-    watch,
-  } = useForm<UsernameForm>({
+  const form = useForm<UsernameForm>({
     resolver: zodResolver(usernameFormSchema),
     mode: "onChange",
   });
 
-  const currentUsername = watch("username") ?? "";
-
-  // Clear server error and suggestion as soon as user starts editing
-  const handleInputChange = () => {
-    if (serverError) setServerError(null);
-    if (suggestion) setSuggestion(null);
-  };
+  const currentUsername = form.watch("username") ?? "";
 
   const onSubmitUsername = async (data: UsernameForm) => {
     setServerError(null);
@@ -114,70 +103,87 @@ export function ProfileSetupPage() {
           Comment vous appelle-t-on, aventurier ?
         </h1>
 
-        <form
-          onSubmit={handleSubmit(onSubmitUsername)}
-          className="w-full flex flex-col gap-4"
-          noValidate
-        >
-          <Input
-            {...register("username", { onChange: handleInputChange })}
-            placeholder="Votre pseudo"
-            autoFocus
-            autoComplete="off"
-            className="bg-stone-800 border-stone-600 text-amber-100 placeholder:text-stone-500"
-            disabled={updateProfile.isPending}
-          />
-
-          {/* Client-side validation error */}
-          {errors.username && (
-            <p className="text-sm text-red-400" role="alert">
-              {errors.username.message}
-            </p>
-          )}
-
-          {/* Server-side conflict error */}
-          {serverError && (
-            <p className="text-sm text-amber-400" role="alert">
-              {serverError}{" "}
-              {suggestion && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="underline underline-offset-4 text-amber-400 hover:text-amber-200 p-0"
-                  onClick={() => {
-                    setValue("username", suggestion, { shouldValidate: true });
-                    setServerError(null);
-                    setSuggestion(null);
-                  }}
-                >
-                  Essayez &ldquo;{suggestion}&rdquo;
-                </Button>
-              )}
-            </p>
-          )}
-
-          <p className="text-xs text-stone-400 leading-relaxed">
-            {
-              "C'est votre identité sur JDRAI. Vous pourrez choisir un autre nom pour chaque aventure."
-            }
-          </p>
-
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full tracking-widest uppercase mt-2"
-            disabled={!isValid || !currentUsername || !!serverError || updateProfile.isPending}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmitUsername)}
+            className="w-full flex flex-col gap-4"
+            noValidate
           >
-            {updateProfile.isPending ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                Vérification...
-              </span>
-            ) : (
-              "CONTINUER"
-            )}
-          </Button>
-        </form>
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Votre pseudo"
+                      autoFocus
+                      autoComplete="off"
+                      className="bg-stone-800 border-stone-600 text-amber-100 placeholder:text-stone-500"
+                      disabled={updateProfile.isPending}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Clear server error and suggestion as soon as user starts editing
+                        if (serverError) setServerError(null);
+                        if (suggestion) setSuggestion(null);
+                      }}
+                    />
+                  </FormControl>
+
+                  {/* Client-side validation error */}
+                  <FormMessage role="alert" className="text-red-400" />
+
+                  {/* Server-side conflict error */}
+                  {serverError && (
+                    <div className="flex items-center gap-1" role="alert">
+                      <span className="text-sm text-amber-400">{serverError}</span>
+                      {suggestion && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="underline underline-offset-4 text-amber-400 hover:text-amber-200 p-0"
+                          onClick={() => {
+                            form.setValue("username", suggestion, { shouldValidate: true });
+                            setServerError(null);
+                            setSuggestion(null);
+                          }}
+                        >
+                          Essayez &ldquo;{suggestion}&rdquo;
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </FormItem>
+              )}
+            />
+
+            <p className="text-xs text-stone-400 leading-relaxed">
+              {
+                "C'est votre identité sur JDRAI. Vous pourrez choisir un autre nom pour chaque aventure."
+              }
+            </p>
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full tracking-widest uppercase mt-2"
+              disabled={
+                !form.formState.isValid || !currentUsername || !!serverError || updateProfile.isPending
+              }
+            >
+              {updateProfile.isPending ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                  Vérification...
+                </span>
+              ) : (
+                "CONTINUER"
+              )}
+            </Button>
+          </form>
+        </Form>
       </div>
     </div>
   );
