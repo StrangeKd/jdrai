@@ -140,9 +140,10 @@ export function ProfileSetupPage() {
             <p className="text-sm text-amber-400" role="alert">
               {serverError}{" "}
               {suggestion && (
-                <button
-                  type="button"
-                  className="underline underline-offset-4 cursor-pointer hover:text-amber-200 transition-colors"
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="underline underline-offset-4 text-amber-400 hover:text-amber-200 p-0"
                   onClick={() => {
                     setValue("username", suggestion, { shouldValidate: true });
                     setServerError(null);
@@ -150,7 +151,7 @@ export function ProfileSetupPage() {
                   }}
                 >
                   Essayez &ldquo;{suggestion}&rdquo;
-                </button>
+                </Button>
               )}
             </p>
           )}
