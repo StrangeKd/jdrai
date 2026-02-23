@@ -19,9 +19,10 @@ apps/web/
 │   │   │   │   └── $id.summary.tsx  # Écran de fin (résumé + récompenses)
 │   │   │   │   # $id.lobby.tsx      # Salle d'attente multi (P3)
 │   │   │   ├── onboarding/
-│   │   │   │   ├── welcome.tsx          # Bienvenue + explication
-│   │   │   │   ├── profile-setup.tsx    # Choix pseudo + bases profil
-│   │   │   │   └── tutorial.tsx         # Aventure tutoriel (session guidée)
+│   │   │   │   ├── welcome.tsx              # Bienvenue + explication
+│   │   │   │   ├── profile-setup.tsx        # Choix pseudo + bases profil
+│   │   │   │   ├── tutorial.tsx             # Aventure tutoriel (session guidée)
+│   │   │   │   └── onboarding.utils.ts      # Logique feature locale (localStorage welcome-seen, routing target)
 │   │   │   # join/
 │   │   │   #   └── lobby.tsx            # Lobby public — parcourir les parties (P3, auth requise)
 │   │   │   └── settings/
@@ -59,6 +60,7 @@ apps/web/
 │   │   └── ui.store.ts          # État UI (zustand)
 │   ├── lib/
 │   │   ├── auth-client.ts       # Better Auth client (infrastructure)
+│   │   ├── redirects.ts         # Sanitisation des redirect URLs (sécurité)
 │   │   ├── validation.ts        # Zod base config
 │   │   └── utils.ts             # Utilitaires shadcn/ui (cn, etc.)
 │   └── main.tsx
@@ -68,6 +70,10 @@ apps/web/
 ```
 
 > **Note `schemas/`** : Ce dossier contient les schémas Zod de validation (forms, route search params). Convention : un fichier par domaine (`auth.ts`, `adventure.ts`, etc.). Ne pas mettre les schémas dans `lib/` — `lib/` est réservé à la configuration d'infrastructure (auth-client, validation base, utils). Les schémas partagés entre plusieurs routes ou composants vont dans `schemas/` ; les schémas purement locaux à un composant unique peuvent rester co-localisés.
+
+> **Note `lib/`** : Strictement réservé à l'infrastructure et aux utilitaires de sécurité génériques (`auth-client.ts`, `utils.ts`, `validation.ts`, `redirects.ts`). Ne pas y mettre de logique feature-spécifique.
+
+> **Convention co-location** : La logique utilitaire propre à une feature (ex : état localStorage, décisions de routing locales) doit être co-localisée avec ses routes dans un fichier `*.utils.ts` (ex : `routes/_authenticated/onboarding/onboarding.utils.ts`). Ne pas introduire un dossier `features/` ou `modules/` — TanStack Router file-based routing fournit déjà le découpage vertical via l'arborescence `routes/`.
 
 > **Note composants** : Le dossier `companion/` est créé vide en P1 pour que les points d'intervention (loading, erreurs, empty states) puissent être swappés facilement en P3. Les composants listés dans chaque dossier sont issus de l'inventaire UX Cartography §5.
 

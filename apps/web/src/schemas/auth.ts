@@ -1,3 +1,4 @@
+import { sanitizeRedirectPath } from "@/lib/redirects";
 import { z } from "@/lib/validation";
 
 export const loginSchema = z.object({
@@ -51,7 +52,7 @@ export const loginSearchSchema = z.object({
     (v) => (v === "success" ? "success" : undefined),
     z.enum(["success"]).optional(),
   ),
-  redirect: z.preprocess((v) => (typeof v === "string" ? v : undefined), z.string().optional()),
+  redirect: z.preprocess((v) => sanitizeRedirectPath(v), z.string().optional()),
 });
 export type LoginSearch = z.infer<typeof loginSearchSchema>;
 

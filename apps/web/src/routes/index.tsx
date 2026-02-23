@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+
 export const Route = createFileRoute("/")({
   component: IndexRedirect,
 });
@@ -17,14 +19,17 @@ function IndexRedirect() {
       return;
     }
 
-    // Authenticated but no username → onboarding
+    // Authenticated but no username → welcome page (start of onboarding funnel)
     if (!auth.user?.username) {
-      void navigate({ to: "/onboarding/profile-setup", replace: true });
+      void navigate({
+        to: getNoUsernameOnboardingTarget(auth.user?.id),
+        replace: true,
+      });
       return;
     }
 
     void navigate({ to: "/hub", replace: true });
-  }, [auth.isAuthenticated, auth.isLoading, auth.user?.username, navigate]);
+  }, [auth.isAuthenticated, auth.isLoading, auth.user?.id, auth.user?.username, navigate]);
 
   return null;
 }

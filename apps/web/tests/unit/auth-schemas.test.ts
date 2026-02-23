@@ -123,6 +123,21 @@ describe("loginSearchSchema", () => {
     const result = loginSearchSchema.parse({ redirect: "/hub" });
     expect(result.redirect).toBe("/hub");
   });
+
+  it("ignores external redirect URLs (open-redirect protection)", () => {
+    const result = loginSearchSchema.parse({ redirect: "https://evil.example/phish" });
+    expect(result.redirect).toBeUndefined();
+  });
+
+  it("ignores protocol-relative redirects", () => {
+    const result = loginSearchSchema.parse({ redirect: "//evil.example/phish" });
+    expect(result.redirect).toBeUndefined();
+  });
+
+  it("ignores redirects to auth routes (loop protection)", () => {
+    const result = loginSearchSchema.parse({ redirect: "/auth/login" });
+    expect(result.redirect).toBeUndefined();
+  });
 });
 
 describe("resetSearchSchema", () => {
