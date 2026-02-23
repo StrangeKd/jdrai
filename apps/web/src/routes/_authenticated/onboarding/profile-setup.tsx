@@ -37,6 +37,9 @@ export function ProfileSetupPage() {
   const form = useForm<UsernameForm>({
     resolver: zodResolver(usernameFormSchema),
     mode: "onChange",
+    defaultValues: {
+      username: "",
+    },
   });
 
   const currentUsername = form.watch("username") ?? "";
@@ -117,6 +120,7 @@ export function ProfileSetupPage() {
                   <FormControl>
                     <Input
                       {...field}
+                      value={field.value ?? ""}
                       placeholder="Votre pseudo"
                       autoFocus
                       autoComplete="off"
