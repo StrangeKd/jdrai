@@ -115,6 +115,42 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
     });
   });
 
+  it("renders clickable suggestion button on USERNAME_TAKEN (AC-3)", async () => {
+    mockMutateAsync.mockRejectedValue(
+      new ApiError("USERNAME_TAKEN", "Username is already taken"),
+    );
+    render(<ProfileSetupPage />);
+    const input = screen.getByPlaceholderText("Votre pseudo");
+    fireEvent.change(input, { target: { value: "Aldric" } });
+    const btn = await screen.findByRole("button", { name: /continuer/i });
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /essayez/i })).toBeInTheDocument();
+    });
+  });
+
+  it("clicking suggestion fills input and clears error (AC-3)", async () => {
+    mockMutateAsync.mockRejectedValue(
+      new ApiError("USERNAME_TAKEN", "Username is already taken"),
+    );
+    render(<ProfileSetupPage />);
+    const input = screen.getByPlaceholderText("Votre pseudo");
+    fireEvent.change(input, { target: { value: "Aldric" } });
+    const btn = await screen.findByRole("button", { name: /continuer/i });
+    fireEvent.click(btn);
+    const suggestionBtn = await screen.findByRole("button", { name: /essayez/i });
+    // Extract suggested username from button text like 'Essayez "Aldric_42"'
+    const match = suggestionBtn.textContent?.match(/\u201c([^\u201d]+)\u201d/);
+    const suggestedUsername = match?.[1];
+    fireEvent.click(suggestionBtn);
+    await waitFor(() => {
+      expect((input as HTMLInputElement).value).toBe(suggestedUsername);
+      expect(
+        screen.queryAllByRole("alert").every((el) => !el.textContent?.includes("déjà pris")),
+      ).toBe(true);
+    });
+  });
+
   it("clears server error when user starts editing again (AC-3)", async () => {
     mockMutateAsync.mockRejectedValue(
       new ApiError("USERNAME_TAKEN", "Username is already taken"),
