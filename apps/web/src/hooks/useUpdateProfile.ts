@@ -13,12 +13,14 @@ export function useUpdateProfile() {
       api
         .patch<{ success: true; data: UserDTO }>("/api/v1/users/me", data)
         .then((r) => r.data),
-    onSuccess: async () => {
-      // Force Better Auth to re-fetch the session so useSession() reflects
-      // the updated username before the next route navigation.
+    onSuccess: async (updatedUser) => {
+      // Populate the TanStack Query cache immediately with the mutation result.
+      // Used as a synchronous fallback in getResolvedAuthDestination for the brief
+      // window between mutation completion and React re-rendering App with fresh auth.
+      queryClient.setQueryData(["user", "me", updatedUser.id], updatedUser);
+      // Refresh Better Auth session so useSession() reflects the updated username,
+      // which triggers the useEffect in main.tsx → router.invalidate().
       await getSession();
-      // Invalidate any TanStack Query cache keyed on the user profile.
-      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
 }

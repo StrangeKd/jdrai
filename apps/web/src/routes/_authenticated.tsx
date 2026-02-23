@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { getNoUsernameOnboardingTarget } from "@/routes/routing.utils";
+import { getResolvedAuthDestination } from "@/routes/routing.utils";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context, location }) => {
@@ -16,9 +16,15 @@ export const Route = createFileRoute("/_authenticated")({
       });
     }
 
-    // Redirect to profile-setup if username not set, but NOT when already on an onboarding route.
-    if (!context.auth.user?.username && !location.pathname.startsWith("/onboarding")) {
-      throw redirect({ to: getNoUsernameOnboardingTarget(context.auth.user?.id) });
+    // Redirect to onboarding if username is missing, but NOT when already on an onboarding route.
+    // Uses fresh /users/me data when session user is stale right after profile update.
+    const destination = getResolvedAuthDestination(context);
+    if (
+      destination !== "/hub" &&
+      destination !== "/auth/login" &&
+      !location.pathname.startsWith("/onboarding")
+    ) {
+      throw redirect({ to: destination });
     }
   },
   component: AuthenticatedLayout,

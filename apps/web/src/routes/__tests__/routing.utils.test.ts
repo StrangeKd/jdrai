@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", () => ({
   redirect: (opts: unknown) => opts,
 }));
 
-import { getAuthDestination, redirectIfAuthenticated } from "@/routes/routing.utils";
+import { getResolvedAuthDestination, redirectIfAuthenticated } from "@/routes/routing.utils";
 
 function makeUser(overrides: Partial<AuthUser>): AuthUser {
   return {
@@ -25,7 +25,7 @@ function makeUser(overrides: Partial<AuthUser>): AuthUser {
 
 function makeContext(user: AuthUser): unknown {
   return {
-    queryClient: {},
+    queryClient: { getQueryData: vi.fn().mockReturnValue(undefined) },
     auth: {
       user,
       isAuthenticated: true,
@@ -34,32 +34,44 @@ function makeContext(user: AuthUser): unknown {
   };
 }
 
-describe("getAuthDestination", () => {
+describe("getResolvedAuthDestination", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
   it("returns /auth/login when not authenticated", () => {
-    expect(getAuthDestination({ isAuthenticated: false, user: null })).toBe("/auth/login");
+    const context = {
+      queryClient: { getQueryData: vi.fn().mockReturnValue(undefined) },
+      auth: { isAuthenticated: false, user: null, isLoading: false },
+    };
+    expect(getResolvedAuthDestination(context as RouterContext)).toBe("/auth/login");
   });
 
   it("returns /onboarding/welcome when authenticated, no username, welcome not seen", () => {
-    expect(getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: null } })).toBe(
+    expect(getResolvedAuthDestination(makeContext(makeUser({ username: null })) as RouterContext)).toBe(
       "/onboarding/welcome",
     );
   });
 
   it("returns /onboarding/profile-setup when authenticated, no username, welcome seen", () => {
     markWelcomeSeen("u1");
-    expect(getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: null } })).toBe(
+    expect(getResolvedAuthDestination(makeContext(makeUser({ username: null })) as RouterContext)).toBe(
       "/onboarding/profile-setup",
     );
   });
 
-  it("returns /hub when authenticated with username", () => {
+  it("returns /hub when authenticated with session username", () => {
     expect(
-      getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: "ryan" } }),
+      getResolvedAuthDestination(makeContext(makeUser({ username: "ryan" })) as RouterContext),
     ).toBe("/hub");
+  });
+
+  it("returns /hub when session username is null but cache has username", () => {
+    const context = {
+      queryClient: { getQueryData: vi.fn().mockReturnValue({ username: "ryan" }) },
+      auth: { isAuthenticated: true, user: makeUser({ username: null }), isLoading: false },
+    };
+    expect(getResolvedAuthDestination(context as RouterContext)).toBe("/hub");
   });
 });
 
@@ -69,39 +81,30 @@ describe("redirectIfAuthenticated", () => {
   });
 
   it("redirects authed + username to /hub", () => {
-    try {
+    expect(() =>
       redirectIfAuthenticated({
         context: makeContext(makeUser({ username: "ryan" })) as RouterContext,
         location: { pathname: "/auth/login" },
-      });
-      throw new Error("Expected redirect");
-    } catch (e) {
-      expect(e).toMatchObject({ to: "/hub" });
-    }
+      }),
+    ).toThrow(expect.objectContaining({ to: "/hub" }));
   });
 
   it("redirects authed + no username to /onboarding/welcome if not seen", () => {
-    try {
+    expect(() =>
       redirectIfAuthenticated({
         context: makeContext(makeUser({ username: null })) as RouterContext,
         location: { pathname: "/auth/login" },
-      });
-      throw new Error("Expected redirect");
-    } catch (e) {
-      expect(e).toMatchObject({ to: "/onboarding/welcome" });
-    }
+      }),
+    ).toThrow(expect.objectContaining({ to: "/onboarding/welcome" }));
   });
 
   it("redirects authed + no username to /onboarding/profile-setup if seen", () => {
     markWelcomeSeen("u1");
-    try {
+    expect(() =>
       redirectIfAuthenticated({
         context: makeContext(makeUser({ username: null })) as RouterContext,
         location: { pathname: "/auth/login" },
-      });
-      throw new Error("Expected redirect");
-    } catch (e) {
-      expect(e).toMatchObject({ to: "/onboarding/profile-setup" });
-    }
+      }),
+    ).toThrow(expect.objectContaining({ to: "/onboarding/profile-setup" }));
   });
 });

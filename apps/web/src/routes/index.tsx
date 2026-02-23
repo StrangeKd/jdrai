@@ -1,20 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { getAuthDestination } from "@/routes/routing.utils";
+import { getResolvedAuthDestination } from "@/routes/routing.utils";
 
 export const Route = createFileRoute("/")({
-  component: IndexRedirect,
+  beforeLoad: ({ context }) => {
+    if (context.auth.isLoading) return;
+    throw redirect({ to: getResolvedAuthDestination(context) });
+  },
+  component: () => null,
 });
-
-function IndexRedirect() {
-  const { auth } = Route.useRouteContext();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (auth.isLoading) return;
-    void navigate({ to: getAuthDestination(auth), replace: true });
-  }, [auth.isAuthenticated, auth.isLoading, auth.user?.id, auth.user?.username, navigate]);
-
-  return null;
-}

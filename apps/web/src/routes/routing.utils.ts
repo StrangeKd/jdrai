@@ -1,13 +1,9 @@
 import { redirect } from "@tanstack/react-router";
 
+import type { UserDTO } from "@jdrai/shared";
+
 import type { RouterContext } from "@/routes/__root";
 import { hasSeenWelcome } from "@/routes/_authenticated/onboarding/onboarding.utils";
-
-// Inline type to avoid circular import through router/routeTree.
-type AuthSnapshot = {
-  isAuthenticated: boolean;
-  user: { id?: string | null; username?: string | null } | null;
-};
 
 export function getNoUsernameOnboardingTarget(
   userId: string | null | undefined,
@@ -15,14 +11,28 @@ export function getNoUsernameOnboardingTarget(
   return hasSeenWelcome(userId) ? "/onboarding/profile-setup" : "/onboarding/welcome";
 }
 
-// Single source of truth for "where should this user go?" routing decisions.
-// Caller must ensure isLoading is false before calling.
-export function getAuthDestination(
-  auth: AuthSnapshot,
+// Single source of truth for routing decisions with full context access.
+// Synchronous — no API call needed:
+//   1. Primary: session username (populated by Better Auth cookieCache after PATCH /users/me
+//      forwards the refreshed Set-Cookie header).
+//   2. Fallback: TanStack Query cache (set by useUpdateProfile.onSuccess via setQueryData),
+//      covers the brief window where React hasn't re-rendered App with the fresh session yet.
+export function getResolvedAuthDestination(
+  context: RouterContext,
 ): "/auth/login" | "/hub" | "/onboarding/welcome" | "/onboarding/profile-setup" {
-  if (!auth.isAuthenticated) return "/auth/login";
-  if (!auth.user?.username) return getNoUsernameOnboardingTarget(auth.user?.id);
-  return "/hub";
+  if (!context.auth.isAuthenticated) return "/auth/login";
+
+  const sessionUsername = context.auth.user?.username;
+  if (sessionUsername) return "/hub";
+
+  const cached = context.queryClient.getQueryData<UserDTO>([
+    "user",
+    "me",
+    context.auth.user?.id ?? "",
+  ]);
+  if (cached?.username) return "/hub";
+
+  return getNoUsernameOnboardingTarget(context.auth.user?.id);
 }
 
 // Redirects authenticated users away from public auth pages (login, register, forgot/reset password).
@@ -35,8 +45,8 @@ export function redirectIfAuthenticated({
   location: { pathname: string };
 }) {
   if (context.auth.isLoading) return;
-
   if (context.auth.isAuthenticated) {
-    throw redirect({ to: getAuthDestination(context.auth) });
+    const destination = getResolvedAuthDestination(context);
+    throw redirect({ to: destination });
   }
 }
