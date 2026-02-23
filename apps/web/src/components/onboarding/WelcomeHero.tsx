@@ -10,7 +10,7 @@ export function WelcomeHero({ className }: WelcomeHeroProps) {
       className={cn(
         "relative flex items-center justify-center rounded-xl overflow-hidden",
         "bg-linear-to-b from-stone-900 via-stone-800 to-amber-950",
-        "w-full h-48 md:h-64 lg:w-[600px]",
+        "w-full h-[40vh] max-h-72 md:h-64 lg:w-[600px]",
         className,
       )}
     >

@@ -1,14 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { WelcomeHero } from "@/components/onboarding/WelcomeHero";
 import { Button } from "@/components/ui/button";
 
+import { markWelcomeSeen } from "./onboarding.utils";
+
 export const Route = createFileRoute("/_authenticated/onboarding/welcome")({
-  component: WelcomePage,
+  component: WelcomeRoute,
 });
 
-export function WelcomePage() {
+export function WelcomePage({ userId }: { userId?: string | null } = {}) {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    markWelcomeSeen(userId);
+  }, [userId]);
 
   const handleEnter = () => {
     navigate({ to: "/onboarding/profile-setup" });
@@ -38,9 +45,14 @@ export function WelcomePage() {
           size="lg"
           className="w-full max-w-[280px] tracking-widest uppercase"
         >
-          Entrer
+          ENTRER
         </Button>
       </div>
     </div>
   );
+}
+
+function WelcomeRoute() {
+  const { auth } = Route.useRouteContext();
+  return <WelcomePage userId={auth.user?.id ?? null} />;
 }

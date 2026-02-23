@@ -16,9 +16,7 @@ function App() {
   // Force re-evaluation of all route beforeLoad guards when auth state changes.
   // Required because beforeLoad runs on navigation only, not on reactive state changes.
   useEffect(() => {
-    console.log("[Main] invalidating router");
     void router.invalidate();
-    console.log("[Main] router invalidated");
   }, [auth.isAuthenticated, auth.isLoading]);
 
   return (
