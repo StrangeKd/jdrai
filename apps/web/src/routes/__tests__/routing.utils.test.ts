@@ -47,7 +47,7 @@ describe("getResolvedAuthDestination", () => {
       queryClient: { getQueryData: vi.fn().mockReturnValue(undefined) },
       auth: { isAuthenticated: false, user: null, isLoading: false },
     };
-    await expect(getResolvedAuthDestination(context as RouterContext)).resolves.toBe("/auth/login");
+    await expect(getResolvedAuthDestination(context as unknown as RouterContext)).resolves.toBe("/auth/login");
   });
 
   it("returns /onboarding/welcome when authenticated, no username, welcome not seen", async () => {
@@ -77,7 +77,7 @@ describe("getResolvedAuthDestination", () => {
       },
       auth: { isAuthenticated: true, user: makeUser({ username: null }), isLoading: false },
     };
-    await expect(getResolvedAuthDestination(context as RouterContext)).resolves.toBe("/hub");
+    await expect(getResolvedAuthDestination(context as unknown as RouterContext)).resolves.toBe("/hub");
   });
 });
 
