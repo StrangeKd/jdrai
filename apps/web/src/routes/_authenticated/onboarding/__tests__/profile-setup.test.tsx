@@ -39,9 +39,7 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
 
   it("renders the narrative question (AC-2)", () => {
     render(<ProfileSetupPage />);
-    expect(
-      screen.getByRole("heading", { name: /comment vous appelle-t-on/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /comment vous appelle-t-on/i })).toBeInTheDocument();
   });
 
   it("renders the text input with autoFocus (AC-2)", () => {
@@ -98,9 +96,7 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
   });
 
   it("shows conflict error with suggestion on 409 USERNAME_TAKEN (AC-3)", async () => {
-    mockMutateAsync.mockRejectedValue(
-      new ApiError("USERNAME_TAKEN", "Username is already taken"),
-    );
+    mockMutateAsync.mockRejectedValue(new ApiError("USERNAME_TAKEN", "Username is already taken"));
     render(<ProfileSetupPage />);
     const input = screen.getByPlaceholderText("Votre pseudo");
     fireEvent.change(input, { target: { value: "Aldric" } });
@@ -108,17 +104,13 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
     fireEvent.click(btn);
     await waitFor(() => {
       const alerts = screen.getAllByRole("alert");
-      const conflictAlert = alerts.find((el) =>
-        el.textContent?.includes("déjà pris"),
-      );
+      const conflictAlert = alerts.find((el) => el.textContent?.includes("déjà pris"));
       expect(conflictAlert).toBeDefined();
     });
   });
 
   it("renders clickable suggestion button on USERNAME_TAKEN (AC-3)", async () => {
-    mockMutateAsync.mockRejectedValue(
-      new ApiError("USERNAME_TAKEN", "Username is already taken"),
-    );
+    mockMutateAsync.mockRejectedValue(new ApiError("USERNAME_TAKEN", "Username is already taken"));
     render(<ProfileSetupPage />);
     const input = screen.getByPlaceholderText("Votre pseudo");
     fireEvent.change(input, { target: { value: "Aldric" } });
@@ -130,9 +122,7 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
   });
 
   it("clicking suggestion fills input and clears error (AC-3)", async () => {
-    mockMutateAsync.mockRejectedValue(
-      new ApiError("USERNAME_TAKEN", "Username is already taken"),
-    );
+    mockMutateAsync.mockRejectedValue(new ApiError("USERNAME_TAKEN", "Username is already taken"));
     render(<ProfileSetupPage />);
     const input = screen.getByPlaceholderText("Votre pseudo");
     fireEvent.change(input, { target: { value: "Aldric" } });
@@ -152,16 +142,16 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
   });
 
   it("clears server error when user starts editing again (AC-3)", async () => {
-    mockMutateAsync.mockRejectedValue(
-      new ApiError("USERNAME_TAKEN", "Username is already taken"),
-    );
+    mockMutateAsync.mockRejectedValue(new ApiError("USERNAME_TAKEN", "Username is already taken"));
     render(<ProfileSetupPage />);
     const input = screen.getByPlaceholderText("Votre pseudo");
     fireEvent.change(input, { target: { value: "Aldric" } });
     const btn = await screen.findByRole("button", { name: /continuer/i });
     fireEvent.click(btn);
     await waitFor(() => {
-      expect(screen.getAllByRole("alert").some((el) => el.textContent?.includes("déjà pris"))).toBe(true);
+      expect(screen.getAllByRole("alert").some((el) => el.textContent?.includes("déjà pris"))).toBe(
+        true,
+      );
     });
     // User edits input → error clears
     fireEvent.change(input, { target: { value: "Aldric2" } });
@@ -181,9 +171,7 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/étape 2 sur 2/i)).toBeInTheDocument();
     });
-    expect(
-      screen.getByRole("heading", { name: /aldric.*prêt/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /aldric.*prêt/i })).toBeInTheDocument();
   });
 });
 

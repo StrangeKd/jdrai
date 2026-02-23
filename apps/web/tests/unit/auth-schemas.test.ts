@@ -153,4 +153,3 @@ describe("resetSearchSchema", () => {
     expect(result.token).toBe("abc123");
   });
 });
-

@@ -3,7 +3,6 @@ import { useEffect } from "react";
 
 import { WelcomeHero } from "@/components/onboarding/WelcomeHero";
 import { Button } from "@/components/ui/button";
-
 import { getResolvedAuthDestination } from "@/routes/routing.utils";
 
 import { markWelcomeSeen } from "./onboarding.utils";

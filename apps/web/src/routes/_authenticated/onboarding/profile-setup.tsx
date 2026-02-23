@@ -182,7 +182,10 @@ export function ProfileSetupPage() {
               size="lg"
               className="w-full tracking-widest uppercase mt-2"
               disabled={
-                !form.formState.isValid || !currentUsername || !!serverError || updateProfile.isPending
+                !form.formState.isValid ||
+                !currentUsername ||
+                !!serverError ||
+                updateProfile.isPending
               }
             >
               {updateProfile.isPending ? (

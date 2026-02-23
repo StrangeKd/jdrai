@@ -66,9 +66,7 @@ function ForgotPasswordPage() {
   // WF-E3-01 — Request form
   return (
     <AuthCard>
-      <h2 className="mb-2 font-serif text-xl font-semibold text-amber-300">
-        Mot de passe oublié
-      </h2>
+      <h2 className="mb-2 font-serif text-xl font-semibold text-amber-300">Mot de passe oublié</h2>
       <p className="mb-6 text-sm text-amber-500">
         Entrez votre email pour recevoir un lien de réinitialisation.
       </p>

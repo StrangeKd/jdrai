@@ -39,9 +39,7 @@ describe("security headers", () => {
 
   it("GET /health with matching Origin includes CORS headers", async () => {
     const { app } = await import("./app");
-    const res = await request(app)
-      .get("/health")
-      .set("Origin", "http://localhost:5173");
+    const res = await request(app).get("/health").set("Origin", "http://localhost:5173");
     expect(res.headers["access-control-allow-credentials"]).toBe("true");
     expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
   });

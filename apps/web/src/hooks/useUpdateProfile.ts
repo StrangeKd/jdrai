@@ -10,9 +10,7 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: (data: UserUpdateInput) =>
-      api
-        .patch<{ success: true; data: UserDTO }>("/api/v1/users/me", data)
-        .then((r) => r.data),
+      api.patch<{ success: true; data: UserDTO }>("/api/v1/users/me", data).then((r) => r.data),
     onSuccess: async (updatedUser) => {
       // Populate the TanStack Query cache immediately with the mutation result.
       // Used as a synchronous fallback in getResolvedAuthDestination for the brief

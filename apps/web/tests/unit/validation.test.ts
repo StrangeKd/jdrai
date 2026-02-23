@@ -23,4 +23,3 @@ describe("validation service", () => {
     expect(errors.name?.[0]).toBe("Ce champ est requis");
   });
 });
-

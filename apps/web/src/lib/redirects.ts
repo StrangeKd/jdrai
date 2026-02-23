@@ -17,4 +17,3 @@ export function sanitizeRedirectPath(raw: unknown): string | undefined {
 
   return value;
 }
-

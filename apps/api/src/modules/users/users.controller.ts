@@ -20,11 +20,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-export const updateMe = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const updateMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = updateUserSchema.parse(req.body);
     const headers = toRecordStringHeaders(req.headers);
