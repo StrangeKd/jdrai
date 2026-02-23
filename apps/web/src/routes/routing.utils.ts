@@ -4,6 +4,7 @@ import type { UserDTO } from "@jdrai/shared";
 
 import type { RouterContext } from "@/routes/__root";
 import { hasSeenWelcome } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { api } from "@/services/api";
 
 export function getNoUsernameOnboardingTarget(
   userId: string | null | undefined,
@@ -11,20 +12,23 @@ export function getNoUsernameOnboardingTarget(
   return hasSeenWelcome(userId) ? "/onboarding/profile-setup" : "/onboarding/welcome";
 }
 
-// Single source of truth for routing decisions with full context access.
-// Synchronous — no API call needed:
-//   1. Primary: session username (populated by Better Auth cookieCache after PATCH /users/me
-//      forwards the refreshed Set-Cookie header).
-//   2. Fallback: TanStack Query cache (set by useUpdateProfile.onSuccess via setQueryData),
-//      covers the brief window where React hasn't re-rendered App with the fresh session yet.
-export function getResolvedAuthDestination(
+// Single source of truth for routing decisions. Three-tier username resolution:
+//
+//   1. Session  — populated by Better Auth once cookieCache is refreshed.
+//   2. Cache    — set by useUpdateProfile.onSuccess via setQueryData; covers the brief
+//                 race window between mutation completion and React re-rendering App
+//                 with the fresh session (no API call).
+//   3. API call — fallback for page reload: TanStack Query cache is in-memory and
+//                 cleared on reload; calls GET /users/me which queries the DB directly.
+export async function getResolvedAuthDestination(
   context: RouterContext,
-): "/auth/login" | "/hub" | "/onboarding/welcome" | "/onboarding/profile-setup" {
+): Promise<"/auth/login" | "/hub" | "/onboarding/welcome" | "/onboarding/profile-setup"> {
   if (!context.auth.isAuthenticated) return "/auth/login";
 
-  const sessionUsername = context.auth.user?.username;
-  if (sessionUsername) return "/hub";
+  // Tier 1: session
+  if (context.auth.user?.username) return "/hub";
 
+  // Tier 2: TanStack Query cache (no API call)
   const cached = context.queryClient.getQueryData<UserDTO>([
     "user",
     "me",
@@ -32,12 +36,28 @@ export function getResolvedAuthDestination(
   ]);
   if (cached?.username) return "/hub";
 
+  // Tier 3: fresh DB read via API (page reload — cache was cleared)
+  if (!context.auth.user?.id) return getNoUsernameOnboardingTarget(context.auth.user?.id);
+  try {
+    const res = await context.queryClient.fetchQuery({
+      queryKey: ["user", "me", context.auth.user.id],
+      queryFn: () =>
+        api
+          .get<{ success: true; data: UserDTO }>("/api/v1/users/me")
+          .then((payload) => payload.data),
+      staleTime: 0,
+    });
+    if (res.username) return "/hub";
+  } catch {
+    // Keep routing resilient: if /users/me fails, fall through to onboarding.
+  }
+
   return getNoUsernameOnboardingTarget(context.auth.user?.id);
 }
 
 // Redirects authenticated users away from public auth pages (login, register, forgot/reset password).
 // Called from beforeLoad on every /auth/* route.
-export function redirectIfAuthenticated({
+export async function redirectIfAuthenticated({
   context,
   location: _location,
 }: {
@@ -46,7 +66,7 @@ export function redirectIfAuthenticated({
 }) {
   if (context.auth.isLoading) return;
   if (context.auth.isAuthenticated) {
-    const destination = getResolvedAuthDestination(context);
+    const destination = await getResolvedAuthDestination(context);
     throw redirect({ to: destination });
   }
 }
