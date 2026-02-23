@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { getNoUsernameOnboardingTarget } from "@/routes/routing.utils";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context, location }) => {

@@ -1,24 +1,18 @@
 import { sanitizeRedirectPath } from "@/lib/redirects";
-import { z } from "@/lib/validation";
+import { fields, z } from "@/lib/validation";
 
 export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Ce champ est requis")
-    .email("Adresse email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
+  email: fields.email(),
+  password: fields.requiredString(),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const registerSchema = z
   .object({
-    email: z
-      .string()
-      .min(1, "Ce champ est requis")
-      .email("Adresse email invalide"),
-    password: z.string().min(8, "Min. 8 caractères"),
-    confirmPassword: z.string().min(1, "Ce champ est requis"),
+    email: fields.email(),
+    password: fields.password(),
+    confirmPassword: fields.requiredString(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas",
@@ -29,15 +23,15 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 // Forgot password form schema (E3)
 export const forgotPasswordSchema = z.object({
-  email: z.string().min(1).email(),
+  email: fields.email(),
 });
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 // Reset password form schema (E4)
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(8),
-    confirmPassword: z.string().min(1),
+    password: fields.password(),
+    confirmPassword: fields.requiredString(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas",

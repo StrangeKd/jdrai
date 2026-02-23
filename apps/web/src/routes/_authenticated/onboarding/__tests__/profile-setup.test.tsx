@@ -10,10 +10,11 @@ vi.mock("@tanstack/react-router", () => ({
 
 // Mock useUpdateProfile hook
 const mockMutateAsync = vi.fn();
+let mockIsPending = false;
 vi.mock("@/hooks/useUpdateProfile", () => ({
   useUpdateProfile: () => ({
     mutateAsync: mockMutateAsync,
-    isPending: false,
+    isPending: mockIsPending,
   }),
 }));
 
@@ -28,6 +29,7 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockMutateAsync.mockClear();
+    mockIsPending = false;
   });
 
   it("renders StepIndicator at step 1 (AC-2)", () => {
@@ -86,6 +88,13 @@ describe("ProfileSetupPage — Step 1 (E6-01)", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /continuer/i })).not.toBeDisabled();
     });
+  });
+
+  it("disables input and shows pending state while request is pending (AC-3)", () => {
+    mockIsPending = true;
+    render(<ProfileSetupPage />);
+    expect(screen.getByPlaceholderText("Votre pseudo")).toBeDisabled();
+    expect(screen.getByText(/vérification/i)).toBeInTheDocument();
   });
 
   it("shows conflict error with suggestion on 409 USERNAME_TAKEN (AC-3)", async () => {

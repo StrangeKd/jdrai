@@ -2,7 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+
+import { usernameSchema } from "@jdrai/shared";
 
 import { NarrativeBox } from "@/components/onboarding/NarrativeBox";
 import { SkipButton } from "@/components/onboarding/SkipButton";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUpdateProfile } from "@/hooks/useUpdateProfile";
 import { getErrorMessage } from "@/lib/error-messages";
+import { z } from "@/lib/validation";
 import { ApiError } from "@/services/api";
 
 export const Route = createFileRoute("/_authenticated/onboarding/profile-setup")({
@@ -18,16 +20,6 @@ export const Route = createFileRoute("/_authenticated/onboarding/profile-setup")
 });
 
 type Step = "username" | "ready";
-
-// Mirrors packages/shared usernameSchema — local zod v3 version (shared uses zod v4, incompatible with zodResolver)
-const usernameSchema = z
-  .string()
-  .min(3, "Le pseudo doit contenir au moins 3 caractères")
-  .max(20, "Le pseudo ne peut pas dépasser 20 caractères")
-  .regex(
-    /^[a-zA-Z0-9_]+$/,
-    "Le pseudo ne peut contenir que des lettres, chiffres et _",
-  );
 
 const usernameFormSchema = z.object({ username: usernameSchema });
 type UsernameForm = z.infer<typeof usernameFormSchema>;
@@ -102,9 +94,7 @@ export function ProfileSetupPage() {
             {"C'est parti !"}
           </Button>
 
-          <SkipButton onClick={() => navigate({ to: "/hub" })}>
-            Passer et aller au Hub
-          </SkipButton>
+          <SkipButton onClick={() => navigate({ to: "/hub" })}>Passer et aller au Hub</SkipButton>
         </div>
       </div>
     );
@@ -149,7 +139,9 @@ export function ProfileSetupPage() {
           )}
 
           <p className="text-xs text-stone-400 leading-relaxed">
-            {"C'est votre identité sur JDRAI. Vous pourrez choisir un autre nom pour chaque aventure."}
+            {
+              "C'est votre identité sur JDRAI. Vous pourrez choisir un autre nom pour chaque aventure."
+            }
           </p>
 
           <Button

@@ -1,7 +1,13 @@
 import { redirect } from "@tanstack/react-router";
 
 import type { RouterContext } from "@/routes/__root";
-import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { hasSeenWelcome } from "@/routes/_authenticated/onboarding/onboarding.utils";
+
+export function getNoUsernameOnboardingTarget(
+  userId: string | null | undefined,
+): "/onboarding/welcome" | "/onboarding/profile-setup" {
+  return hasSeenWelcome(userId) ? "/onboarding/profile-setup" : "/onboarding/welcome";
+}
 
 // Redirects authenticated users away from public auth pages (login, register, forgot/reset password).
 // Called from beforeLoad on every /auth/* route.

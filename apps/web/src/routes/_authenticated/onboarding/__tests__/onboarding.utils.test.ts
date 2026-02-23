@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  getNoUsernameOnboardingTarget,
   hasSeenWelcome,
   markWelcomeSeen,
   WELCOME_SEEN_STORAGE_KEY,
 } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { getNoUsernameOnboardingTarget } from "@/routes/routing.utils";
 
 describe("onboarding storage helpers", () => {
   beforeEach(() => {
@@ -32,4 +32,3 @@ describe("onboarding storage helpers", () => {
     expect(getNoUsernameOnboardingTarget("u2")).toBe("/onboarding/welcome");
   });
 });
-

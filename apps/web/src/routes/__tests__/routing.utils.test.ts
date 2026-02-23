@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", () => ({
   redirect: (opts: unknown) => opts,
 }));
 
-import { redirectIfAuthenticated } from "../route-guards";
+import { redirectIfAuthenticated } from "@/routes/routing.utils";
 
 function makeUser(overrides: Partial<AuthUser>): AuthUser {
   return {
@@ -76,4 +76,3 @@ describe("redirectIfAuthenticated", () => {
     }
   });
 });
-

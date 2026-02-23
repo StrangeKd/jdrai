@@ -9,6 +9,7 @@ apps/web/
 ├── src/
 │   ├── routes/                  # TanStack Router (file-based)
 │   │   ├── __root.tsx           # Layout racine + providers
+│   │   ├── routing.utils.ts     # Décisions routing cross-routes (guards auth, cible onboarding)
 │   │   ├── _authenticated/      # Routes protégées (layout)
 │   │   │   ├── hub/
 │   │   │   │   └── index.tsx    # Dashboard principal
@@ -22,7 +23,7 @@ apps/web/
 │   │   │   │   ├── welcome.tsx              # Bienvenue + explication
 │   │   │   │   ├── profile-setup.tsx        # Choix pseudo + bases profil
 │   │   │   │   ├── tutorial.tsx             # Aventure tutoriel (session guidée)
-│   │   │   │   └── onboarding.utils.ts      # Logique feature locale (localStorage welcome-seen, routing target)
+│   │   │   │   └── onboarding.utils.ts      # Logique feature locale (localStorage welcome-seen)
 │   │   │   # join/
 │   │   │   #   └── lobby.tsx            # Lobby public — parcourir les parties (P3, auth requise)
 │   │   │   └── settings/
@@ -71,9 +72,11 @@ apps/web/
 
 > **Note `schemas/`** : Ce dossier contient les schémas Zod de validation (forms, route search params). Convention : un fichier par domaine (`auth.ts`, `adventure.ts`, etc.). Ne pas mettre les schémas dans `lib/` — `lib/` est réservé à la configuration d'infrastructure (auth-client, validation base, utils). Les schémas partagés entre plusieurs routes ou composants vont dans `schemas/` ; les schémas purement locaux à un composant unique peuvent rester co-localisés.
 
-> **Note `lib/`** : Strictement réservé à l'infrastructure et aux utilitaires de sécurité génériques (`auth-client.ts`, `utils.ts`, `validation.ts`, `redirects.ts`). Ne pas y mettre de logique feature-spécifique.
+> **Note `lib/`** : Strictement réservé à l'infrastructure et aux utilitaires de sécurité génériques (`auth-client.ts`, `utils.ts`, `validation.ts`, `redirects.ts`). Ne pas y mettre de logique feature-spécifique ni de décisions de routing.
 
-> **Convention co-location** : La logique utilitaire propre à une feature (ex : état localStorage, décisions de routing locales) doit être co-localisée avec ses routes dans un fichier `*.utils.ts` (ex : `routes/_authenticated/onboarding/onboarding.utils.ts`). Ne pas introduire un dossier `features/` ou `modules/` — TanStack Router file-based routing fournit déjà le découpage vertical via l'arborescence `routes/`.
+> **Convention co-location** : La logique utilitaire propre à une feature (ex : état localStorage) doit être co-localisée avec ses routes dans un fichier `*.utils.ts` (ex : `routes/_authenticated/onboarding/onboarding.utils.ts`). Ne pas introduire un dossier `features/` ou `modules/` — TanStack Router file-based routing fournit déjà le découpage vertical via l'arborescence `routes/`.
+>
+> **Exception : logique cross-routes** — Si une logique routing est consommée par plusieurs niveaux de routes (guards auth, décisions de redirection conditionnelles), elle va dans `routes/routing.utils.ts`. Règle de décision : si un `*.utils.ts` co-localisé devrait être importé par `lib/`, il appartient à `routes/routing.utils.ts` pour éviter la violation de layering (`lib/` ne doit jamais importer depuis `routes/`).
 
 > **Note composants** : Le dossier `companion/` est créé vide en P1 pour que les points d'intervention (loading, erreurs, empty states) puissent être swappés facilement en P3. Les composants listés dans chaque dossier sont issus de l'inventaire UX Cartography §5.
 

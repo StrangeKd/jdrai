@@ -10,39 +10,29 @@
  */
 import { z } from "zod";
 
-z.setErrorMap((issue, ctx) => {
-  switch (issue.code) {
-    case z.ZodIssueCode.invalid_type:
-      if (issue.received === "undefined" || issue.received === "null") {
-        return { message: "Ce champ est requis" };
+z.config({
+  customError: (issue) => {
+    switch (issue.code) {
+      case "invalid_type": {
+        if (issue.input === undefined || issue.input === null) return "Ce champ est requis";
+        return undefined;
       }
-      return { message: ctx.defaultError };
 
-    case z.ZodIssueCode.too_small:
-      if (issue.type === "string") {
-        if (issue.minimum === 1) return { message: "Ce champ est requis" };
-        return {
-          message: `Min. ${issue.minimum} caractère${Number(issue.minimum) > 1 ? "s" : ""}`,
-        };
+      case "too_small": {
+        if (issue.origin !== "string") return undefined;
+        if (issue.minimum === 1) return "Ce champ est requis";
+        return `Min. ${issue.minimum} caractère${Number(issue.minimum) > 1 ? "s" : ""}`;
       }
-      return { message: ctx.defaultError };
 
-    case z.ZodIssueCode.too_big:
-      if (issue.type === "string") {
-        return {
-          message: `Max. ${issue.maximum} caractère${Number(issue.maximum) > 1 ? "s" : ""}`,
-        };
+      case "too_big": {
+        if (issue.origin !== "string") return undefined;
+        return `Max. ${issue.maximum} caractère${Number(issue.maximum) > 1 ? "s" : ""}`;
       }
-      return { message: ctx.defaultError };
 
-    case z.ZodIssueCode.invalid_string:
-      if (issue.validation === "email") return { message: "Adresse email invalide" };
-      if (issue.validation === "url") return { message: "URL invalide" };
-      return { message: ctx.defaultError };
-
-    default:
-      return { message: ctx.defaultError };
-  }
+      default:
+        return undefined;
+    }
+  },
 });
 
 export { z };
@@ -53,7 +43,7 @@ export { z };
  */
 export const fields = {
   /** Required email field */
-  email: () => z.string().email(),
+  email: () => z.email("Adresse email invalide"),
 
   /** Required password with configurable minimum length (default: 8) */
   password: (min = 8) => z.string().min(min),

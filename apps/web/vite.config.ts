@@ -6,7 +6,16 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), tailwindcss(), react()],
+  plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+      // Allow colocating non-route files next to routes (tests, shared utils).
+      routeFileIgnorePattern: "(__tests__|utils|\\.test\\.)",
+    }),
+    tailwindcss(),
+    react(),
+  ],
   envDir: path.resolve(__dirname, "../../"), // load root .env (VITE_API_URL, etc.)
   resolve: {
     alias: {

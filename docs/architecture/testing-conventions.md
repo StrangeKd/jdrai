@@ -2,6 +2,30 @@
 
 ---
 
+## Coding Conventions (Frontend)
+
+### Validation / Zod
+
+Always import `z` from `@/lib/validation` (never directly from `zod`) and use `fields.*` helpers when applicable.
+
+`apps/web/src/lib/validation.ts` configures a global French error map and exposes reusable field validators:
+
+```typescript
+import { z, fields } from "@/lib/validation";
+
+// Use fields.* for standard inputs
+const schema = z.object({
+  email: fields.email(),             // "Adresse email invalide"
+  password: fields.password(8),      // min 8 chars
+  username: fields.requiredString(30), // required, max 30
+  bio: fields.optionalString(),      // optional
+});
+```
+
+**Exception:** search params schemas using `z.preprocess`, `z.enum`, or `z.catch` may import `z` directly if not covered by `fields`.
+
+---
+
 ## Tests
 
 ### Stratégie

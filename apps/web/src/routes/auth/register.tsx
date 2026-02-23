@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { router } from "@/router";
+import { redirectIfAuthenticated } from "@/routes/routing.utils";
 import { type RegisterFormValues, registerSchema } from "@/schemas/auth";
 
 // AC-2: redirect authenticated users away from register

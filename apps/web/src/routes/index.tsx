@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { getNoUsernameOnboardingTarget } from "@/routes/routing.utils";
 
 export const Route = createFileRoute("/")({
   component: IndexRedirect,

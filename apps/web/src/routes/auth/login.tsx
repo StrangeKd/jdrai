@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { redirectIfAuthenticated } from "@/lib/route-guards";
 import { router } from "@/router";
-import { getNoUsernameOnboardingTarget } from "@/routes/_authenticated/onboarding/onboarding.utils";
+import { getNoUsernameOnboardingTarget, redirectIfAuthenticated } from "@/routes/routing.utils";
 import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
 
 // AC-1: typed search params — `reset` for post-reset banner, `redirect` for auth guard
@@ -46,8 +45,7 @@ function LoginPage() {
     try {
       const result = await login(data.email, data.password);
       const returnedUser = result?.user;
-      const hasUsername =
-        returnedUser && (returnedUser as { username?: string | null }).username;
+      const hasUsername = returnedUser && (returnedUser as { username?: string | null }).username;
       const userId = returnedUser && (returnedUser as { id?: string }).id;
 
       // Redirect workflow:
@@ -55,7 +53,7 @@ function LoginPage() {
       // - username present: honor validated redirect param (internal paths only), else /hub
       const destination = !hasUsername
         ? getNoUsernameOnboardingTarget(userId)
-        : redirectTo ?? "/hub";
+        : (redirectTo ?? "/hub");
       router.navigate({ to: destination });
     } catch {
       setGlobalError("Identifiants incorrects.");
