@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", () => ({
   redirect: (opts: unknown) => opts,
 }));
 
-import { redirectIfAuthenticated } from "@/routes/routing.utils";
+import { getAuthDestination, redirectIfAuthenticated } from "@/routes/routing.utils";
 
 function makeUser(overrides: Partial<AuthUser>): AuthUser {
   return {
@@ -33,6 +33,35 @@ function makeContext(user: AuthUser): unknown {
     },
   };
 }
+
+describe("getAuthDestination", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("returns /auth/login when not authenticated", () => {
+    expect(getAuthDestination({ isAuthenticated: false, user: null })).toBe("/auth/login");
+  });
+
+  it("returns /onboarding/welcome when authenticated, no username, welcome not seen", () => {
+    expect(getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: null } })).toBe(
+      "/onboarding/welcome",
+    );
+  });
+
+  it("returns /onboarding/profile-setup when authenticated, no username, welcome seen", () => {
+    markWelcomeSeen("u1");
+    expect(getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: null } })).toBe(
+      "/onboarding/profile-setup",
+    );
+  });
+
+  it("returns /hub when authenticated with username", () => {
+    expect(
+      getAuthDestination({ isAuthenticated: true, user: { id: "u1", username: "ryan" } }),
+    ).toBe("/hub");
+  });
+});
 
 describe("redirectIfAuthenticated", () => {
   beforeEach(() => {
