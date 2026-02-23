@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -14,9 +14,17 @@ import { Input } from "@/components/ui/input";
 import { useUpdateProfile } from "@/hooks/useUpdateProfile";
 import { getErrorMessage } from "@/lib/error-messages";
 import { z } from "@/lib/validation";
+import { getResolvedAuthDestination } from "@/routes/routing.utils";
 import { ApiError } from "@/services/api";
 
 export const Route = createFileRoute("/_authenticated/onboarding/profile-setup")({
+  beforeLoad: async ({ context }) => {
+    if (context.auth.isLoading) return;
+    // Redirect to hub if the user already has a username — prevents navigating back
+    // to profile-setup via browser history after onboarding is complete.
+    const destination = await getResolvedAuthDestination(context);
+    if (destination === "/hub") throw redirect({ to: "/hub" });
+  },
   component: ProfileSetupPage,
 });
 
