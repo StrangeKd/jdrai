@@ -29,12 +29,14 @@ export function ProfileSetupPage() {
   const [step, setStep] = useState<Step>("username");
   const [confirmedUsername, setConfirmedUsername] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
 
   const updateProfile = useUpdateProfile();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isValid },
     watch,
   } = useForm<UsernameForm>({
@@ -44,9 +46,10 @@ export function ProfileSetupPage() {
 
   const currentUsername = watch("username") ?? "";
 
-  // Clear server error as soon as user starts editing
+  // Clear server error and suggestion as soon as user starts editing
   const handleInputChange = () => {
     if (serverError) setServerError(null);
+    if (suggestion) setSuggestion(null);
   };
 
   const onSubmitUsername = async (data: UsernameForm) => {
@@ -58,10 +61,11 @@ export function ProfileSetupPage() {
     } catch (error) {
       if (error instanceof ApiError && error.code === "USERNAME_TAKEN") {
         const suffix = Math.floor(Math.random() * 90) + 10;
-        const suggestion = `${data.username}_${suffix}`;
-        setServerError(`⚠️ Ce pseudo est déjà pris. Essayez "${suggestion}" ?`);
+        setServerError("⚠️ Ce pseudo est déjà pris.");
+        setSuggestion(`${data.username}_${suffix}`);
       } else {
         setServerError(getErrorMessage("INTERNAL_ERROR"));
+        setSuggestion(null);
       }
     }
   };
@@ -134,7 +138,20 @@ export function ProfileSetupPage() {
           {/* Server-side conflict error */}
           {serverError && (
             <p className="text-sm text-amber-400" role="alert">
-              {serverError}
+              {serverError}{" "}
+              {suggestion && (
+                <button
+                  type="button"
+                  className="underline underline-offset-4 cursor-pointer hover:text-amber-200 transition-colors"
+                  onClick={() => {
+                    setValue("username", suggestion, { shouldValidate: true });
+                    setServerError(null);
+                    setSuggestion(null);
+                  }}
+                >
+                  Essayez &ldquo;{suggestion}&rdquo;
+                </button>
+              )}
             </p>
           )}
 
