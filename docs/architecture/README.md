@@ -32,6 +32,7 @@
 | **[coding-standards.md](./coding-standards.md)**       | Standards de code, naming, patterns, Git                    |
 | **[testing-conventions.md](./testing-conventions.md)** | Stratégie de tests                                          |
 | **[checklist.md](./checklist.md)**                     | Checklist de validation (P1, P2, P3)                        |
+| **[tech-debt.md](./tech-debt.md)**                     | Dettes techniques, incompatibilités de versions, corrections à anticiper |
 
 ---
 
