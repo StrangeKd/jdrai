@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { AuthCard } from "@/components/auth/AuthCard";
+import { AuthSocialSection } from "@/components/auth/AuthSocialSection";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -144,12 +145,7 @@ function LoginPage() {
             {form.formState.isSubmitting ? "Connexion…" : "Connexion"}
           </Button>
 
-          {/* OAuth separator — P2+ placeholder */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-amber-900/50" />
-            <span className="text-xs text-amber-700">ou</span>
-            <div className="flex-1 border-t border-amber-900/50" />
-          </div>
+          <AuthSocialSection />
 
           <p className="text-center text-sm text-amber-500">
             Pas de compte ?{" "}
