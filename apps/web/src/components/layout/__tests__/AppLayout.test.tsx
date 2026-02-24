@@ -58,10 +58,7 @@ describe("shouldHideNav", () => {
   });
 
   it("returns false for /adventure/new — not a session route (AC-7)", () => {
-    // /adventure/new matches /adventure/:id pattern but semantically should be accessible
-    // The regex /^\/adventure\/[^/]+$/ matches it — this is intentional per spec
-    // Story 4.3 will adjust once game session routes are real
-    expect(shouldHideNav("/adventure/new")).toBe(true);
+    expect(shouldHideNav("/adventure/new")).toBe(false);
   });
 
   it("returns false for /adventure/:id/summary — summary shows nav (AC-7)", () => {

@@ -18,7 +18,8 @@ interface AppLayoutProps {
 export function shouldHideNav(pathname: string): boolean {
   if (pathname.startsWith("/onboarding")) return true;
   // Match /adventure/:id exactly (not /adventure/new, not /adventure/:id/summary)
-  if (/^\/adventure\/[^/]+$/.test(pathname)) return true;
+  // NOTE: "/adventure/new" is the adventure config screen (Story 5.2) and must keep nav visible.
+  if (/^\/adventure\/[^/]+$/.test(pathname) && pathname !== "/adventure/new") return true;
   return false;
 }
 

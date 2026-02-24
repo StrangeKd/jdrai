@@ -14,6 +14,9 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => (
     <h2>{children}</h2>
   ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
 }));
 
 // Mock UIStore — controllable state
@@ -61,6 +64,6 @@ describe("AdventureModal (AC-4)", () => {
   it("renders Story 4.3 placeholder content when open (AC-4)", () => {
     mockAdventureModalOpen = true;
     render(<AdventureModal />);
-    expect(screen.getByText(/story 4\.3/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/story 4\.3/i).length).toBeGreaterThan(0);
   });
 });

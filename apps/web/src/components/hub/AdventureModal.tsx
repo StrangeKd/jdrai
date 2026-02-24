@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -16,10 +17,12 @@ export function AdventureModal() {
 
   return (
     <Dialog open={adventureModalOpen} onOpenChange={setAdventureModalOpen}>
-      {/* aria-describedby={undefined}: no description for this placeholder — Story 4.3 will add DialogDescription */}
-      <DialogContent className="bg-stone-900 border-stone-700 text-amber-100" aria-describedby={undefined}>
+      <DialogContent className="bg-stone-900 border-stone-700 text-amber-100">
         <DialogHeader>
           <DialogTitle className="text-amber-300">Aventure</DialogTitle>
+          <DialogDescription className="sr-only">
+            Modale Aventure (placeholder) — Story 4.3.
+          </DialogDescription>
         </DialogHeader>
         {/* Placeholder — content implemented in Story 4.3 */}
         <p className="text-stone-400 text-sm">

@@ -4,6 +4,7 @@ import { useUIStore } from "../ui.store";
 
 // Reset store state before each test to avoid cross-test pollution
 beforeEach(() => {
+  localStorage.removeItem("jdrai-ui");
   useUIStore.setState({
     adventureModalOpen: false,
     sidebarOpen: true,
