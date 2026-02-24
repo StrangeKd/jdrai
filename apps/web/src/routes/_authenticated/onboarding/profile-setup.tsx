@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { usernameSchema } from "@jdrai/shared";
 
 import { NarrativeBox } from "@/components/onboarding/NarrativeBox";
-import { SkipButton } from "@/components/onboarding/SkipButton";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -78,7 +77,7 @@ export function ProfileSetupPage() {
           <StepIndicator currentStep={2} />
 
           <h1 className="text-2xl font-bold text-amber-100 text-center leading-tight">
-            {confirmedUsername}, êtes-vous prêt pour votre première aventure ?
+            {confirmedUsername}, êtes-vous prêt(e) pour votre première aventure ?
           </h1>
 
           <NarrativeBox>
@@ -87,6 +86,7 @@ export function ProfileSetupPage() {
             règles de base.
             <br />
             <br />
+            {/* // TODO: evaluate the duration of the tutorial */}
             Durée estimée : ~5 min.
           </NarrativeBox>
 
@@ -98,7 +98,14 @@ export function ProfileSetupPage() {
             {"C'est parti !"}
           </Button>
 
-          <SkipButton onClick={() => navigate({ to: "/hub" })}>Passer et aller au Hub</SkipButton>
+          <Button
+            variant="link"
+            size="sm"
+            className="text-amber-200/40 hover:text-amber-200/70 transition-colors underline-offset-4 hover:underline"
+            onClick={() => navigate({ to: "/hub" })}
+          >
+            Passer et aller au Hub
+          </Button>
         </div>
       </div>
     );
