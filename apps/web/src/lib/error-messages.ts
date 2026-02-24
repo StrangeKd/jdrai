@@ -18,3 +18,19 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
 export function getErrorMessage(code: ErrorCode): string {
   return ERROR_MESSAGES[code] ?? ERROR_MESSAGES.INTERNAL_ERROR;
 }
+
+// Better Auth client error codes → French user-facing messages.
+// Covers errors thrown by useAuth (register, login) that are not API-level ErrorCodes.
+// better-call auto-generates the code from the message:
+// message.toUpperCase().replace(/ /g, "_").replace(/[^A-Z0-9_]/g, "")
+// "User already exists. Use another email." → "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
+const BETTER_AUTH_REGISTER_MESSAGES: Record<string, string> = {
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Cette adresse e-mail est déjà utilisée.",
+};
+
+export function getRegisterErrorMessage(code?: string): string {
+  return (
+    (code && BETTER_AUTH_REGISTER_MESSAGES[code]) ??
+    "Erreur lors de l'inscription. Veuillez réessayer."
+  );
+}

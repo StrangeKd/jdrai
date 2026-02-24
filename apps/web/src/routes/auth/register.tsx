@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { AuthCard } from "@/components/auth/AuthCard";
+import { AuthSocialSection } from "@/components/auth/AuthSocialSection";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -15,12 +16,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthError, useAuth } from "@/hooks/useAuth";
+import { getRegisterErrorMessage } from "@/lib/error-messages";
 import { router } from "@/router";
 import { redirectIfAuthenticated } from "@/routes/routing.utils";
 import { type RegisterFormValues, registerSchema } from "@/schemas/auth";
 
-// AC-2: redirect authenticated users away from register
 export const Route = createFileRoute("/auth/register")({
   beforeLoad: redirectIfAuthenticated,
   component: RegisterPage,
@@ -44,9 +45,8 @@ function RegisterPage() {
     try {
       await registerUser(data.email, data.password);
       router.navigate({ to: "/onboarding/welcome" });
-    } catch {
-      // Avoid account enumeration: always show a generic message
-      setGlobalError("Erreur lors de l'inscription.");
+    } catch (error) {
+      setGlobalError(getRegisterErrorMessage(error instanceof AuthError ? error.code : undefined));
     }
   };
 
@@ -146,12 +146,7 @@ function RegisterPage() {
             {form.formState.isSubmitting ? "Inscription…" : "S'inscrire"}
           </Button>
 
-          {/* OAuth separator — P2+ placeholder */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-amber-900/50" />
-            <span className="text-xs text-amber-700">ou</span>
-            <div className="flex-1 border-t border-amber-900/50" />
-          </div>
+          <AuthSocialSection />
 
           <p className="text-center text-sm text-amber-500">
             Déjà un compte ?{" "}
