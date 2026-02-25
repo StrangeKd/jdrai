@@ -94,6 +94,36 @@ docs/ux/README.md
 
 **Rationale**: UX documentation is structured in phases (cartography → wireframes) to prevent context overload.
 
+### Rule #4: UI Implementation — ShadCN First (Dev Agent)
+
+When implementing any UI component or frontend HTML/JSX content, the dev agent MUST follow this priority order:
+
+**Step 1**: Check if a ShadCN component covers the use case
+- Check `apps/web/src/components/ui/` for already-installed components
+- Reference: https://ui.shadcn.com/docs/components
+
+**Step 2**: Use or install the ShadCN component
+```bash
+pnpm dlx shadcn@latest add <component>
+```
+
+**Step 3**: Apply TD-001 fix after any `shadcn add`
+- React 18 requires `React.forwardRef` on sub-components wrapping a `*Primitive.Content/Overlay`
+- Already corrected on `dialog.tsx` — apply same pattern
+
+**Step 4**: Only write raw HTML/JSX + Tailwind if **no ShadCN component** covers the use case
+
+**Mandatory ShadCN usage** (non-exhaustive):
+- `Button` → never `<button>`
+- `Input`, `Form`, `FormField` → never `<input>`, `<form>` alone
+- `Dialog` → never custom modal with raw HTML
+- `Card` → never `<div className="card">`
+- `Alert`, `Badge`, `Avatar`, `Tabs`, `NavigationMenu`, `Sonner`
+
+**Rationale**: ShadCN ensures design system consistency, accessibility (a11y), and proper integration with Tailwind v4. Raw HTML bypasses these guarantees.
+
+---
+
 ### Rule #3: Communication Standards
 
 **Language**:

@@ -129,6 +129,31 @@ docs/
 
 ---
 
+## 🎨 UI Implementation Rules (Dev Agent)
+
+### CRITICAL Rule #3: ShadCN First
+
+When implementing any UI component or frontend HTML/JSX content, the dev agent MUST follow this priority order:
+
+1. **ALWAYS check ShadCN first** — before writing any raw HTML/JSX, verify if a ShadCN component covers the use case
+2. **Use installed components** — check `apps/web/src/components/ui/` for already-installed components
+3. **Install missing components** via `pnpm dlx shadcn@latest add <component>` if a ShadCN component exists but isn't installed yet
+4. **Only write raw HTML/JSX + Tailwind** if and only if no ShadCN component covers the use case
+5. **Apply TD-001 fix** after any `shadcn add`: React 18 requires `React.forwardRef` on sub-components wrapping a `*Primitive.Content/Overlay` — already fixed on `dialog.tsx`, apply same pattern
+
+**Examples of ShadCN components to always use**:
+- Buttons → `Button`
+- Inputs, forms → `Input`, `Form`, `FormField`
+- Dialogs/modals → `Dialog`
+- Cards → `Card`, `CardHeader`, `CardContent`
+- Navigation → `NavigationMenu`, `Tabs`
+- Alerts, toasts → `Alert`, `Sonner`
+- Badges, avatars → `Badge`, `Avatar`
+
+**Rationale**: ShadCN ensures consistent design, accessibility (a11y), and integration with the Tailwind v4 + React stack. Raw HTML bypasses these guarantees.
+
+---
+
 ## ✅ Agent Compliance
 
 All BMAD agents working on JDRAI MUST:
@@ -139,6 +164,7 @@ All BMAD agents working on JDRAI MUST:
 4. ✅ Communicate in French by default
 5. ✅ Ask for clarification when unsure which docs to load
 6. ✅ Use BMM workflows for implementation, GDS for design/narrative only
+7. ✅ **(Dev Agent)** Use ShadCN components before writing raw HTML/JSX
 
 ---
 
