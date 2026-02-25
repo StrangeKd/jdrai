@@ -36,4 +36,9 @@ describe("formatRelativeTime", () => {
     const date = new Date("2024-12-18T12:00:00Z").toISOString();
     expect(formatRelativeTime(date)).toBe("il y a 2 sem.");
   });
+
+  it("returns a future string when date is in the future", () => {
+    const date = new Date("2025-01-01T12:05:00Z").toISOString();
+    expect(formatRelativeTime(date)).toBe("dans 5 min");
+  });
 });

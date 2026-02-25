@@ -18,10 +18,7 @@ export function EmptyState({ onLaunch, onTemplate }: EmptyStateProps) {
         </div>
 
         <div className="mt-6 space-y-3">
-          <Button
-            onClick={onLaunch}
-            className="w-full h-auto min-h-10 whitespace-normal uppercase tracking-wider"
-          >
+          <Button onClick={onLaunch} className="w-full h-auto min-h-10 uppercase tracking-wider">
             Lancer ma première aventure
           </Button>
           <Button
