@@ -1,7 +1,7 @@
 # JDRAI Project Context - Agent Customizations
 
-**Version**: 1.0  
-**Last Updated**: 2026-02-10  
+**Version**: 1.1  
+**Last Updated**: 2026-02-25  
 **Purpose**: Critical project-specific rules for all BMAD agents working on JDRAI
 
 ---
@@ -154,6 +154,21 @@ When implementing any UI component or frontend HTML/JSX content, the dev agent M
 
 ---
 
+## 🧠 Async Code Style Rules
+
+### CRITICAL Rule #4: Prefer async/await over .then()
+
+For asynchronous TypeScript/JavaScript code, agents MUST prefer `async/await` instead of Promise chaining (`.then()` / `.catch()`).
+
+1. Write async flows with `async` functions and `await`
+2. Refactor `.then()` chains to `async/await` when touching existing code (if behavior remains equivalent)
+3. Use explicit `try/catch` blocks where error handling is required
+4. Keep `.then()` only when there is a clear, specific reason and the resulting code is more readable
+
+**Rationale**: This improves readability, maintainability, and debugging consistency across the codebase.
+
+---
+
 ## ✅ Agent Compliance
 
 All BMAD agents working on JDRAI MUST:
@@ -165,6 +180,7 @@ All BMAD agents working on JDRAI MUST:
 5. ✅ Ask for clarification when unsure which docs to load
 6. ✅ Use BMM workflows for implementation, GDS for design/narrative only
 7. ✅ **(Dev Agent)** Use ShadCN components before writing raw HTML/JSX
+8. ✅ Prefer `async/await` over `.then()` for asynchronous code
 
 ---
 

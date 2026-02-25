@@ -122,6 +122,18 @@ pnpm dlx shadcn@latest add <component>
 
 **Rationale**: ShadCN ensures design system consistency, accessibility (a11y), and proper integration with Tailwind v4. Raw HTML bypasses these guarantees.
 
+### Rule #5: Async Pattern — Prefer async/await
+
+For any asynchronous TypeScript/JavaScript code, agents MUST prefer `async/await` over Promise chaining with `.then()`.
+
+**Mandatory policy**:
+- Use `async` functions and `await` for API calls, service methods, and asynchronous workflows.
+- Avoid `.then()`/`.catch()` chains in new code and refactors when behavior can be expressed with `async/await`.
+- Keep `try/catch` explicit when error handling is needed.
+- Use `.then()` only when there is a clear technical reason (e.g. functional Promise composition that is cleaner than `await`), and justify it briefly in code review notes.
+
+**Rationale**: `async/await` improves readability, debugging, and consistency across the codebase.
+
 ---
 
 ### Rule #3: Communication Standards
@@ -172,5 +184,5 @@ These customizations are **MANDATORY** and override any conflicting base agent i
 - **Migration guide**: `_bmad/MIGRATION-V4-TO-V6.md`
 
 **Maintained by**: Ryan
-**Last updated**: 2026-02-10
-**Version**: 1.0
+**Last updated**: 2026-02-25
+**Version**: 1.1
