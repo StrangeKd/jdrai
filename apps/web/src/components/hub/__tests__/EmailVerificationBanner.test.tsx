@@ -1,6 +1,16 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Mock sonner toast
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock("sonner", () => ({
+  toast: {
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+    error: (...args: unknown[]) => mockToastError(...args),
+  },
+}));
+
 // Mock authClient
 const mockSendVerificationEmail = vi.fn();
 vi.mock("@/lib/auth-client", () => ({
@@ -14,6 +24,9 @@ import { EmailVerificationBanner } from "../EmailVerificationBanner";
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  mockToastSuccess.mockClear();
+  mockToastError.mockClear();
+  localStorage.clear();
 });
 
 describe("EmailVerificationBanner (AC-1, AC-4, AC-7)", () => {
@@ -34,21 +47,23 @@ describe("EmailVerificationBanner (AC-1, AC-4, AC-7)", () => {
     expect(screen.queryByText(/Vérifiez votre email/i)).not.toBeInTheDocument();
   });
 
-  it("shows 'Email envoyé !' on successful resend (AC-7)", async () => {
+  it("shows a success toast on successful resend (AC-7)", async () => {
     mockSendVerificationEmail.mockResolvedValue({ data: null, error: null });
     render(<EmailVerificationBanner email="test@example.com" />);
     fireEvent.click(screen.getByRole("button", { name: "Renvoyer" }));
     await waitFor(() => {
-      expect(screen.getByText("Email envoyé !")).toBeInTheDocument();
+      expect(mockToastSuccess).toHaveBeenCalledWith("Email envoyé !", { duration: 3000 });
     });
+    // No inline success text (toast-only UX)
+    expect(screen.queryByText("Email envoyé !")).not.toBeInTheDocument();
   });
 
-  it("shows 'Échec, réessayez.' on error (AC-7)", async () => {
+  it("shows an error toast on resend error (AC-7)", async () => {
     mockSendVerificationEmail.mockResolvedValue({ data: null, error: { message: "fail" } });
     render(<EmailVerificationBanner email="test@example.com" />);
     fireEvent.click(screen.getByRole("button", { name: "Renvoyer" }));
     await waitFor(() => {
-      expect(screen.getByText("Échec, réessayez.")).toBeInTheDocument();
+      expect(mockToastError).toHaveBeenCalledWith("Échec de l'envoi. Réessayez.", { duration: 3000 });
     });
   });
 
@@ -64,7 +79,7 @@ describe("EmailVerificationBanner (AC-1, AC-4, AC-7)", () => {
     });
   });
 
-  it("shows countdown after successful resend and resets to idle after 3s (AC-4)", async () => {
+  it("waits 2s before switching to countdown label (AC-4)", async () => {
     vi.useFakeTimers();
     mockSendVerificationEmail.mockResolvedValue({ data: null, error: null });
     render(<EmailVerificationBanner email="test@example.com" />);
@@ -75,12 +90,12 @@ describe("EmailVerificationBanner (AC-1, AC-4, AC-7)", () => {
       await Promise.resolve();
     });
 
-    // Should show "Email envoyé !" first
-    expect(screen.getByText("Email envoyé !")).toBeInTheDocument();
+    // For 2s, label stays as "Renvoyer" (toast-only UX)
+    expect(screen.getByRole("button", { name: "Renvoyer" })).toBeDisabled();
 
-    // Advance 3s — status "sent" timeout fires, reverts to countdown
+    // Advance 2s — countdown label should appear
     await act(async () => {
-      vi.advanceTimersByTime(3001);
+      vi.advanceTimersByTime(2001);
     });
 
     expect(screen.getByText(/Renvoyer \(\d+s\)/)).toBeInTheDocument();
@@ -97,9 +112,9 @@ describe("EmailVerificationBanner (AC-1, AC-4, AC-7)", () => {
       await Promise.resolve();
     });
 
-    // Advance past the "sent" message
+    // Advance into the countdown phase
     await act(async () => {
-      vi.advanceTimersByTime(3001);
+      vi.advanceTimersByTime(2001);
     });
 
     const btn = screen.getByRole("button", { name: /Renvoyer/ });

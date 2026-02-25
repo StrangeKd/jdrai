@@ -67,18 +67,18 @@ export function AdventureModal() {
             >
               Reprendre
             </Button>
-            {/* {activeAdventures.length > 1 && ( */}
-            <Button
-              variant="link"
-              onClick={() => {
-                close();
-                void navigate({ to: "/hub" });
-              }}
-              className="w-full text-center text-sm text-amber-400/60 transition-colors hover:text-amber-400"
-            >
-              Voir toutes les aventures
-            </Button>
-            {/* )} */}
+            {activeAdventures.length > 1 && (
+              <Button
+                variant="link"
+                onClick={() => {
+                  close();
+                  void navigate({ to: "/hub" });
+                }}
+                className="w-full text-center text-sm text-amber-400/60 transition-colors hover:text-amber-400"
+              >
+                Voir toutes les aventures
+              </Button>
+            )}
           </>
         ) : (
           // Variant B — no adventures
