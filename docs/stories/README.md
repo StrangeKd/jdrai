@@ -12,7 +12,9 @@
 docs/stories/
 ├── README.md                          # Ce fichier (workflow + suivi)
 ├── epics.md                           # Liste des epics P1 avec scope et dépendances
-└── {epicNum}.{storyNum}.story.md      # Stories individuelles (ex: 1.1.story.md)
+
+_bmad-output/implementation-artifacts/
+└── {epicNum}-{titre-slug}.story.md    # Stories individuelles (ex: 1-1-initialisation-monorepo.story.md)
 ```
 
 **Convention de nommage des stories :** `{epicNum}.{storyNum}.story.md`
