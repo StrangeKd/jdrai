@@ -599,16 +599,16 @@ Epic 1 ─ Fondation technique
 
 **Critères d'acceptation :**
 
-- [ ] Interface `LLMProvider` (`generateResponse`, `streamResponse`) dans `apps/api/src/modules/game/llm/llm.provider.ts`
-- [ ] Implémentation `OpenAIProvider` (streaming via SDK OpenAI)
-- [ ] Implémentation `AnthropicProvider` (streaming via SDK Anthropic)
-- [ ] `LLMService` avec stratégie multi-provider : primary + fallback, switch automatique en cas d'erreur
+- [ ] Interface `ILLMProvider` (`generateResponse`, `streamResponse` retournant `AsyncIterable<string>`) dans `apps/api/src/modules/game/llm/llm.provider.ts`
+- [ ] Implémentation `TanStackAIProvider` utilisant `@tanstack/ai` + adapters `@tanstack/ai-openai` et `@tanstack/ai-anthropic`
+- [ ] `LLMService` avec stratégie multi-provider : primary + fallback via `ILLMProvider`, switch automatique en cas d'erreur
 - [ ] Factory provider basé sur `LLM_PRIMARY_PROVIDER` (env)
-- [ ] Streaming des réponses via callback `onChunk`
+- [ ] Streaming des réponses via `AsyncIterable` (relayé vers Socket.io par le `GameService`)
 - [ ] Gestion timeout et erreurs (retry interne, logging)
-- [ ] Tests unitaires : mock provider, fallback, streaming
+- [ ] Tests unitaires : mock `ILLMProvider`, fallback, streaming
+- [ ] Hook `useGameChat` côté frontend : `useChat` (`@tanstack/ai-react`) + `ConnectionAdapter` custom Socket.io
 
-**Réf. architecture :** `backend.md` §Intégration LLM, §Architecture Provider, §Stratégie Multi-Provider
+**Réf. architecture :** `backend.md` §Intégration LLM, §Architecture Provider, §Stratégie Multi-Provider ; `frontend.md` §Game Chat
 
 ---
 

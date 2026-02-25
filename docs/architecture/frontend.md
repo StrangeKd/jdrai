@@ -50,7 +50,8 @@ apps/web/
 │   ├── hooks/
 │   │   ├── useAuth.ts
 │   │   ├── useAdventure.ts
-│   │   └── useGameSession.ts
+│   │   ├── useGameSession.ts
+│   │   └── useGameChat.ts       # TanStack AI useChat + ConnectionAdapter Socket.io
 │   ├── services/
 │   │   ├── api.ts               # Client API (fetch wrapper + intercepteur 429)
 │   │   ├── adventure.service.ts
@@ -235,6 +236,71 @@ export function useAuth() {
 | Mise à jour username/profil | `/api/v1/users/*` | Express + `BetterAuthService.setUsername()` |
 
 > **Règle** : le frontend ne contient aucune logique métier liée à l'auth. Il envoie les données de formulaire aux endpoints Better Auth et gère l'état UI via `useSession()`.
+
+---
+
+## Game Chat — TanStack AI + Socket.io
+
+> **Source** : Architecture `backend.md` §Intégration LLM, Epic 6 Story 6.1/6.3a/6.4
+
+Le streaming LLM en session de jeu utilise **TanStack AI** (`@tanstack/ai-react`) avec un `ConnectionAdapter` custom Socket.io. Ce pattern permet de bénéficier du hook `useChat` (gestion état messages, streaming) tout en conservant Socket.io comme transport bidirectionnel.
+
+### Packages frontend
+
+- `@tanstack/ai-react` — hook `useChat`
+- `socket.io-client` — transport (déjà prévu)
+
+### ConnectionAdapter Socket.io
+
+```typescript
+// apps/web/src/hooks/useGameChat.ts
+import { useChat } from "@tanstack/ai-react";
+import type { ConnectionAdapter } from "@tanstack/ai-client";
+import { socket } from "@/services/socket.service";
+
+function createSocketAdapter(adventureId: string): ConnectionAdapter {
+  return {
+    async *connect(messages) {
+      // Emit player action via Socket.io
+      socket.emit("game:action", { adventureId, messages });
+
+      // Yield chunks as they arrive from the server
+      const chunks = new Promise<void>((resolve) => {
+        socket.on("game:chunk", (chunk) => {
+          // Chunk is yielded to useChat for progressive rendering
+        });
+        socket.on("game:response-complete", () => resolve());
+      });
+
+      // Implementation detail: use an async queue pattern
+      // to bridge Socket.io events → AsyncIterable<StreamChunk>
+      yield* socketToAsyncIterable(adventureId);
+    },
+  };
+}
+
+export function useGameChat(adventureId: string) {
+  return useChat({
+    connection: createSocketAdapter(adventureId),
+  });
+}
+```
+
+### Flux de données
+
+```
+[Player action] → useGameChat.sendMessage()
+    → ConnectionAdapter.connect()
+        → socket.emit("game:action")
+            → GameService.processAction() (server)
+                → D20 + prompt + LLM stream via TanStack AI
+                    → socket.emit("game:chunk") per chunk
+                        → ConnectionAdapter yields chunk
+                            → useChat updates messages state
+                                → StreamingText renders progressively
+```
+
+> **Pourquoi un adapter custom plutôt que SSE ?** Socket.io est nécessaire dès P1 pour la reconnexion native et les server-push non sollicités (state updates HP, milestones). En P3, il servira aussi au multi-joueur temps réel. Utiliser SSE en P1 puis migrer vers Socket.io en P3 ajouterait de la complexité sans bénéfice.
 
 ---
 

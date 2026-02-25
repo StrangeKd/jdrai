@@ -61,22 +61,56 @@ apps/api/
 
 ## Intégration LLM
 
+### SDK : TanStack AI
+
+Le projet utilise **TanStack AI** (`@tanstack/ai`) comme SDK d'intégration LLM. Ce choix est motivé par :
+
+- **Cohérence écosystème** : TanStack Router + Query déjà en place
+- **`ConnectionAdapter` custom** : compatible Socket.io (hooks React préservés côté client)
+- **Multi-provider natif** : adapters `@tanstack/ai-openai`, `@tanstack/ai-anthropic`
+- **Zéro vendor lock-in** : framework-agnostic, pas de dépendance Next.js/Vercel
+- **Streaming intégré** : `chat()` retourne un async iterable, prêt à relayer via Socket.io
+
+> **Note** : TanStack AI est pre-v1 (2025). L'abstraction `ILLMProvider` ci-dessous isole le reste du code — si le SDK change ou est remplacé, seule l'implémentation du provider est affectée. Voir `tech-debt.md` §TD-005.
+
 ### Architecture Provider
+
+L'abstraction interne JDRAI (`ILLMProvider`) reste le contrat consommé par le `GameService`. TanStack AI est un **détail d'implémentation** derrière ce contrat.
+
+```
+GameService (logique métier JDRAI)
+    │
+    ▼
+LLMService (orchestration : fallback, retry, logging)
+    │
+    ▼
+ILLMProvider (contrat interne JDRAI)
+    │
+    ▼
+TanStackAIProvider (implémentation via @tanstack/ai)
+    │
+    ▼
+@tanstack/ai-openai / @tanstack/ai-anthropic (adapters)
+```
 
 ```typescript
 // apps/api/src/modules/game/llm/llm.provider.ts
-export interface LLMProvider {
+export interface ILLMProvider {
   readonly name: string;
 
-  generateResponse(params: { systemPrompt: string; messages: ChatMessage[]; temperature?: number; maxTokens?: number }): Promise<string>;
+  generateResponse(params: {
+    systemPrompt: string;
+    messages: ChatMessage[];
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<string>;
 
   streamResponse(params: {
     systemPrompt: string;
     messages: ChatMessage[];
     temperature?: number;
     maxTokens?: number;
-    onChunk: (chunk: string) => void;
-  }): Promise<void>;
+  }): AsyncIterable<string>;
 }
 
 export interface ChatMessage {
@@ -85,14 +119,99 @@ export interface ChatMessage {
 }
 ```
 
+```typescript
+// apps/api/src/modules/game/llm/tanstack-ai.provider.ts
+import { chat } from "@tanstack/ai";
+import { openaiText } from "@tanstack/ai-openai";
+import { anthropicText } from "@tanstack/ai-anthropic";
+import type { ILLMProvider, ChatMessage } from "./llm.provider";
+
+const adapters = {
+  openai: (model: string) => openaiText(model),
+  anthropic: (model: string) => anthropicText(model),
+} as const;
+
+export class TanStackAIProvider implements ILLMProvider {
+  readonly name: string;
+  private adapterFactory: (model: string) => ReturnType<typeof openaiText>;
+  private model: string;
+
+  constructor(provider: keyof typeof adapters, model: string) {
+    this.name = `${provider}:${model}`;
+    this.adapterFactory = adapters[provider];
+    this.model = model;
+  }
+
+  async generateResponse(params: {
+    systemPrompt: string;
+    messages: ChatMessage[];
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<string> {
+    const chunks: string[] = [];
+    const stream = chat({
+      adapter: this.adapterFactory(this.model),
+      model: this.model,
+      messages: [
+        { role: "system", content: params.systemPrompt },
+        ...params.messages,
+      ],
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.type === "content") {
+        chunks.push(chunk.content);
+      }
+    }
+    return chunks.join("");
+  }
+
+  async *streamResponse(params: {
+    systemPrompt: string;
+    messages: ChatMessage[];
+    temperature?: number;
+    maxTokens?: number;
+  }): AsyncIterable<string> {
+    const stream = chat({
+      adapter: this.adapterFactory(this.model),
+      model: this.model,
+      messages: [
+        { role: "system", content: params.systemPrompt },
+        ...params.messages,
+      ],
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.type === "content") {
+        yield chunk.content;
+      }
+    }
+  }
+}
+```
+
 ### Stratégie Multi-Provider
+
+Le `LLMService` orchestre les providers via l'interface `ILLMProvider`. Le fallback est géré au niveau JDRAI (pas délégué au SDK) pour un contrôle fin du logging et des retry.
 
 ```typescript
 // apps/api/src/modules/game/llm/index.ts
+import type { ILLMProvider } from "./llm.provider";
+import { TanStackAIProvider } from "./tanstack-ai.provider";
+
 export class LLMService {
-  private providers: Map<string, LLMProvider>;
+  private providers: Map<string, ILLMProvider>;
   private primaryProvider: string;
   private fallbackOrder: string[];
+
+  constructor() {
+    this.providers = new Map([
+      ["openai", new TanStackAIProvider("openai", process.env.LLM_OPENAI_MODEL ?? "gpt-4o")],
+      ["anthropic", new TanStackAIProvider("anthropic", process.env.LLM_ANTHROPIC_MODEL ?? "claude-sonnet-4-5")],
+    ]);
+    this.primaryProvider = process.env.LLM_PRIMARY_PROVIDER ?? "openai";
+    this.fallbackOrder = ["openai", "anthropic"].filter((p) => p !== this.primaryProvider);
+  }
 
   async generate(params: GenerateParams): Promise<string> {
     const provider = this.getProvider();
@@ -103,10 +222,12 @@ export class LLMService {
     }
   }
 
-  async stream(params: StreamParams): Promise<void> {
+  async *stream(params: StreamParams): AsyncIterable<string> {
     const provider = this.getProvider();
-    return provider.streamResponse(params);
+    yield* provider.streamResponse(params);
   }
+
+  // ... getProvider(), tryFallback() — logique interne inchangée
 }
 ```
 

@@ -130,6 +130,32 @@ TanStack Router v1 utilise la notation `.` pour les routes flat-file imbriquées
 
 ---
 
+## [TD-005] TanStack AI — SDK pre-v1
+
+**Statut:** ⏳ À surveiller
+**Sévérité:** Faible — risque mitigé par l'abstraction `ILLMProvider`
+
+### Contexte
+
+Le projet utilise **TanStack AI** (`@tanstack/ai`, `@tanstack/ai-react`, `@tanstack/ai-openai`, `@tanstack/ai-anthropic`) comme SDK d'intégration LLM (choisi pour la compatibilité Socket.io via `ConnectionAdapter`, la cohérence écosystème TanStack, et l'absence de vendor lock-in).
+
+TanStack AI est un projet **récent** (2025), pas encore en v1 stable. Des breaking changes sont possibles avant stabilisation.
+
+### Mitigation
+
+L'abstraction interne `ILLMProvider` (`apps/api/src/modules/game/llm/llm.provider.ts`) isole le reste du code du SDK. Si TanStack AI introduit des breaking changes ou doit être remplacé :
+- Seul `TanStackAIProvider` est affecté côté serveur
+- Seul `useGameChat.ts` (ConnectionAdapter) est affecté côté client
+- `GameService`, `LLMService`, et toutes les stories en aval restent intacts
+
+### Action requise
+
+- Surveiller le changelog TanStack AI et les releases majeures
+- Tester la compatibilité après chaque upgrade de `@tanstack/ai*`
+- Réévaluer à la v1 stable : supprimer cette entrée tech-debt si l'API est stabilisée
+
+---
+
 ## Processus de mise à jour
 
 Ce document doit être mis à jour :
