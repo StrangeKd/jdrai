@@ -3,6 +3,7 @@ import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
 import type { useAuth } from "@/hooks/useAuth";
 
 export interface RouterContext {
@@ -41,6 +42,7 @@ function RootLayout() {
   return (
     <>
       <Outlet /> {/* Renders the matched child route */}
+      <Toaster theme="dark" position="top-center" />
       {Devtools && <Devtools />} {/* Injected after the app tree to avoid layout impact */}
     </>
   );

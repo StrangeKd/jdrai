@@ -55,6 +55,8 @@ function LoginPage() {
       const destination = !hasUsername
         ? getNoUsernameOnboardingTarget(userId)
         : (redirectTo ?? "/hub");
+      // AC-6: signal Hub to show reconnection toast on next load
+      sessionStorage.setItem("just-logged-in", "true");
       router.navigate({ to: destination });
     } catch {
       setGlobalError("Identifiants incorrects.");

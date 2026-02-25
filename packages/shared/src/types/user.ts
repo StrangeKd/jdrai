@@ -1,6 +1,7 @@
 export interface UserDTO {
   id: string;
   email: string;
+  emailVerified: boolean;
   username: string | null; // null until onboarding E6
   role: "user" | "admin";
   onboardingCompleted: boolean;

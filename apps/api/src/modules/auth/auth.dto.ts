@@ -12,6 +12,7 @@ export function mapBetterAuthUserToDTO(user: BetterAuthUser): UserDTO {
   return {
     id: user.id,
     email: user.email,
+    emailVerified: user.emailVerified === true,
     username: typeof user.username === "string" ? user.username : null,
     role: user.role === "admin" ? "admin" : "user",
     onboardingCompleted: user.onboardingCompleted === true,
