@@ -20,6 +20,9 @@ import { Route as AuthenticatedHubIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedOnboardingWelcomeRouteImport } from './routes/_authenticated/onboarding/welcome'
 import { Route as AuthenticatedOnboardingTutorialRouteImport } from './routes/_authenticated/onboarding/tutorial'
 import { Route as AuthenticatedOnboardingProfileSetupRouteImport } from './routes/_authenticated/onboarding/profile-setup'
+import { Route as AuthenticatedAdventureNewRouteImport } from './routes/_authenticated/adventure/new'
+import { Route as AuthenticatedAdventureIdRouteImport } from './routes/_authenticated/adventure/$id'
+import { Route as AuthenticatedAdventureIdSummaryRouteImport } from './routes/_authenticated/adventure/$id.summary'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -79,6 +82,24 @@ const AuthenticatedOnboardingProfileSetupRoute =
     path: '/onboarding/profile-setup',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdventureNewRoute =
+  AuthenticatedAdventureNewRouteImport.update({
+    id: '/adventure/new',
+    path: '/adventure/new',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdventureIdRoute =
+  AuthenticatedAdventureIdRouteImport.update({
+    id: '/adventure/$id',
+    path: '/adventure/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdventureIdSummaryRoute =
+  AuthenticatedAdventureIdSummaryRouteImport.update({
+    id: '/summary',
+    path: '/summary',
+    getParentRoute: () => AuthenticatedAdventureIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,11 +107,14 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/adventure/$id': typeof AuthenticatedAdventureIdRouteWithChildren
+  '/adventure/new': typeof AuthenticatedAdventureNewRoute
   '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
   '/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub/': typeof AuthenticatedHubIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/adventure/$id/summary': typeof AuthenticatedAdventureIdSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -98,11 +122,14 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/adventure/$id': typeof AuthenticatedAdventureIdRouteWithChildren
+  '/adventure/new': typeof AuthenticatedAdventureNewRoute
   '/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
   '/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/hub': typeof AuthenticatedHubIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/adventure/$id/summary': typeof AuthenticatedAdventureIdSummaryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,11 +139,14 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/_authenticated/adventure/$id': typeof AuthenticatedAdventureIdRouteWithChildren
+  '/_authenticated/adventure/new': typeof AuthenticatedAdventureNewRoute
   '/_authenticated/onboarding/profile-setup': typeof AuthenticatedOnboardingProfileSetupRoute
   '/_authenticated/onboarding/tutorial': typeof AuthenticatedOnboardingTutorialRoute
   '/_authenticated/onboarding/welcome': typeof AuthenticatedOnboardingWelcomeRoute
   '/_authenticated/hub/': typeof AuthenticatedHubIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/adventure/$id/summary': typeof AuthenticatedAdventureIdSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -126,11 +156,14 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
+    | '/adventure/$id'
+    | '/adventure/new'
     | '/onboarding/profile-setup'
     | '/onboarding/tutorial'
     | '/onboarding/welcome'
     | '/hub/'
     | '/settings/'
+    | '/adventure/$id/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,11 +171,14 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
+    | '/adventure/$id'
+    | '/adventure/new'
     | '/onboarding/profile-setup'
     | '/onboarding/tutorial'
     | '/onboarding/welcome'
     | '/hub'
     | '/settings'
+    | '/adventure/$id/summary'
   id:
     | '__root__'
     | '/'
@@ -151,11 +187,14 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
+    | '/_authenticated/adventure/$id'
+    | '/_authenticated/adventure/new'
     | '/_authenticated/onboarding/profile-setup'
     | '/_authenticated/onboarding/tutorial'
     | '/_authenticated/onboarding/welcome'
     | '/_authenticated/hub/'
     | '/_authenticated/settings/'
+    | '/_authenticated/adventure/$id/summary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -246,10 +285,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingProfileSetupRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/adventure/new': {
+      id: '/_authenticated/adventure/new'
+      path: '/adventure/new'
+      fullPath: '/adventure/new'
+      preLoaderRoute: typeof AuthenticatedAdventureNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/adventure/$id': {
+      id: '/_authenticated/adventure/$id'
+      path: '/adventure/$id'
+      fullPath: '/adventure/$id'
+      preLoaderRoute: typeof AuthenticatedAdventureIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/adventure/$id/summary': {
+      id: '/_authenticated/adventure/$id/summary'
+      path: '/summary'
+      fullPath: '/adventure/$id/summary'
+      preLoaderRoute: typeof AuthenticatedAdventureIdSummaryRouteImport
+      parentRoute: typeof AuthenticatedAdventureIdRoute
+    }
   }
 }
 
+interface AuthenticatedAdventureIdRouteChildren {
+  AuthenticatedAdventureIdSummaryRoute: typeof AuthenticatedAdventureIdSummaryRoute
+}
+
+const AuthenticatedAdventureIdRouteChildren: AuthenticatedAdventureIdRouteChildren =
+  {
+    AuthenticatedAdventureIdSummaryRoute: AuthenticatedAdventureIdSummaryRoute,
+  }
+
+const AuthenticatedAdventureIdRouteWithChildren =
+  AuthenticatedAdventureIdRoute._addFileChildren(
+    AuthenticatedAdventureIdRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
+  AuthenticatedAdventureIdRoute: typeof AuthenticatedAdventureIdRouteWithChildren
+  AuthenticatedAdventureNewRoute: typeof AuthenticatedAdventureNewRoute
   AuthenticatedOnboardingProfileSetupRoute: typeof AuthenticatedOnboardingProfileSetupRoute
   AuthenticatedOnboardingTutorialRoute: typeof AuthenticatedOnboardingTutorialRoute
   AuthenticatedOnboardingWelcomeRoute: typeof AuthenticatedOnboardingWelcomeRoute
@@ -258,6 +334,8 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdventureIdRoute: AuthenticatedAdventureIdRouteWithChildren,
+  AuthenticatedAdventureNewRoute: AuthenticatedAdventureNewRoute,
   AuthenticatedOnboardingProfileSetupRoute:
     AuthenticatedOnboardingProfileSetupRoute,
   AuthenticatedOnboardingTutorialRoute: AuthenticatedOnboardingTutorialRoute,
