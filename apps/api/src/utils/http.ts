@@ -15,6 +15,8 @@ export function toISOString(value: unknown): string {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? value : d.toISOString();
   }
-  const d = new Date(String(value));
-  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+  if (value === null || value === undefined) return new Date(0).toISOString();
+  const asString = String(value);
+  const d = new Date(asString);
+  return Number.isNaN(d.getTime()) ? asString : d.toISOString();
 }

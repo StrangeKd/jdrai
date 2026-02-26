@@ -4,10 +4,10 @@ import { db } from "@/db";
 import {
   adventureCharacters,
   adventures,
+  type adventureStatusEnum,
   characterClasses,
   milestones,
   races,
-  type adventureStatusEnum,
 } from "@/db/schema";
 
 type AdventureStatus = (typeof adventureStatusEnum.enumValues)[number];
@@ -61,6 +61,13 @@ export async function findAdventuresByUser(
   userId: string,
   statusFilter?: AdventureStatus,
 ): Promise<AdventureRow[]> {
+  return buildFindAdventuresByUserQuery(userId, statusFilter).execute();
+}
+
+export function buildFindAdventuresByUserQuery(
+  userId: string,
+  statusFilter?: AdventureStatus,
+) {
   const conditions = statusFilter
     ? and(eq(adventures.userId, userId), eq(adventures.status, statusFilter))
     : eq(adventures.userId, userId);
@@ -93,7 +100,13 @@ export async function findAdventureById(
   id: string,
   userId: string,
 ): Promise<AdventureRow | null> {
-  const rows = await db
+  const rows = await buildFindAdventureByIdQuery(id, userId).execute();
+
+  return rows[0] ?? null;
+}
+
+export function buildFindAdventureByIdQuery(id: string, userId: string) {
+  return db
     .select({
       adventure: adventures,
       currentMilestoneName: milestones.name,
@@ -111,6 +124,4 @@ export async function findAdventureById(
     .leftJoin(races, eq(races.id, adventureCharacters.raceId))
     .where(and(eq(adventures.id, id), eq(adventures.userId, userId)))
     .limit(1);
-
-  return rows[0] ?? null;
 }

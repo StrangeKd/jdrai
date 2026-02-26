@@ -2,13 +2,14 @@
  * Adventures controller tests — covers AC-3, AC-4, AC-5, AC-6 (Story 5.1 Task 6)
  * Mocks the service layer to test HTTP routing and response formatting in isolation.
  */
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppError } from "@/utils/errors";
-
 import type { AdventureDTO, AdventureTemplateDTO } from "@jdrai/shared";
+
+import { errorHandler } from "@/middleware/error.middleware";
+import { AppError } from "@/utils/errors";
 
 // Mock the service module
 vi.mock("./adventures.service", () => ({
@@ -19,17 +20,17 @@ vi.mock("./adventures.service", () => ({
 }));
 
 import {
-  createAdventureForUser,
-  getAdventureById,
-  getAdventuresForUser,
-  getTemplates,
-} from "./adventures.service";
-import {
   createAdventureHandler,
   getAdventureHandler,
   listAdventuresHandler,
   listTemplatesHandler,
 } from "./adventures.controller";
+import {
+  createAdventureForUser,
+  getAdventureById,
+  getAdventuresForUser,
+  getTemplates,
+} from "./adventures.service";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -75,9 +76,8 @@ function makeApp(userId: string = MOCK_USER_ID): Express {
   app.use(express.json());
 
   // Simulate requireAuth by injecting req.user
-  app.use((req, _res, next) => {
-    // biome-ignore lint/suspicious/noExplicitAny: test helper
-    (req as any).user = { id: userId };
+  app.use((req: Request & { user?: { id: string } }, _res, next) => {
+    req.user = { id: userId };
     next();
   });
 
@@ -86,17 +86,7 @@ function makeApp(userId: string = MOCK_USER_ID): Express {
   app.get("/adventures/:id", getAdventureHandler);
   app.get("/templates", listTemplatesHandler);
 
-  // Simple error handler matching the real one
-  // biome-ignore lint/suspicious/noExplicitAny: test helper
-  app.use((err: any, _req: any, res: any, _next: any) => {
-    if (err instanceof AppError) {
-      return res.status(err.statusCode).json({
-        success: false,
-        error: { code: err.code, message: err.message, timestamp: new Date().toISOString() },
-      });
-    }
-    res.status(500).json({ success: false, error: { code: "INTERNAL_ERROR" } });
-  });
+  app.use(errorHandler);
 
   return app;
 }

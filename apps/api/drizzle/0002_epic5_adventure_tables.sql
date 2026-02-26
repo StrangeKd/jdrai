@@ -54,6 +54,9 @@ CREATE TABLE "messages" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+-- Safety: ensure existing verification rows comply before NOT NULL.
+UPDATE "verification" SET "created_at" = now() WHERE "created_at" IS NULL;--> statement-breakpoint
+UPDATE "verification" SET "updated_at" = now() WHERE "updated_at" IS NULL;--> statement-breakpoint
 ALTER TABLE "verification" ALTER COLUMN "created_at" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "verification" ALTER COLUMN "updated_at" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "adventure_templates" ADD COLUMN "genre" text DEFAULT 'heroic_fantasy' NOT NULL;--> statement-breakpoint

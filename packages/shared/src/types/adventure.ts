@@ -28,7 +28,7 @@ export interface AdventureDTO {
   tone?: Tone | undefined; // P2 — nullable in P1
   estimatedDuration: EstimatedDuration;
   /** Derived server-side: name of the active milestone (null if none yet). Never a number. */
-  currentMilestone?: string | undefined;
+  currentMilestone?: string | null | undefined;
   startedAt: string;
   lastPlayedAt: string;
   character: AdventureCharacterDTO;

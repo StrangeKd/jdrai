@@ -19,10 +19,16 @@ vi.mock("./adventures.repository", () => ({
 vi.mock("@/db", () => ({
   db: {
     select: vi.fn(),
+    query: {
+      users: {
+        findFirst: vi.fn(),
+      },
+    },
   },
 }));
 
 import { db } from "@/db";
+
 import {
   countActiveAdventures,
   createAdventure,
@@ -76,15 +82,6 @@ const MOCK_CHARACTER_ROW = {
   maxHp: 20,
 };
 
-/** Helper to chain drizzle select mock: select().from().where().limit() */
-function makeDbSelectMock(result: unknown[]) {
-  const limit = vi.fn().mockResolvedValue(result);
-  const where = vi.fn().mockReturnValue({ limit });
-  const from = vi.fn().mockReturnValue({ where });
-  vi.mocked(db.select).mockReturnValue({ from } as unknown as ReturnType<typeof db.select>);
-  return { from, where, limit };
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -95,6 +92,8 @@ describe("createAdventureForUser", () => {
   it("creates adventure with auto-created character using defaults (AC-3)", async () => {
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
     vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
+    // Username fallback when no meta-character (P1)
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
 
     // First call: characterClasses query
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
@@ -128,12 +127,49 @@ describe("createAdventureForUser", () => {
     );
   });
 
+  it("throws INTERNAL_ERROR when default class is missing", async () => {
+    vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
+    vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
+
+    const limit1 = vi.fn().mockResolvedValue([]); // no default class
+    const where1 = vi.fn().mockReturnValue({ limit: limit1 });
+    const from1 = vi.fn().mockReturnValue({ where: where1 });
+
+    vi.mocked(db.select).mockReturnValueOnce({ from: from1 } as unknown as ReturnType<typeof db.select>);
+
+    await expect(
+      createAdventureForUser(USER_ID, { difficulty: "normal", estimatedDuration: "medium" }),
+    ).rejects.toThrow(expect.objectContaining({ statusCode: 500, code: "INTERNAL_ERROR" }));
+  });
+
+  it("throws INTERNAL_ERROR when default race is missing", async () => {
+    vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
+    vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
+
+    const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
+    const where1 = vi.fn().mockReturnValue({ limit: limit1 });
+    const from1 = vi.fn().mockReturnValue({ where: where1 });
+
+    const limit2 = vi.fn().mockResolvedValue([]); // no default race
+    const where2 = vi.fn().mockReturnValue({ limit: limit2 });
+    const from2 = vi.fn().mockReturnValue({ where: where2 });
+
+    vi.mocked(db.select)
+      .mockReturnValueOnce({ from: from1 } as unknown as ReturnType<typeof db.select>)
+      .mockReturnValueOnce({ from: from2 } as unknown as ReturnType<typeof db.select>);
+
+    await expect(
+      createAdventureForUser(USER_ID, { difficulty: "normal", estimatedDuration: "medium" }),
+    ).rejects.toThrow(expect.objectContaining({ statusCode: 500, code: "INTERNAL_ERROR" }));
+  });
+
   it("uses provided title when given (AC-3)", async () => {
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(2);
     vi.mocked(createAdventure).mockResolvedValueOnce({
       ...MOCK_ADVENTURE_ROW,
       title: "Ma quête épique",
     });
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
 
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
     const where1 = vi.fn().mockReturnValue({ limit: limit1 });
@@ -172,6 +208,7 @@ describe("createAdventureForUser", () => {
   it("title defaults to 'Aventure sans nom' when absent or blank (AC-3)", async () => {
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
     vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
 
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
     const where1 = vi.fn().mockReturnValue({ limit: limit1 });
@@ -257,7 +294,7 @@ describe("getAdventureById", () => {
 });
 
 describe("currentMilestone derivation", () => {
-  it("omits currentMilestone from DTO when null (AC-4, AC-5)", async () => {
+  it("sets currentMilestone to null when no active milestone (AC-4, AC-5)", async () => {
     vi.mocked(findAdventuresByUser).mockResolvedValueOnce([
       {
         adventure: MOCK_ADVENTURE_ROW,
@@ -269,7 +306,7 @@ describe("currentMilestone derivation", () => {
     ]);
 
     const result = await getAdventuresForUser(USER_ID);
-    expect(result[0]!.currentMilestone).toBeUndefined();
+    expect(result[0]!.currentMilestone).toBeNull();
   });
 });
 

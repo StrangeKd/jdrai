@@ -15,21 +15,8 @@ export async function createAdventureHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const parsed = adventureCreateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Invalid request data",
-          details: parsed.error.flatten(),
-          timestamp: new Date().toISOString(),
-        },
-      });
-      return;
-    }
-
-    const adventure = await createAdventureForUser(req.user!.id, parsed.data);
+    const input = adventureCreateSchema.parse(req.body);
+    const adventure = await createAdventureForUser(req.user!.id, input);
     res.status(201).json({ success: true, data: adventure });
   } catch (error) {
     next(error);
