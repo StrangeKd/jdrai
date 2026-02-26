@@ -10,6 +10,7 @@ afterEach(cleanup);
 const mockUser: UserDTO = {
   id: "u1",
   email: "test@example.com",
+  emailVerified: true,
   username: "Ragnar",
   role: "user",
   onboardingCompleted: true,

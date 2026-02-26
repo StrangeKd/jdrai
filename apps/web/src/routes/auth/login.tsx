@@ -55,6 +55,11 @@ function LoginPage() {
       const destination = !hasUsername
         ? getNoUsernameOnboardingTarget(userId)
         : (redirectTo ?? "/hub");
+      // AC-6: show reconnection toast ONLY for real "re-login" flows (auth guard redirect)
+      // and only when we're actually navigating to the Hub (avoid showing it after onboarding).
+      if (redirectTo && destination === "/hub") {
+        sessionStorage.setItem("just-logged-in", "true");
+      }
       router.navigate({ to: destination });
     } catch {
       setGlobalError("Identifiants incorrects.");

@@ -173,21 +173,18 @@
 │                                                    │                    │
 │                                                    ▼                    │
 │                                    ┌──────────────────────────────────┐ │
-│                                    │    HUB (profil incomplet)        │ │
+│                                    │    /onboarding/profile-setup     │ │
+│                                    │    (redirect guard — username     │ │
+│                                    │     absent après "profil express")│ │
 │                                    │                                  │ │
-│                                    │  ┌─────────────────────────────┐ │ │
-│                                    │  │ Bandeau rappel :            │ │ │
-│                                    │  │ "Complétez votre profil     │ │ │
-│                                    │  │  pour débloquer vos         │ │ │
-│                                    │  │  récompenses !"             │ │ │
-│                                    │  └─────────────────────────────┘ │ │
-│                                    │                                  │ │
-│                                    │  → Faire le tutoriel             │ │
+│                                    │  → Choix du pseudo               │ │
 │                                    │  → Compléter méta-perso          │ │
-│                                    │  → Continuer sans (fonctionnel)  │ │
+│                                    │  → Redirect Hub (username set)   │ │
 │                                    └──────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **Note (P1, refactor)** : Le guard `_authenticated` redirige automatiquement tout utilisateur sans `username` vers `/onboarding/profile-setup`. Dans ce flow P3, l'étape "Profil express" remplace donc le passage par le Hub en état incomplet. Après la complétion du profil (username obligatoire), l'utilisateur atteint le Hub avec un profil complet — aucun bandeau rappel n'est affiché. Le comportement "rejoindre un ami" (F13) sera à préciser lors de l'implémentation P3, en s'appuyant sur ce mécanisme de redirect.
 
 ### 2.3 Flow connexion (joueur existant)
 
@@ -599,7 +596,7 @@ Par ordre de complexité et d'impact :
 | **Carte (Card)**         | Conteneur générique                                                                           | Hub, Historique, Listes                         |
 | **Modale**               | Confirmations, paramètres                                                                     | Divers                                          |
 | **Toast / Notification** | Feedback système                                                                              | Tous                                            |
-| **Bandeau info**         | Rappel profil incomplet, aventure en pause                                                    | Hub                                             |
+| **Bandeau info**         | Rappel email non vérifié (dismissable par session)                                            | Hub                                             |
 | **Loader / Skeleton**    | Chargement                                                                                    | Tous                                            |
 | **Barre de progression** | XP, avancement                                                                                | Hub, Profil, Onboarding                         |
 | **CompanionMessage**     | Bulle de dialogue du compagnon méta (voir [§7.2](#72-compagnon-méta--mascotte-de-linterface)) | Hub, Loading, Erreurs, Onboarding, Empty states |
@@ -683,7 +680,7 @@ Par ordre de complexité et d'impact :
 | **Login**                  | Formulaire vide              | Spinner sur bouton                       | —                                 | Message erreur inline (identifiants incorrects)       | Redirect vers Hub (exception : pseudo absent → Onboarding E6-01) |
 | **Register**               | Formulaire vide              | Spinner sur bouton                       | —                                 | Erreurs validation inline                             | Redirect vers Onboarding                                         |
 | **Hub**                    | Méta-perso + aventures       | Skeletons cards + compagnon              | Compagnon : empty state engageant | Toast erreur + compagnon contextuel                   | —                                                                |
-| **Hub (profil incomplet)** | Bandeau rappel + fonctionnel | Idem                                     | Idem                              | Idem                                                  | —                                                                |
+| **Hub (profil incomplet)** | *(non applicable P1)* — Un utilisateur sans `username` est redirigé vers `/onboarding/profile-setup` avant d'atteindre le Hub | — | — | — | — |
 | **Session de jeu**         | Narration + choix            | Compagnon : message d'attente thématique | —                                 | Compagnon : message d'erreur avec humour + retry auto | Action traitée, nouvelle narration                               |
 | **Lancement aventure**     | Formulaire paramètres        | Spinner + compagnon contextuel           | —                                 | Compagnon : message d'erreur + retry                  | Redirect vers session                                            |
 | **Écran de fin**           | Résumé + récompenses         | Skeleton résumé                          | —                                 | Toast erreur                                          | Compagnon : félicitations personnalisées                         |
@@ -696,7 +693,7 @@ Par ordre de complexité et d'impact :
 | **LLM timeout / erreur**            | "Le MJ a besoin d'un moment..." → retry automatique (x3) → puis message "Problème technique, réessayez" avec bouton retry                                              |
 | **Refresh page en jeu**             | Auto-save assure la reprise au dernier état. Pas de perte de progression.                                                                                              |
 | **Session expirée**                 | Redirect login avec message "Session expirée". Après reconnexion, retour à l'écran précédent. (Auth via cookies httpOnly Better Auth)                                  |
-| **Onboarding abandonné**            | L'utilisateur peut quitter à tout moment. Au retour → Hub avec profil incomplet + rappel.                                                                              |
+| **Onboarding abandonné**            | L'utilisateur peut quitter à tout moment. Au retour → redirect automatique vers `/onboarding/profile-setup` via le guard `_authenticated` (si `username` absent). Le Hub n'est pas accessible tant que le profil est incomplet. |
 | **Double onglet sur même aventure** | Détecter et avertir : "Cette aventure est ouverte dans un autre onglet"                                                                                                |
 | **Texte libre inapproprié**         | Le MJ IA redirige avec diplomatie ("Votre personnage ne ferait pas cela...") — côté LLM prompt                                                                         |
 | **Aventure bloquée (boucle IA)**    | Bouton "Le MJ semble perdu" → relance du contexte / options de secours                                                                                                 |

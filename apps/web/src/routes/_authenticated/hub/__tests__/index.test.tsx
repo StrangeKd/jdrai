@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdventureDTO, UserDTO } from "@jdrai/shared";
@@ -7,6 +8,19 @@ const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: unknown) => opts,
   useNavigate: () => mockNavigate,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 const mockUseCurrentUser = vi.fn();
@@ -21,6 +35,14 @@ vi.mock("@/hooks/useAdventures", () => ({
   useCompletedAdventures: () => mockUseCompletedAdventures(),
 }));
 
+// Mock sonner to avoid import issues in jsdom
+vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
+
+// Mock authClient for EmailVerificationBanner
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { sendVerificationEmail: vi.fn().mockResolvedValue({ data: null, error: null }) },
+}));
+
 import { HubPage } from "../index";
 
 afterEach(() => {
@@ -30,6 +52,7 @@ afterEach(() => {
 const mockUser: UserDTO = {
   id: "u1",
   email: "test@example.com",
+  emailVerified: true,
   username: "Ragnar",
   role: "user",
   onboardingCompleted: true,
@@ -137,6 +160,36 @@ describe("HubPage (Story 4.2)", () => {
     expect(screen.getByText(/impossible de charger votre historique/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /réessayer/i }));
     expect(refetchCompleted).toHaveBeenCalledOnce();
+  });
+});
+
+describe("HubBanner priority (Story 4.3 AC-3)", () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    mockUseActiveAdventures.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
+    mockUseCompletedAdventures.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
+  });
+
+  it("shows EmailVerificationBanner when email unverified (AC-3)", () => {
+    mockUseCurrentUser.mockReturnValue({
+      data: { ...mockUser, username: "Ragnar", emailVerified: false },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<HubPage />);
+    expect(screen.getByText(/Vérifiez votre email/i)).toBeInTheDocument();
+  });
+
+  it("shows no banner when email verified (AC-3)", () => {
+    mockUseCurrentUser.mockReturnValue({
+      data: { ...mockUser, username: "Ragnar", emailVerified: true },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<HubPage />);
+    expect(screen.queryByText(/Vérifiez votre email/i)).not.toBeInTheDocument();
   });
 });
 

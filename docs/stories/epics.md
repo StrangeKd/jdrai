@@ -428,13 +428,12 @@ Epic 1 ─ Fondation technique
 **Critères d'acceptation :**
 
 - [ ] Bandeau email non vérifié (WF-E8-08) : fond bleu/indigo, "Vérifiez votre email...", lien "Renvoyer" (rate limited 1/60s, toast confirmation), bouton dismiss `[×]` (réapparaît chaque visite)
-- [ ] Bandeau profil incomplet (WF-E8-03) : fond or/ambre, "Complétez votre profil...", bouton dismiss `[×]`, click → redirect `/onboarding/profile-setup`
-- [ ] Priorité d'affichage : si les deux bandeaux actifs → profil incomplet prime (un seul bandeau)
+- [ ] Profil incomplet (username manquant) : l'utilisateur est redirigé vers `/onboarding/profile-setup` via le guard `_authenticated` (le Hub n'affiche pas de bandeau profil incomplet)
 - [ ] Bandeaux disparaissent définitivement une fois la condition résolue (email vérifié / onboarding complété)
 - [ ] Modale onglet Aventure (tab bar/sidebar) : si aventure(s) en cours → titre + milestone + dernière sauvegarde + CTA "Reprendre" ; si aucune → texte invitation + CTA vers `/adventure/new`
 - [ ] Toast reconnexion (WF-E8-06) : "✓ Reconnecté ! Bon retour." après re-login (disparaît après 3s)
 
-**Réf. wireframes :** `E8-hub.md` §WF-E8-03, §WF-E8-08, §WF-E8-06, §7 Règles
+**Réf. wireframes :** `E8-hub.md` §WF-E8-08, §WF-E8-06, §7 Règles
 **Réf. architecture :** `frontend.md` §Résilience client
 
 ---

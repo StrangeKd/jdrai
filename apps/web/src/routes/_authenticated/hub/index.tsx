@@ -1,4 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
+
+import type { UserDTO } from "@jdrai/shared";
 
 import { ActionCard, ActionCardSkeleton } from "@/components/hub/ActionCard";
 import { AdventureCard } from "@/components/hub/AdventureCard";
@@ -6,8 +10,10 @@ import {
   AdventureCardActive,
   AdventureCardActiveSkeleton,
 } from "@/components/hub/AdventureCardActive";
+import { EmailVerificationBanner } from "@/components/hub/EmailVerificationBanner";
 import { EmptyState } from "@/components/hub/EmptyState";
 import { MetaCharacterBanner } from "@/components/hub/MetaCharacterBanner";
+import { Button } from "@/components/ui/button";
 import { useActiveAdventures, useCompletedAdventures } from "@/hooks/useAdventures";
 import { useCurrentUser } from "@/hooks/useUser";
 
@@ -15,22 +21,38 @@ export const Route = createFileRoute("/_authenticated/hub/")({
   component: HubPage,
 });
 
+/** Shows EmailVerificationBanner if email not yet verified. One banner at a time. */
+function HubBanner({ user }: { user: UserDTO | undefined }) {
+  if (!user) return null;
+  if (!user.emailVerified) return <EmailVerificationBanner email={user.email} />;
+  return null;
+}
+
 function ErrorState({ onRetry, message }: { onRetry: () => void; message: string }) {
   return (
     <div className="rounded-xl border border-stone-700/50 bg-stone-800/40 p-6 text-center space-y-4">
       <p className="text-amber-200/70">{message}</p>
-      <button
+      <Button
         onClick={onRetry}
         className="text-sm text-amber-400 underline transition-colors hover:text-amber-300"
       >
         Réessayer
-      </button>
+      </Button>
     </div>
   );
 }
 
 export function HubPage() {
   const navigate = useNavigate();
+
+  // AC-6: reconnection toast — shown once per session after login redirect
+  useEffect(() => {
+    const justLoggedIn = sessionStorage.getItem("just-logged-in");
+    if (justLoggedIn === "true") {
+      sessionStorage.removeItem("just-logged-in");
+      toast.success("✓ Reconnecté ! Bon retour.", { duration: 3000 });
+    }
+  }, []);
 
   const {
     data: user,
@@ -71,14 +93,14 @@ export function HubPage() {
       {/* MetaCharacterBanner */}
       <MetaCharacterBanner user={user} isLoading={userLoading && !user} />
 
+      {/* Hub banners — priority: profile incomplete > email unverified > nothing */}
+      <HubBanner user={user} />
+
       {/* Active adventures or empty state */}
       {isPrimaryLoading ? (
         <AdventureCardActiveSkeleton />
       ) : userError && !user ? (
-        <ErrorState
-          message="Impossible de charger votre profil..."
-          onRetry={retryAll}
-        />
+        <ErrorState message="Impossible de charger votre profil..." onRetry={retryAll} />
       ) : activeError ? (
         <ErrorState message="Impossible de charger vos aventures..." onRetry={retryAll} />
       ) : hasActiveAdventures ? (

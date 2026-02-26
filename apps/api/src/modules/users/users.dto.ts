@@ -3,6 +3,7 @@ import type { UserDTO } from "@jdrai/shared";
 export type DbUser = {
   id: string;
   email: string;
+  emailVerified: boolean | null;
   username: string | null;
   role: string | null;
   onboardingCompleted: boolean | null;
@@ -13,6 +14,7 @@ export function mapDbUserToDTO(row: DbUser): UserDTO {
   return {
     id: row.id,
     email: row.email,
+    emailVerified: row.emailVerified ?? false,
     username: row.username ?? null,
     role: row.role === "admin" ? "admin" : "user",
     onboardingCompleted: row.onboardingCompleted ?? false,
