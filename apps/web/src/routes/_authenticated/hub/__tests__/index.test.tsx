@@ -170,19 +170,7 @@ describe("HubBanner priority (Story 4.3 AC-3)", () => {
     mockUseCompletedAdventures.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
   });
 
-  it("shows ProfileIncompleteBanner when username is null (AC-3)", () => {
-    mockUseCurrentUser.mockReturnValue({
-      data: { ...mockUser, username: null, emailVerified: false },
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    });
-    render(<HubPage />);
-    expect(screen.getByText(/Complétez votre profil/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Vérifiez votre email/i)).not.toBeInTheDocument();
-  });
-
-  it("shows EmailVerificationBanner when username is set but email unverified (AC-3)", () => {
+  it("shows EmailVerificationBanner when email unverified (AC-3)", () => {
     mockUseCurrentUser.mockReturnValue({
       data: { ...mockUser, username: "Ragnar", emailVerified: false },
       isLoading: false,
@@ -191,10 +179,9 @@ describe("HubBanner priority (Story 4.3 AC-3)", () => {
     });
     render(<HubPage />);
     expect(screen.getByText(/Vérifiez votre email/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Complétez votre profil/i)).not.toBeInTheDocument();
   });
 
-  it("shows no banner when email verified and username set (AC-3)", () => {
+  it("shows no banner when email verified (AC-3)", () => {
     mockUseCurrentUser.mockReturnValue({
       data: { ...mockUser, username: "Ragnar", emailVerified: true },
       isLoading: false,
@@ -203,7 +190,6 @@ describe("HubBanner priority (Story 4.3 AC-3)", () => {
     });
     render(<HubPage />);
     expect(screen.queryByText(/Vérifiez votre email/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Complétez votre profil/i)).not.toBeInTheDocument();
   });
 });
 

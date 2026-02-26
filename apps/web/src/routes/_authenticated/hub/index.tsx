@@ -13,7 +13,6 @@ import {
 import { EmailVerificationBanner } from "@/components/hub/EmailVerificationBanner";
 import { EmptyState } from "@/components/hub/EmptyState";
 import { MetaCharacterBanner } from "@/components/hub/MetaCharacterBanner";
-import { ProfileIncompleteBanner } from "@/components/hub/ProfileIncompleteBanner";
 import { Button } from "@/components/ui/button";
 import { useActiveAdventures, useCompletedAdventures } from "@/hooks/useAdventures";
 import { useCurrentUser } from "@/hooks/useUser";
@@ -22,10 +21,9 @@ export const Route = createFileRoute("/_authenticated/hub/")({
   component: HubPage,
 });
 
-/** Priority: profile incomplete > email unverified > nothing. One banner at a time. */
+/** Shows EmailVerificationBanner if email not yet verified. One banner at a time. */
 function HubBanner({ user }: { user: UserDTO | undefined }) {
   if (!user) return null;
-  if (!user.username) return <ProfileIncompleteBanner />;
   if (!user.emailVerified) return <EmailVerificationBanner email={user.email} />;
   return null;
 }
