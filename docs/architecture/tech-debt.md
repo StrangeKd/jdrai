@@ -156,6 +156,46 @@ L'abstraction interne `ILLMProvider` (`apps/api/src/modules/game/llm/llm.provide
 
 ---
 
+## [TD-006] Champ `onboarding_completed` — inutilisé, décision en suspens
+
+**Statut:** ⏳ Décision pendante
+**Sévérité:** Faible — aucun impact fonctionnel, dette de clarté
+
+### Contexte
+
+Le champ `onboarding_completed` (boolean, défaut `false`) est défini dans :
+- Schema Drizzle (`apps/api/src/db/schema/users.ts`)
+- Better Auth custom fields (`apps/api/src/lib/auth.ts`)
+- DTOs API (`users.dto.ts`, `auth.dto.ts`)
+- Types partagés (`packages/shared/src/types/user.ts`)
+
+**Mais il n'est lu par aucune logique métier ni aucun routing.**
+
+L'état d'onboarding est actuellement déterminé par deux proxies :
+1. `username === null` → onboarding non terminé (redirect vers le funnel)
+2. `localStorage` (`jdrai:onboarding:welcomeSeenByUserId:v1`) → quel écran afficher (welcome vs profile-setup)
+
+### Options identifiées
+
+| Option | Description | Trade-off |
+|---|---|---|
+| **Supprimer** | Retirer le champ de schema, DTOs, types, migration | Réduit la dette, `username` reste le seul proxy |
+| **Câbler** | Setter `true` à la fin du tutoriel (dernière étape E7) | Signal DB explicite, socle pour analytics onboarding |
+
+### Cas d'usage analytics potentiels (si câblé)
+
+- Taux de complétion onboarding (registrations vs `onboarding_completed=true`)
+- Détection d'utilisateurs "bloqués" dans le funnel (compte créé mais onboarding jamais terminé)
+- Différencier "a un username" (E6 complété) de "a vu le tutoriel" (E7 complété)
+
+### Action requise
+
+Décider avant ou pendant la Story d'implémentation E7 (tutoriel) :
+- **Supprimer** : créer une migration Drizzle de suppression du champ + nettoyage DTOs/types
+- **Câbler** : ajouter un endpoint `PATCH /users/me/onboarding-complete` appelé à la fin de `tutorial.tsx`
+
+---
+
 ## Processus de mise à jour
 
 Ce document doit être mis à jour :
