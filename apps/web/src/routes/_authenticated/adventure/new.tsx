@@ -8,7 +8,12 @@ import { AbandonModal } from "@/components/adventure/AbandonModal";
 import { AdventureConfirmationView } from "@/components/adventure/AdventureConfirmationView";
 import { AdventureCustomConfigView } from "@/components/adventure/AdventureCustomConfigView";
 import { AdventureLimitScreen } from "@/components/adventure/AdventureLimitScreen";
+import { AdventureLoadingScreen } from "@/components/adventure/AdventureLoadingScreen";
 import { AdventureTemplatesView } from "@/components/adventure/AdventureTemplatesView";
+import { GenerationErrorView } from "@/components/adventure/GenerationErrorView";
+import { RandomChoiceView } from "@/components/adventure/RandomChoiceView";
+import { RandomRevealedView } from "@/components/adventure/RandomRevealedView";
+import { generateRandomConfig } from "@/components/adventure/utils/randomConfig";
 import { Button } from "@/components/ui/button";
 import { useActiveAdventures, useTemplates } from "@/hooks/useAdventures";
 import { useCurrentUser } from "@/hooks/useUser";
@@ -30,18 +35,42 @@ export const Route = createFileRoute("/_authenticated/adventure/new")({
 // Local state types
 // ---------------------------------------------------------------------------
 
+type AdventureStep =
+  | "config"           // WF-E9-01 (custom) or WF-E9-02 (templates)
+  | "confirmation"     // WF-E9-03 (custom + template paths)
+  | "random-choice"    // WF-E9-03b (random: reveal or surprise)
+  | "random-revealed"  // WF-E9-03c (random: params shown, can re-roll)
+  | "loading"          // WF-E9-04 (full-screen, nav hidden)
+  | "error";           // WF-E9-05 (after 3 failed attempts)
+
 interface AdventureConfig {
   duration: EstimatedDuration;
   difficulty: Difficulty;
   templateId?: string;
   templateName?: string;
   isRandom: boolean;
+  /** Whether the player chose "Accepter l'inconnu" — params hidden during loading. */
+  hiddenParams: boolean;
 }
 
 const DEFAULT_CONFIG: AdventureConfig = {
   duration: "medium",
   difficulty: "normal",
   isRandom: false,
+  hiddenParams: false,
+};
+
+const DURATION_LABELS: Record<EstimatedDuration, string> = {
+  short: "Courte (~20 min)",
+  medium: "Moyenne (~45 min)",
+  long: "Longue (~1h+)",
+};
+
+const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy: "Facile",
+  normal: "Normal",
+  hard: "Difficile",
+  nightmare: "Cauchemar",
 };
 
 // ---------------------------------------------------------------------------
@@ -68,20 +97,113 @@ export function NewAdventurePage() {
     refetch: refetchTemplates,
   } = useTemplates();
 
+  // Initial step depends on mode:
+  // - random → "random-choice" (skip config entirely per story Dev Notes)
+  // - custom/templates → "config"
   const [config, setConfig] = useState<AdventureConfig>(DEFAULT_CONFIG);
-  const [step, setStep] = useState<"config" | "confirmation">("config");
+  const [step, setStep] = useState<AdventureStep>(() =>
+    mode === "random" ? "random-choice" : "config",
+  );
   const [abandonTarget, setAbandonTarget] = useState<AdventureDTO | null>(null);
 
   const isAtLimit = !activeLoading && !activeError && activeAdventures.length >= 5;
 
-  // Placeholder for Story 5.3 — will be wired to loading screen + POST /api/adventures
-  const handleLaunch = () => {
-    // TODO Story 5.3: setStep("loading") → POST /api/adventures → redirect to /adventure/:id
-    console.log("TODO: Story 5.3 — launch adventure with config:", config);
-  };
+  // ---------------------------------------------------------------------------
+  // Loading screen (full-screen overlay, no container wrapper)
+  // ---------------------------------------------------------------------------
+
+  if (step === "loading") {
+    return (
+      <AdventureLoadingScreen
+        config={{
+          difficulty: config.difficulty,
+          estimatedDuration: config.duration,
+          ...(config.templateId ? { templateId: config.templateId } : {}),
+        }}
+        hiddenParams={config.hiddenParams}
+        durationLabel={DURATION_LABELS[config.duration]}
+        difficultyLabel={DIFFICULTY_LABELS[config.difficulty]}
+        onError={() => setStep("error")}
+      />
+    );
+  }
 
   // ---------------------------------------------------------------------------
-  // Confirmation step
+  // Error screen (WF-E9-05) — navigation restored
+  // ---------------------------------------------------------------------------
+
+  if (step === "error") {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        <GenerationErrorView
+          onRetry={() => setStep("loading")}
+          onBack={() => setStep(mode === "random" ? "random-choice" : "config")}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Random choice (WF-E9-03b)
+  // ---------------------------------------------------------------------------
+
+  if (step === "random-choice") {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        <RandomChoiceView
+          onReveal={() => {
+            const random = generateRandomConfig();
+            setConfig((c) => ({
+              ...c,
+              difficulty: random.difficulty,
+              duration: random.estimatedDuration,
+              isRandom: true,
+              hiddenParams: false,
+            }));
+            setStep("random-revealed");
+          }}
+          onAccept={() => {
+            const random = generateRandomConfig();
+            setConfig((c) => ({
+              ...c,
+              difficulty: random.difficulty,
+              duration: random.estimatedDuration,
+              isRandom: true,
+              hiddenParams: true,
+            }));
+            setStep("loading");
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Random revealed (WF-E9-03c)
+  // ---------------------------------------------------------------------------
+
+  if (step === "random-revealed") {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        <RandomRevealedView
+          difficulty={config.difficulty}
+          estimatedDuration={config.duration}
+          onLaunch={() => setStep("loading")}
+          onReroll={() => {
+            const random = generateRandomConfig();
+            setConfig((c) => ({
+              ...c,
+              difficulty: random.difficulty,
+              duration: random.estimatedDuration,
+            }));
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Confirmation step (WF-E9-03)
   // ---------------------------------------------------------------------------
 
   if (step === "confirmation") {
@@ -93,14 +215,14 @@ export function NewAdventurePage() {
           characterName={characterName}
           {...(config.templateName ? { templateName: config.templateName } : {})}
           onBack={() => setStep("config")}
-          onLaunch={handleLaunch}
+          onLaunch={() => setStep("loading")}
         />
       </div>
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Config step
+  // Config step (WF-E9-01 custom / WF-E9-02 templates)
   // ---------------------------------------------------------------------------
 
   return (
@@ -178,6 +300,7 @@ export function NewAdventurePage() {
                   difficulty: t.difficulty,
                   duration: t.estimatedDuration,
                   isRandom: false,
+                  hiddenParams: false,
                 }));
                 setStep("confirmation");
               }}

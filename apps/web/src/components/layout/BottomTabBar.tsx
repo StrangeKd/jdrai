@@ -9,6 +9,9 @@ const tabBase = "flex flex-col h-auto flex-1 gap-1 py-2 rounded-none hover:bg-tr
 export function BottomTabBar() {
   const { location } = useRouterState();
   const setAdventureModalOpen = useUIStore((s) => s.setAdventureModalOpen);
+  const hideNav = useUIStore((s) => s.hideNav);
+
+  if (hideNav) return null;
 
   const isHubActive =
     location.pathname === "/hub" || location.pathname.startsWith("/hub/");

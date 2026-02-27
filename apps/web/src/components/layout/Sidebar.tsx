@@ -16,6 +16,9 @@ export function Sidebar() {
   const { location } = useRouterState();
   const { logout } = useAuth();
   const setAdventureModalOpen = useUIStore((s) => s.setAdventureModalOpen);
+  const hideNav = useUIStore((s) => s.hideNav);
+
+  if (hideNav) return null;
 
   return (
     <aside

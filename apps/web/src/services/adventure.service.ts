@@ -1,4 +1,4 @@
-import type { AdventureDTO, AdventureTemplateDTO } from "@jdrai/shared";
+import type { AdventureCreateInput, AdventureDTO, AdventureTemplateDTO } from "@jdrai/shared";
 
 import { api } from "@/services/api";
 
@@ -10,6 +10,11 @@ export async function getAdventures(status?: "active" | "completed" | "abandoned
 
 export async function getTemplates() {
   const response = await api.get<{ success: true; data: AdventureTemplateDTO[] }>("/api/v1/templates");
+  return response.data;
+}
+
+export async function createAdventure(input: AdventureCreateInput) {
+  const response = await api.post<{ success: true; data: AdventureDTO }>("/api/v1/adventures", input);
   return response.data;
 }
 
