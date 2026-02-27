@@ -123,7 +123,7 @@ export function HubPage() {
       ) : (
         <EmptyState
           onLaunch={() => void navigate({ to: "/adventure/new" })}
-          onTemplate={() => void navigate({ to: "/adventure/new", search: { mode: "template" } })}
+          onTemplate={() => void navigate({ to: "/adventure/new", search: { mode: "templates" } })}
         />
       )}
 
@@ -148,7 +148,7 @@ export function HubPage() {
               label="Scénario"
               description="Partez sur un scénario pré-conçu"
               disabled={isAtLimit}
-              onClick={() => void navigate({ to: "/adventure/new", search: { mode: "template" } })}
+              onClick={() => void navigate({ to: "/adventure/new", search: { mode: "templates" } })}
             />
             <ActionCard
               icon="🎲"

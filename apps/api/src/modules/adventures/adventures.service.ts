@@ -5,6 +5,7 @@ import type {
   AdventureCreateInput,
   AdventureDTO,
   AdventureTemplateDTO,
+  Difficulty,
   EstimatedDuration,
 } from "@jdrai/shared";
 
@@ -20,6 +21,7 @@ import {
   createAdventureCharacter,
   findAdventureById,
   findAdventuresByUser,
+  updateAdventureStatus,
 } from "./adventures.repository";
 
 const MAX_ACTIVE_ADVENTURES = 5;
@@ -126,11 +128,7 @@ export async function createAdventureForUser(
   }
 
   // 5. Fetch default race (Humain, isDefault=true)
-  const [defaultRace] = await db
-    .select()
-    .from(races)
-    .where(eq(races.isDefault, true))
-    .limit(1);
+  const [defaultRace] = await db.select().from(races).where(eq(races.isDefault, true)).limit(1);
   if (!defaultRace) {
     throw new AppError(500, "INTERNAL_ERROR", "Default race not seeded");
   }
@@ -185,6 +183,7 @@ export async function getTemplates(): Promise<AdventureTemplateDTO[]> {
       name: adventureTemplates.name,
       description: adventureTemplates.description,
       genre: adventureTemplates.genre,
+      difficulty: adventureTemplates.difficulty,
       estimatedDuration: adventureTemplates.estimatedDuration,
     })
     .from(adventureTemplates)
@@ -195,6 +194,24 @@ export async function getTemplates(): Promise<AdventureTemplateDTO[]> {
     name: r.name,
     description: r.description,
     genre: r.genre,
+    difficulty: r.difficulty as Difficulty,
     estimatedDuration: r.estimatedDuration as EstimatedDuration,
   }));
+}
+
+export async function updateAdventureForUser(
+  userId: string,
+  adventureId: string,
+  status: "abandoned",
+): Promise<AdventureDTO> {
+  const row = await updateAdventureStatus(adventureId, userId, status);
+  if (!row) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found");
+  }
+  // Re-fetch full row with joins to return a proper DTO
+  const fullRow = await findAdventureById(adventureId, userId);
+  if (!fullRow) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found after update");
+  }
+  return mapRowToDTO(fullRow);
 }

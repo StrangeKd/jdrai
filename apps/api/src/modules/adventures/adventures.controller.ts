@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { adventureCreateSchema } from "@jdrai/shared";
+import { adventureCreateSchema, adventureUpdateSchema } from "@jdrai/shared";
 
 import {
   createAdventureForUser,
   getAdventureById,
   getAdventuresForUser,
   getTemplates,
+  updateAdventureForUser,
 } from "./adventures.service";
 
 export async function createAdventureHandler(
@@ -44,6 +45,20 @@ export async function getAdventureHandler(
 ): Promise<void> {
   try {
     const adventure = await getAdventureById(req.params["id"]!, req.user!.id);
+    res.json({ success: true, data: adventure });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAdventureHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const input = adventureUpdateSchema.parse(req.body);
+    const adventure = await updateAdventureForUser(req.user!.id, req.params["id"]!, input.status);
     res.json({ success: true, data: adventure });
   } catch (error) {
     next(error);

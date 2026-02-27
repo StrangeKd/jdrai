@@ -17,6 +17,7 @@ vi.mock("./adventures.service", () => ({
   getAdventuresForUser: vi.fn(),
   getAdventureById: vi.fn(),
   getTemplates: vi.fn(),
+  updateAdventureForUser: vi.fn(),
 }));
 
 import {
@@ -24,12 +25,14 @@ import {
   getAdventureHandler,
   listAdventuresHandler,
   listTemplatesHandler,
+  updateAdventureHandler,
 } from "./adventures.controller";
 import {
   createAdventureForUser,
   getAdventureById,
   getAdventuresForUser,
   getTemplates,
+  updateAdventureForUser,
 } from "./adventures.service";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +77,7 @@ const MOCK_TEMPLATE: AdventureTemplateDTO = {
   name: "La Forêt Maudite",
   description: "Une aventure en forêt sombre",
   genre: "heroic_fantasy",
+  difficulty: "normal",
   estimatedDuration: "medium",
 };
 
@@ -94,6 +98,7 @@ function makeApp(userId: string = MOCK_USER_ID): Express {
   app.post("/adventures", createAdventureHandler);
   app.get("/adventures", listAdventuresHandler);
   app.get("/adventures/:id", getAdventureHandler);
+  app.patch("/adventures/:id", updateAdventureHandler);
   app.get("/templates", listTemplatesHandler);
 
   app.use(errorHandler);
@@ -235,6 +240,54 @@ describe("GET /adventures/:id (AC-5)", () => {
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});
+
+describe("PATCH /adventures/:id (AC-5 Story 5.2)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("valid { status: 'abandoned' } → 200 with updated AdventureDTO", async () => {
+    const abandoned = { ...MOCK_ADVENTURE, status: "abandoned" as const };
+    vi.mocked(updateAdventureForUser).mockResolvedValueOnce(abandoned);
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-1")
+      .send({ status: "abandoned" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe("abandoned");
+    expect(updateAdventureForUser).toHaveBeenCalledWith(MOCK_USER_ID, "adv-1", "abandoned");
+  });
+
+  it("invalid status value → 400 VALIDATION_ERROR", async () => {
+    const res = await request(makeApp())
+      .patch("/adventures/adv-1")
+      .send({ status: "paused" }); // "paused" is not a valid status
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(updateAdventureForUser).not.toHaveBeenCalled();
+  });
+
+  it("adventure not found → 404 NOT_FOUND", async () => {
+    vi.mocked(updateAdventureForUser).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-unknown")
+      .send({ status: "abandoned" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("missing status body → 400 VALIDATION_ERROR", async () => {
+    const res = await request(makeApp()).patch("/adventures/adv-1").send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 });
 

@@ -57,5 +57,6 @@ export interface AdventureTemplateDTO {
   name: string;
   description: string;
   genre: string;
+  difficulty: Difficulty;
   estimatedDuration: EstimatedDuration;
 }
