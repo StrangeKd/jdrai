@@ -18,12 +18,22 @@ afterEach(() => {
 
 const activeAdventure: AdventureDTO = {
   id: "adv-1",
-  userId: "u1",
   title: "La Crypte des Ombres",
   status: "active",
+  difficulty: "normal",
+  estimatedDuration: "medium",
+  startedAt: "2024-12-01T00:00:00Z",
   currentMilestone: "Entrée dans la crypte",
   lastPlayedAt: "2025-01-01T10:00:00Z", // 2h ago
-  createdAt: "2024-12-01T00:00:00Z",
+  character: {
+    id: "char-1",
+    name: "Aventurier",
+    className: "Aventurier",
+    raceName: "Humain",
+    stats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
+    currentHp: 20,
+    maxHp: 20,
+  },
 };
 
 describe("AdventureCardActive (AC-3)", () => {

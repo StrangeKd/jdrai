@@ -6,7 +6,7 @@ import express, { type Express, type Request } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AdventureDTO, AdventureTemplateDTO } from "@jdrai/shared";
+import type { AdventureDTO, AdventureTemplateDTO, UserDTO } from "@jdrai/shared";
 
 import { errorHandler } from "@/middleware/error.middleware";
 import { AppError } from "@/utils/errors";
@@ -37,6 +37,16 @@ import {
 // ---------------------------------------------------------------------------
 
 const MOCK_USER_ID = "user-1";
+
+const MOCK_USER: UserDTO = {
+  id: MOCK_USER_ID,
+  email: "test@example.com",
+  emailVerified: true,
+  username: "ryan",
+  role: "user",
+  onboardingCompleted: true,
+  createdAt: "2026-02-26T00:00:00.000Z",
+};
 
 const MOCK_CHARACTER: AdventureDTO["character"] = {
   id: "char-1",
@@ -76,8 +86,8 @@ function makeApp(userId: string = MOCK_USER_ID): Express {
   app.use(express.json());
 
   // Simulate requireAuth by injecting req.user
-  app.use((req: Request & { user?: { id: string } }, _res, next) => {
-    req.user = { id: userId };
+  app.use((req: Request, _res, next) => {
+    req.user = { ...MOCK_USER, id: userId };
     next();
   });
 

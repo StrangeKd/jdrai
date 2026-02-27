@@ -48,6 +48,20 @@ import {
 
 const USER_ID = "user-1";
 
+// Full DB user row shape (Better Auth schema)
+const MOCK_DB_USER = {
+  id: USER_ID,
+  name: "Ryan",
+  email: "ryan@example.com",
+  emailVerified: true,
+  image: null as string | null,
+  createdAt: new Date("2026-02-26"),
+  updatedAt: new Date("2026-02-26"),
+  username: "ryan" as string | null,
+  role: "user" as const,
+  onboardingCompleted: false,
+};
+
 const MOCK_DEFAULT_CLASS = { id: "class-default", name: "Aventurier", isDefault: true };
 const MOCK_DEFAULT_RACE = { id: "race-default", name: "Humain", isDefault: true };
 
@@ -93,7 +107,7 @@ describe("createAdventureForUser", () => {
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
     vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
     // Username fallback when no meta-character (P1)
-    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce(MOCK_DB_USER);
 
     // First call: characterClasses query
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
@@ -169,7 +183,7 @@ describe("createAdventureForUser", () => {
       ...MOCK_ADVENTURE_ROW,
       title: "Ma quête épique",
     });
-    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce(MOCK_DB_USER);
 
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
     const where1 = vi.fn().mockReturnValue({ limit: limit1 });
@@ -208,7 +222,7 @@ describe("createAdventureForUser", () => {
   it("title defaults to 'Aventure sans nom' when absent or blank (AC-3)", async () => {
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(0);
     vi.mocked(createAdventure).mockResolvedValueOnce(MOCK_ADVENTURE_ROW);
-    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({ username: "ryan" });
+    vi.mocked(db.query.users.findFirst).mockResolvedValueOnce(MOCK_DB_USER);
 
     const limit1 = vi.fn().mockResolvedValue([MOCK_DEFAULT_CLASS]);
     const where1 = vi.fn().mockReturnValue({ limit: limit1 });
