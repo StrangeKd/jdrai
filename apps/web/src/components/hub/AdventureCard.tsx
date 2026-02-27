@@ -17,9 +17,7 @@ export function AdventureCard({ adventure, onClick }: AdventureCardProps) {
     >
       <p className="line-clamp-2 text-sm font-medium text-amber-100">{adventure.title}</p>
       <p className="text-xs text-stone-500">
-        {adventure.completedAt
-          ? formatRelativeTime(adventure.completedAt)
-          : formatRelativeTime(adventure.lastPlayedAt)}
+        {formatRelativeTime(adventure.lastPlayedAt)}
       </p>
     </Button>
   );

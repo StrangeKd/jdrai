@@ -8,6 +8,7 @@ export const adventureTemplates = pgTable("adventure_templates", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   description: text("description").notNull(),
+  genre: text("genre").notNull().default("heroic_fantasy"),
   difficulty: difficultyEnum("difficulty").notNull().default("normal"),
   estimatedDuration: estimatedDurationEnum("estimated_duration").notNull().default("medium"),
   systemPrompt: text("system_prompt").notNull(),

@@ -62,12 +62,22 @@ const mockUser: UserDTO = {
 function makeAdventure(n: number, lastPlayedAt: string): AdventureDTO {
   return {
     id: `adv-${n}`,
-    userId: "u1",
     title: `Adventure ${n}`,
     status: "active",
+    difficulty: "normal",
+    estimatedDuration: "medium",
+    startedAt: "2025-01-01T00:00:00Z",
     currentMilestone: `Milestone ${n}`,
     lastPlayedAt,
-    createdAt: "2025-01-01T00:00:00Z",
+    character: {
+      id: `char-${n}`,
+      name: "Aventurier",
+      className: "Aventurier",
+      raceName: "Humain",
+      stats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
+      currentHp: 20,
+      maxHp: 20,
+    },
   };
 }
 

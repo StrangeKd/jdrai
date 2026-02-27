@@ -15,6 +15,13 @@
       "when": 1771677153985,
       "tag": "0001_oval_ben_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772096225686,
+      "tag": "0002_epic5_adventure_tables",
+      "breakpoints": true
     }
   ]
 }
