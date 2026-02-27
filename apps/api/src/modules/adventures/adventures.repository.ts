@@ -105,6 +105,24 @@ export async function findAdventureById(
   return rows[0] ?? null;
 }
 
+/**
+ * Update an adventure's status (e.g., mark as abandoned).
+ * Verifies ownership via userId.
+ * Returns the updated row or null if not found / not owned.
+ */
+export async function updateAdventureStatus(
+  id: string,
+  userId: string,
+  status: "abandoned" | "completed",
+): Promise<typeof adventures.$inferSelect | null> {
+  const [row] = await db
+    .update(adventures)
+    .set({ status, updatedAt: new Date() })
+    .where(and(eq(adventures.id, id), eq(adventures.userId, userId)))
+    .returning();
+  return row ?? null;
+}
+
 export function buildFindAdventureByIdQuery(id: string, userId: string) {
   return db
     .select({

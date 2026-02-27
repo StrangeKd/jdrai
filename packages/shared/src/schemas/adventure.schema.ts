@@ -26,3 +26,10 @@ export const adventureCreateSchema = z.object({
 });
 
 export type AdventureCreateSchema = z.infer<typeof adventureCreateSchema>;
+
+// Schema for PATCH /api/v1/adventures/:id — status update only in P1
+export const adventureUpdateSchema = z.object({
+  status: z.enum(["abandoned"]), // Only "abandoned" is user-accessible in P1
+});
+
+export type AdventureUpdateSchema = z.infer<typeof adventureUpdateSchema>;

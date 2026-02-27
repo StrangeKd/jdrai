@@ -17,7 +17,7 @@ export function EmailVerificationBanner({ email }: EmailVerificationBannerProps)
   if (dismissed) return null;
 
   return (
-    <Card className="border-indigo-700/50 bg-indigo-900/60 py-0 text-sm">
+    <Card className="border-indigo-700/50 bg-indigo-900/60 py-0 text-sm max-w-xl mx-auto">
       <CardHeader className="grid-cols-[1fr_auto] grid-rows-1 items-start gap-3 px-4 py-3">
         <p className="text-indigo-200">
           ✉️ Vérifiez votre email pour sécuriser votre compte.{" "}

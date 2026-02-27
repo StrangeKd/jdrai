@@ -48,7 +48,7 @@ async function seed() {
         estimatedDuration: "medium",
         systemPrompt:
           "Tu es le Chroniqueur. L'aventurier explore une crypte ancienne. Ambiance sombre et tendue. [PLACEHOLDER — contenu à affiner]",
-        seedData: { genre: "dungeon_crawl", theme: "dark" },
+        seedData: { emoji: "🪦", genre: "dungeon_crawl", theme: "dark" },
         isPublic: true,
       },
       {
@@ -59,7 +59,7 @@ async function seed() {
         estimatedDuration: "short",
         systemPrompt:
           "Tu es le Chroniqueur. L'aventurier traverse une forêt magique. Ambiance mystérieuse et enchanteresse. [PLACEHOLDER — contenu à affiner]",
-        seedData: { genre: "exploration", theme: "enchanted" },
+        seedData: { emoji: "🌲", genre: "exploration", theme: "enchanted" },
         isPublic: true,
       },
     ])

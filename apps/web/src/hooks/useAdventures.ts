@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getAdventures } from "@/services/adventure.service";
+import { abandonAdventure, getAdventures, getTemplates } from "@/services/adventure.service";
 
 export function useActiveAdventures() {
   return useQuery({
@@ -15,5 +15,24 @@ export function useCompletedAdventures() {
     queryKey: ["adventures", "completed"],
     queryFn: () => getAdventures("completed"),
     staleTime: 60_000,
+  });
+}
+
+export function useTemplates() {
+  return useQuery({
+    queryKey: ["templates"],
+    queryFn: getTemplates,
+    staleTime: 5 * 60 * 1000, // Templates rarely change — cache 5 minutes
+  });
+}
+
+export function useAbandonAdventure() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (adventureId: string) => abandonAdventure(adventureId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["adventures", "active"] });
+      await queryClient.invalidateQueries({ queryKey: ["adventures"] });
+    },
   });
 }
