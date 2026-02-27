@@ -1,7 +1,13 @@
 import type { AdventureDTO } from "@jdrai/shared";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAbandonAdventure } from "@/hooks/useAdventures";
 
 interface AbandonModalProps {
@@ -24,13 +30,13 @@ export function AbandonModal({ adventure, onClose }: AbandonModalProps) {
         <DialogHeader>
           <DialogTitle>Abandonner l&apos;aventure ?</DialogTitle>
         </DialogHeader>
-        <p className="py-2 text-sm text-stone-300">
+        <DialogDescription className="py-2 text-sm text-stone-300">
           Votre progression dans{" "}
           <span className="font-medium text-amber-200">
             &laquo;&nbsp;{adventure?.title}&nbsp;&raquo;
           </span>{" "}
           sera perdue. Cette action est irréversible.
-        </p>
+        </DialogDescription>
         <div className="flex flex-col gap-3 pt-2">
           <Button
             variant="destructive"

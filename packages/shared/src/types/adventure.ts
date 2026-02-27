@@ -57,6 +57,8 @@ export interface AdventureTemplateDTO {
   name: string;
   description: string;
   genre: string;
+  /** Optional emoji/icon hint for UI (fallback client-side if absent). */
+  emoji?: string | undefined;
   difficulty: Difficulty;
   estimatedDuration: EstimatedDuration;
 }

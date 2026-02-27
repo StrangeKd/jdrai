@@ -122,7 +122,7 @@ export function HubPage() {
         </section>
       ) : (
         <EmptyState
-          onLaunch={() => void navigate({ to: "/adventure/new" })}
+          onLaunch={() => void navigate({ to: "/adventure/new", search: { mode: "custom" } })}
           onTemplate={() => void navigate({ to: "/adventure/new", search: { mode: "templates" } })}
         />
       )}
@@ -141,7 +141,7 @@ export function HubPage() {
               label="Personnalisée"
               description="Choisissez votre thème, durée et difficulté"
               disabled={isAtLimit}
-              onClick={() => void navigate({ to: "/adventure/new" })}
+              onClick={() => void navigate({ to: "/adventure/new", search: { mode: "custom" } })}
             />
             <ActionCard
               icon="📋"

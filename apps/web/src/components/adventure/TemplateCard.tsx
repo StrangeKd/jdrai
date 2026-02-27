@@ -21,11 +21,12 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, onChoose }: TemplateCardProps) {
+  const icon = template.emoji ?? "🗺️";
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-stone-700 bg-stone-800/40 p-4">
       <div className="flex items-start gap-3">
         <span className="text-2xl" aria-hidden="true">
-          🗺️
+          {icon}
         </span>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-amber-100 leading-tight">{template.name}</h3>

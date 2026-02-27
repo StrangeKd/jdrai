@@ -185,18 +185,35 @@ export async function getTemplates(): Promise<AdventureTemplateDTO[]> {
       genre: adventureTemplates.genre,
       difficulty: adventureTemplates.difficulty,
       estimatedDuration: adventureTemplates.estimatedDuration,
+      seedData: adventureTemplates.seedData,
     })
     .from(adventureTemplates)
     .where(eq(adventureTemplates.isPublic, true));
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    description: r.description,
-    genre: r.genre,
-    difficulty: r.difficulty as Difficulty,
-    estimatedDuration: r.estimatedDuration as EstimatedDuration,
-  }));
+  return rows.map((r) => {
+    const seed = r.seedData as unknown;
+    const emoji =
+      seed &&
+      typeof seed === "object" &&
+      "emoji" in seed &&
+      typeof (seed as { emoji?: unknown }).emoji === "string"
+        ? (seed as { emoji: string }).emoji
+        : undefined;
+
+    const dto: AdventureTemplateDTO = {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      genre: r.genre,
+      difficulty: r.difficulty as Difficulty,
+      estimatedDuration: r.estimatedDuration as EstimatedDuration,
+    };
+
+    // Omit optional fields when undefined to satisfy exactOptionalPropertyTypes
+    if (emoji) dto.emoji = emoji;
+
+    return dto;
+  });
 }
 
 export async function updateAdventureForUser(
