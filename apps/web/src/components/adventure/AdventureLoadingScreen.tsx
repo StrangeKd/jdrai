@@ -1,6 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import { useNavigate } from "@tanstack/react-router";
 
 import type { AdventureCreateInput } from "@jdrai/shared";
 
@@ -19,6 +18,8 @@ interface AdventureLoadingScreenProps {
   difficultyLabel?: string;
   /** Called after 3 consecutive POST failures. */
   onError: () => void;
+  /** Called when backend reports active adventures limit reached (409). */
+  onLimitReached?: () => void;
 }
 
 const MAX_RETRIES = 2; // 3 total attempts (0, 1, 2)
@@ -30,20 +31,30 @@ export function AdventureLoadingScreen({
   durationLabel,
   difficultyLabel,
   onError,
+  onLimitReached,
 }: AdventureLoadingScreenProps) {
   const createAdventure = useCreateAdventure();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const retryCount = useRef(0);
   // Guards against React StrictMode double-invocation of useEffect on mount
   const hasStarted = useRef(false);
+  // Tracks the pending retry timer so it can be cancelled on unmount
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [showDelayMessage, setShowDelayMessage] = useState(false);
-  const { setHideNav } = useUIStore.getState();
+  const setHideNav = useUIStore((s) => s.setHideNav);
 
   // Hide navigation for the duration of this screen
   useEffect(() => {
     setHideNav(true);
     return () => setHideNav(false);
   }, [setHideNav]);
+
+  // Cancel any pending retry timer on unmount to prevent post-unmount state updates
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // 15-second timeout message
   useEffect(() => {
@@ -56,30 +67,35 @@ export function AdventureLoadingScreen({
       await createAdventure.mutateAsync(config);
       // onSuccess in the mutation hook handles navigation
     } catch (error) {
-      // Special case: adventure limit — navigate back immediately, no retry
+      // Special case: adventure limit — refresh active adventures and leave loading state.
       if (error instanceof ApiError && error.code === "MAX_ACTIVE_ADVENTURES") {
-        await navigate({ to: "/adventure/new" });
+        await queryClient.invalidateQueries({ queryKey: ["adventures", "active"] });
+        if (onLimitReached) {
+          onLimitReached();
+        } else {
+          onError();
+        }
         return;
       }
 
       retryCount.current += 1;
       if (retryCount.current <= MAX_RETRIES) {
-        // Auto-retry (invisible to user)
-        setTimeout(() => void attemptCreate(), 1500);
+        // Auto-retry (invisible to user) — timer ref allows cancellation on unmount
+        retryTimerRef.current = setTimeout(() => void attemptCreate(), 1500);
       } else {
         // 3rd failure: show error screen
         onError();
       }
     }
-  }, [config, createAdventure, navigate, onError]);
+  }, [config, createAdventure, onError, onLimitReached, queryClient]);
 
-  // Trigger once on mount — ref guard prevents React StrictMode double-invocation
+  // Fires effectively once per screen lifecycle. The hasStarted ref guards against
+  // StrictMode double effect invocation in development.
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
     void attemptCreate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attemptCreate]);
 
   return (
     <div

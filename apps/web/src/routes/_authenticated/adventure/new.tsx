@@ -36,12 +36,12 @@ export const Route = createFileRoute("/_authenticated/adventure/new")({
 // ---------------------------------------------------------------------------
 
 type AdventureStep =
-  | "config"           // WF-E9-01 (custom) or WF-E9-02 (templates)
-  | "confirmation"     // WF-E9-03 (custom + template paths)
-  | "random-choice"    // WF-E9-03b (random: reveal or surprise)
-  | "random-revealed"  // WF-E9-03c (random: params shown, can re-roll)
-  | "loading"          // WF-E9-04 (full-screen, nav hidden)
-  | "error";           // WF-E9-05 (after 3 failed attempts)
+  | "config" // WF-E9-01 (custom) or WF-E9-02 (templates)
+  | "confirmation" // WF-E9-03 (custom + template paths)
+  | "random-choice" // WF-E9-03b (random: reveal or surprise)
+  | "random-revealed" // WF-E9-03c (random: params shown, can re-roll)
+  | "loading" // WF-E9-04 (full-screen, nav hidden)
+  | "error"; // WF-E9-05 (after 3 failed attempts)
 
 interface AdventureConfig {
   duration: EstimatedDuration;
@@ -124,6 +124,7 @@ export function NewAdventurePage() {
         durationLabel={DURATION_LABELS[config.duration]}
         difficultyLabel={DIFFICULTY_LABELS[config.difficulty]}
         onError={() => setStep("error")}
+        onLimitReached={() => setStep(mode === "random" ? "random-choice" : "config")}
       />
     );
   }
@@ -139,6 +140,33 @@ export function NewAdventurePage() {
           onRetry={() => setStep("loading")}
           onBack={() => setStep(mode === "random" ? "random-choice" : "config")}
         />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Active adventures limit guard (all non-loading/non-error steps)
+  // ---------------------------------------------------------------------------
+
+  if (!activeLoading && !activeError && isAtLimit) {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        <header className="flex items-center gap-3">
+          <Button
+            variant="link"
+            onClick={() => void navigate({ to: "/hub" })}
+            className="p-0 m-0 text-amber-400 hover:text-amber-300 transition-colors hover:no-underline"
+            aria-label="Retour au hub"
+          >
+            ←
+          </Button>
+          <h1 className="text-lg font-semibold text-amber-100">Nouvelle aventure</h1>
+        </header>
+        <AdventureLimitScreen
+          adventures={activeAdventures}
+          onAbandon={(adv) => setAbandonTarget(adv)}
+        />
+        <AbandonModal adventure={abandonTarget} onClose={() => setAbandonTarget(null)} />
       </div>
     );
   }
@@ -259,28 +287,17 @@ export function NewAdventurePage() {
         </div>
       )}
 
-      {/* Limit screen — replaces all config content */}
-      {!activeLoading && !activeError && isAtLimit && (
+      {/* Config content */}
+      {!activeLoading && !activeError && (
         <>
-          <AdventureLimitScreen
-            adventures={activeAdventures}
-            onAbandon={(adv) => setAbandonTarget(adv)}
-          />
-          <AbandonModal adventure={abandonTarget} onClose={() => setAbandonTarget(null)} />
-        </>
-      )}
-
-      {/* Config content — hidden when at limit */}
-      {!activeLoading && !activeError && !isAtLimit && (
-        <>
-          {(mode === "custom" || mode === "random") && (
+          {mode === "custom" && (
             <AdventureCustomConfigView
               duration={config.duration}
               difficulty={config.difficulty}
               onDurationChange={(d) => setConfig((c) => ({ ...c, duration: d }))}
               onDifficultyChange={(d) => setConfig((c) => ({ ...c, difficulty: d }))}
               onNext={() => {
-                setConfig((c) => ({ ...c, isRandom: mode === "random" }));
+                setConfig((c) => ({ ...c, isRandom: false, hiddenParams: false }));
                 setStep("confirmation");
               }}
             />

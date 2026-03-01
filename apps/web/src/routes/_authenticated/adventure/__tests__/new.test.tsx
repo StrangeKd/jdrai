@@ -39,6 +39,19 @@ vi.mock("@/hooks/useAdventures", () => ({
   useActiveAdventures: () => mockUseActiveAdventures(),
   useTemplates: () => mockUseTemplates(),
   useAbandonAdventure: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
+  useCreateAdventure: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+// Mock AdventureLoadingScreen to isolate step-machine tests from API logic
+// (AdventureLoadingScreen has its own dedicated test suite)
+vi.mock("@/components/adventure/AdventureLoadingScreen", () => ({
+  AdventureLoadingScreen: ({ onError }: { onError: () => void }) => (
+    <div data-testid="loading-screen">
+      <button type="button" onClick={onError} aria-label="simuler erreur">
+        simuler erreur
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/hooks/useUser", () => ({
@@ -258,6 +271,110 @@ describe("NewAdventurePage — Confirmation screen (AC-4)", () => {
   });
 });
 
+describe("NewAdventurePage — Random mode (Story 5.3 AC-1, AC-2, AC-6)", () => {
+  beforeEach(() => {
+    mockRouteState.mode = "random";
+    setupDefaultHooks();
+  });
+
+  it("starts directly on random-choice step — no config view (AC-1)", () => {
+    render(<NewAdventurePage />);
+    expect(screen.getByText("Le destin a parlé.")).toBeInTheDocument();
+    expect(screen.queryByText("Courte")).not.toBeInTheDocument();
+  });
+
+  it("shows both random CTAs (AC-1)", () => {
+    render(<NewAdventurePage />);
+    expect(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ACCEPTER L'INCONNU/i })).toBeInTheDocument();
+  });
+
+  it("RÉVÉLER MON DESTIN → shows random-revealed step with params (AC-2)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    expect(screen.getByText(/Le destin a choisi pour vous/i)).toBeInTheDocument();
+    expect(screen.getByText(/Heroic Fantasy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Retirer les dés/i)).toBeInTheDocument();
+  });
+
+  it("Retirer les dés stays on random-revealed (can be clicked multiple times) (AC-2)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    const reroll = screen.getByText(/Retirer les dés/i);
+    fireEvent.click(reroll);
+    fireEvent.click(reroll);
+    // Still on random-revealed after multiple rerolls
+    expect(screen.getByText(/Le destin a choisi pour vous/i)).toBeInTheDocument();
+  });
+
+  it("LANCER L'AVENTURE from random-revealed → loading step (AC-6)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    fireEvent.click(screen.getByRole("button", { name: /LANCER L'AVENTURE/i }));
+    expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
+  });
+
+  it("ACCEPTER L'INCONNU → loading step directly (AC-1)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /ACCEPTER L'INCONNU/i }));
+    expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
+  });
+
+  it("error from loading → GenerationErrorView (AC-5)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    fireEvent.click(screen.getByRole("button", { name: /LANCER L'AVENTURE/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simuler erreur/i }));
+    expect(screen.getByText(/Le Maître du Jeu n'a pas pu préparer/i)).toBeInTheDocument();
+  });
+
+  it("RÉESSAYER from error → back to loading (AC-5)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    fireEvent.click(screen.getByRole("button", { name: /LANCER L'AVENTURE/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simuler erreur/i }));
+    fireEvent.click(screen.getByRole("button", { name: /RÉESSAYER/i }));
+    expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
+  });
+
+  it("Retour à la configuration from error → random-choice (AC-5)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /RÉVÉLER MON DESTIN/i }));
+    fireEvent.click(screen.getByRole("button", { name: /LANCER L'AVENTURE/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simuler erreur/i }));
+    fireEvent.click(screen.getByText(/Retour à la configuration/i));
+    // Back to random-choice (not config)
+    expect(screen.getByText("Le destin a parlé.")).toBeInTheDocument();
+  });
+});
+
+describe("NewAdventurePage — Loading step wiring for custom/template path (Story 5.3 AC-6)", () => {
+  beforeEach(() => {
+    mockRouteState.mode = "custom";
+    setupDefaultHooks();
+  });
+
+  it("LANCER L'AVENTURE in confirmation → loading step (AC-6)", () => {
+    render(<NewAdventurePage />);
+    // Step 1: config → confirmation
+    fireEvent.click(screen.getByRole("button", { name: /lancer l'aventure/i }));
+    expect(screen.getByText(/Confirmer l'aventure/i)).toBeInTheDocument();
+    // Step 2: confirmation → loading
+    fireEvent.click(screen.getByRole("button", { name: /lancer l'aventure/i }));
+    expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
+  });
+
+  it("error from loading → GenerationErrorView and Retour à la configuration → config (AC-5, AC-6)", () => {
+    render(<NewAdventurePage />);
+    fireEvent.click(screen.getByRole("button", { name: /lancer l'aventure/i }));
+    fireEvent.click(screen.getByRole("button", { name: /lancer l'aventure/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simuler erreur/i }));
+    fireEvent.click(screen.getByText(/Retour à la configuration/i));
+    // Back to config (custom mode)
+    expect(screen.getByText("Courte")).toBeInTheDocument();
+  });
+});
+
 describe("NewAdventurePage — Limit screen (AC-5)", () => {
   beforeEach(() => {
     mockRouteState.mode = "custom";
@@ -305,5 +422,16 @@ describe("NewAdventurePage — Limit screen (AC-5)", () => {
     });
     render(<NewAdventurePage />);
     expect(screen.getByText("Courte")).toBeInTheDocument();
+  });
+
+  it("also blocks random mode when active count ≥ 5", () => {
+    mockRouteState.mode = "random";
+    mockUseActiveAdventures.mockReturnValue({
+      data: [1, 2, 3, 4, 5].map(makeAdventure),
+      isLoading: false,
+    });
+    render(<NewAdventurePage />);
+    expect(screen.getByText(/limite de 5 aventures/i)).toBeInTheDocument();
+    expect(screen.queryByText("Le destin a parlé.")).not.toBeInTheDocument();
   });
 });

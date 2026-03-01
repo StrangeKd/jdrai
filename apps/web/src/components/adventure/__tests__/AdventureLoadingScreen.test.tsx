@@ -3,12 +3,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdventureDTO } from "@jdrai/shared";
 
+import { ApiError } from "@/services/api";
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 const mockMutateAsync = vi.fn();
 const mockSetHideNav = vi.fn();
+const mockInvalidateQueries = vi.hoisted(() => vi.fn());
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+}));
 
 vi.mock("@/hooks/useAdventures", () => ({
   useCreateAdventure: () => ({
@@ -16,18 +23,9 @@ vi.mock("@/hooks/useAdventures", () => ({
   }),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
-}));
-
 vi.mock("@/stores/ui.store", () => ({
-  useUIStore: Object.assign(
-    (selector: (s: { hideNav: boolean; setHideNav: typeof mockSetHideNav }) => unknown) =>
-      selector({ hideNav: false, setHideNav: mockSetHideNav }),
-    {
-      getState: () => ({ setHideNav: mockSetHideNav }),
-    },
-  ),
+  useUIStore: (selector: (s: { hideNav: boolean; setHideNav: typeof mockSetHideNav }) => unknown) =>
+    selector({ hideNav: false, setHideNav: mockSetHideNav }),
 }));
 
 import { AdventureLoadingScreen } from "../AdventureLoadingScreen";
@@ -35,6 +33,7 @@ import { AdventureLoadingScreen } from "../AdventureLoadingScreen";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mockInvalidateQueries.mockReset();
 });
 
 const MOCK_ADVENTURE: AdventureDTO = {
@@ -143,6 +142,49 @@ describe("AdventureLoadingScreen (WF-E9-04)", () => {
     expect(onError).toHaveBeenCalledOnce();
 
     vi.useRealTimers();
+  });
+
+  it("invalidates cache and calls onLimitReached on MAX_ACTIVE_ADVENTURES error (AC-4)", async () => {
+    const limitError = new ApiError("MAX_ACTIVE_ADVENTURES", "Limite atteinte");
+    mockMutateAsync.mockRejectedValue(limitError);
+    const onLimitReached = vi.fn();
+
+    render(
+      <AdventureLoadingScreen
+        config={BASE_CONFIG}
+        hiddenParams={false}
+        onError={vi.fn()}
+        onLimitReached={onLimitReached}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["adventures", "active"] });
+    });
+    expect(onLimitReached).toHaveBeenCalledOnce();
+  });
+
+  it("does NOT retry on MAX_ACTIVE_ADVENTURES (limit callback only)", async () => {
+    const limitError = new ApiError("MAX_ACTIVE_ADVENTURES", "Limite atteinte");
+    mockMutateAsync.mockRejectedValue(limitError);
+    const onError = vi.fn();
+    const onLimitReached = vi.fn();
+
+    render(
+      <AdventureLoadingScreen
+        config={BASE_CONFIG}
+        hiddenParams={false}
+        onError={onError}
+        onLimitReached={onLimitReached}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onLimitReached).toHaveBeenCalledOnce();
+    });
+    // Only 1 attempt — no retry on limit error
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    expect(onError).not.toHaveBeenCalled();
   });
 
   it("shows delay message after 15 seconds", async () => {

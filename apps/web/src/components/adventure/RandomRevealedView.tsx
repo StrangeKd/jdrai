@@ -23,7 +23,12 @@ const DIFFICULTY_CONFIG: { key: Difficulty; label: string }[] = [
 ];
 
 /** WF-E9-03c — Random revealed: shows the generated params, allows re-rolling. */
-export function RandomRevealedView({ difficulty, estimatedDuration, onLaunch, onReroll }: RandomRevealedViewProps) {
+export function RandomRevealedView({
+  difficulty,
+  estimatedDuration,
+  onLaunch,
+  onReroll,
+}: RandomRevealedViewProps) {
   const durationOpt = DURATION_OPTIONS.find((d) => d.value === estimatedDuration);
   const difficultyOpt = DIFFICULTY_CONFIG.find((d) => d.key === difficulty);
 
@@ -32,30 +37,29 @@ export function RandomRevealedView({ difficulty, estimatedDuration, onLaunch, on
       <h2 className="text-xl font-bold text-amber-100">Le destin a choisi pour vous...</h2>
       <div className="bg-stone-800/60 rounded-xl p-5 space-y-4">
         <div className="text-stone-200">
-          <span aria-hidden="true">📖</span>{" "}
-          <span className="text-stone-400">Thème</span> — Heroic Fantasy
+          <span aria-hidden="true">📖</span> <span className="text-stone-400">Thème</span> — Heroic
+          Fantasy
         </div>
         <div className="text-stone-200">
-          <span aria-hidden="true">⏱️</span>{" "}
-          <span className="text-stone-400">Durée</span> —{" "}
+          <span aria-hidden="true">⏱️</span> <span className="text-stone-400">Durée</span> —{" "}
           {durationOpt ? `${durationOpt.label} (${durationOpt.estimate})` : estimatedDuration}
         </div>
         <div className="text-stone-200">
-          <span aria-hidden="true">⚖️</span>{" "}
-          <span className="text-stone-400">Difficulté</span> —{" "}
+          <span aria-hidden="true">⚖️</span> <span className="text-stone-400">Difficulté</span> —{" "}
           {difficultyOpt?.label ?? difficulty}
         </div>
       </div>
       <Button onClick={onLaunch} className="w-full uppercase tracking-wider">
         LANCER L&apos;AVENTURE
       </Button>
-      <button
+      <Button
         type="button"
+        variant="link"
         onClick={onReroll}
-        className="text-sm text-amber-400/70 hover:text-amber-400 transition-colors text-center"
+        className="text-sm text-amber-400/70 hover:text-amber-400 transition-colors text-center hover:no-underline"
       >
         Retirer les dés
-      </button>
+      </Button>
     </div>
   );
 }
