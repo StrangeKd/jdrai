@@ -13,9 +13,9 @@ export function useUpdateProfile() {
       api.patch<{ success: true; data: UserDTO }>("/api/v1/users/me", data).then((r) => r.data),
     onSuccess: async (updatedUser) => {
       // Populate the TanStack Query cache immediately with the mutation result.
-      // Used as a synchronous fallback in getResolvedAuthDestination for the brief
-      // window between mutation completion and React re-rendering App with fresh auth.
-      queryClient.setQueryData(["user", "me", updatedUser.id], updatedUser);
+      // Uses the same key as useCurrentUser() so Tier 2 of getResolvedAuthDestination
+      // picks it up during the brief window before React re-renders with fresh auth.
+      queryClient.setQueryData(["user", "me"], updatedUser);
       // Refresh Better Auth session so useSession() reflects the updated username,
       // which triggers the useEffect in main.tsx → router.invalidate().
       await getSession();

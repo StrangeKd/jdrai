@@ -14,12 +14,13 @@ export function getNoUsernameOnboardingTarget(
 
 // Single source of truth for routing decisions. Three-tier username resolution:
 //
-//   1. Session  — populated by Better Auth once cookieCache is refreshed.
-//   2. Cache    — set by useUpdateProfile.onSuccess via setQueryData; covers the brief
-//                 race window between mutation completion and React re-rendering App
-//                 with the fresh session (no API call).
-//   3. API call — fallback for page reload: TanStack Query cache is in-memory and
-//                 cleared on reload; calls GET /users/me which queries the DB directly.
+//   1. Session  — populated by Better Auth once cookieCache is refreshed (may lag
+//                 after profile update due to server-side cache TTL).
+//   2. Cache    — ["user", "me"] key shared with useCurrentUser(); set by
+//                 useUpdateProfile.onSuccess (immediate) or useCurrentUser() (5-min
+//                 staleTime, 1-h gcTime). Survives navigation to game session.
+//   3. API call — final fallback: fetches GET /users/me (DB direct read). Uses
+//                 staleTime matching useCurrentUser() to avoid redundant requests.
 export async function getResolvedAuthDestination(
   context: RouterContext,
 ): Promise<"/auth/login" | "/hub" | "/onboarding/welcome" | "/onboarding/profile-setup"> {
@@ -28,24 +29,20 @@ export async function getResolvedAuthDestination(
   // Tier 1: session
   if (context.auth.user?.username) return "/hub";
 
-  // Tier 2: TanStack Query cache (no API call)
-  const cached = context.queryClient.getQueryData<UserDTO>([
-    "user",
-    "me",
-    context.auth.user?.id ?? "",
-  ]);
+  // Tier 2: TanStack Query cache (no API call) — same key as useCurrentUser()
+  const cached = context.queryClient.getQueryData<UserDTO>(["user", "me"]);
   if (cached?.username) return "/hub";
 
-  // Tier 3: fresh DB read via API (page reload — cache was cleared)
+  // Tier 3: fresh DB read via API (page reload or cache GC'd)
   if (!context.auth.user?.id) return getNoUsernameOnboardingTarget(context.auth.user?.id);
   try {
     const res = await context.queryClient.fetchQuery({
-      queryKey: ["user", "me", context.auth.user.id],
+      queryKey: ["user", "me"],
       queryFn: () =>
         api
           .get<{ success: true; data: UserDTO }>("/api/v1/users/me")
           .then((payload) => payload.data),
-      staleTime: 0,
+      staleTime: 5 * 60 * 1000, // respect useCurrentUser() 5-min cache when available
     });
     if (res.username) return "/hub";
   } catch {

@@ -7,8 +7,13 @@ import { toRecordStringHeaders } from "@/utils/http";
 
 export const requireAuth = async (req: Request, _res: Response, next: NextFunction) => {
   try {
+    // disableCookieCache: true forces DB validation instead of relying on the short-lived
+    // session_data cookie (cookieCache maxAge). Without this, the middleware returns 401
+    // once the cache expires because Better Auth does not fall back to the session_token
+    // automatically for custom getSession() calls.
     const session = await auth.api.getSession({
       headers: toRecordStringHeaders(req.headers),
+      query: { disableCookieCache: true },
     });
     if (!session?.user) {
       return next(new AppError(401, "UNAUTHORIZED", "Authentication required"));
@@ -24,6 +29,7 @@ export const optionalAuth = async (req: Request, _res: Response, next: NextFunct
   try {
     const session = await auth.api.getSession({
       headers: toRecordStringHeaders(req.headers),
+      query: { disableCookieCache: true },
     });
     if (session?.user) {
       req.user = mapBetterAuthUserToDTO(session.user as BetterAuthUser);
