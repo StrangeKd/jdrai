@@ -16,6 +16,9 @@ import { stream, useChat } from "@tanstack/ai-react";
 import { api } from "@/services/api";
 import { socket } from "@/services/socket.service";
 
+const ACTION_REQUEST_TIMEOUT_MS = 10_000;
+const STREAM_IDLE_TIMEOUT_MS = 20_000;
+
 // ---------------------------------------------------------------------------
 // Async queue — bridges event-based Socket.io to AsyncIterable<StreamChunk>
 // ---------------------------------------------------------------------------
@@ -83,8 +86,12 @@ function extractTextFromUIMessage(message: UIMessage): string {
  * The adapter converts raw socket text chunks to AG-UI TEXT_MESSAGE_CONTENT events
  * so that useChat can process them natively.
  */
-function createSocketAdapter(adventureId: string) {
+export function createSocketAdapter(adventureId: string) {
   return stream(async function* socketStreamFactory(messages) {
+    if (!socket.connected) {
+      throw new Error("Game socket is not connected");
+    }
+
     // Extract the last user message to submit as the player action
     // messages is Array<UIMessage> | Array<ModelMessage> — we check for UIMessage (has .parts)
     const lastMessage = messages[messages.length - 1];
@@ -97,9 +104,41 @@ function createSocketAdapter(adventureId: string) {
 
     const queue = new AsyncQueue<StreamChunk>();
     const messageId = `msg-${Date.now()}`;
+    let streamError: Error | null = null;
+    let isClosed = false;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const closeQueue = () => {
+      if (isClosed) return;
+      isClosed = true;
+      queue.close();
+    };
+
+    const closeWithError = (error: Error) => {
+      streamError = error;
+      closeQueue();
+    };
+
+    const resetIdleTimeout = () => {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+      }
+      idleTimer = setTimeout(() => {
+        closeWithError(new Error("Game stream timed out while waiting for server chunks"));
+      }, STREAM_IDLE_TIMEOUT_MS);
+    };
+
+    const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          setTimeout(() => reject(new Error(`Action request timed out after ${timeoutMs}ms`)), timeoutMs);
+        }),
+      ]);
 
     // Register socket listeners BEFORE the POST to avoid race conditions
     const onChunk = (content: string) => {
+      resetIdleTimeout();
       const chunk: StreamChunk = {
         type: "TEXT_MESSAGE_CONTENT",
         messageId,
@@ -110,24 +149,46 @@ function createSocketAdapter(adventureId: string) {
     };
 
     const onComplete = () => {
-      queue.close();
+      closeQueue();
+    };
+
+    const onError = (message: string) => {
+      closeWithError(new Error(`Game stream error: ${message}`));
     };
 
     socket.on("game:chunk", onChunk as Parameters<typeof socket.on>[1]);
     socket.on("game:response-complete", onComplete as Parameters<typeof socket.on>[1]);
+    socket.on("game:error", onError as Parameters<typeof socket.on>[1]);
 
     try {
+      resetIdleTimeout();
+
       // Submit player action — server will respond via socket events
-      await api.post(`/api/adventures/${adventureId}/action`, {
-        action: actionContent,
-      });
+      await withTimeout(
+        api.post(`/api/adventures/${adventureId}/action`, {
+          action: actionContent,
+        }),
+        ACTION_REQUEST_TIMEOUT_MS,
+      );
 
       // Yield AG-UI events from the queue until socket signals completion
       yield* queue;
+
+      if (streamError) {
+        throw streamError;
+      }
+    } catch (error) {
+      closeWithError(error instanceof Error ? error : new Error("Unknown game stream error"));
+      throw error;
     } finally {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+      }
+      closeQueue();
       // Always clean up socket listeners
       socket.off("game:chunk", onChunk as Parameters<typeof socket.on>[1]);
       socket.off("game:response-complete", onComplete as Parameters<typeof socket.on>[1]);
+      socket.off("game:error", onError as Parameters<typeof socket.on>[1]);
     }
   });
 }

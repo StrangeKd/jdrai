@@ -136,9 +136,9 @@ export async function createLLMService(): Promise<LLMService> {
     ["anthropic", new TanStackAIProvider("anthropic", env.LLM_ANTHROPIC_MODEL)],
   ]);
 
-  const fallbackOrder = env.LLM_FALLBACK_ORDER.split(",")
-    .map((p) => p.trim())
-    .filter((p) => p !== env.LLM_PRIMARY_PROVIDER);
+  const fallbackOrder = env.LLM_FALLBACK_ORDER.filter(
+    (provider) => provider !== env.LLM_PRIMARY_PROVIDER,
+  );
 
   return new LLMService(providers, {
     primaryProvider: env.LLM_PRIMARY_PROVIDER,

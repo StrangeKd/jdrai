@@ -16,7 +16,22 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   LLM_PRIMARY_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
-  LLM_FALLBACK_ORDER: z.string().default("anthropic"), // comma-separated provider names
+  LLM_FALLBACK_ORDER: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return ["anthropic"];
+      if (value.trim() === "") return [];
+      return value
+        .split(",")
+        .map((provider) => provider.trim())
+        .filter(Boolean);
+    },
+    z
+      .array(z.enum(["openai", "anthropic"]))
+      .refine(
+        (providers) => new Set(providers).size === providers.length,
+        "LLM_FALLBACK_ORDER must not contain duplicate providers",
+      ),
+  ),
   LLM_TIMEOUT_MS: z.coerce.number().default(30000),
   LLM_OPENAI_MODEL: z.string().default("gpt-4o"),
   LLM_ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),

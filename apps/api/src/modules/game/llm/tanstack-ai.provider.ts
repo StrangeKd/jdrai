@@ -48,10 +48,10 @@ export class TanStackAIProvider implements ILLMProvider {
    */
   async *streamResponse(params: StreamParams): AsyncIterable<string> {
     // Filter out "system" role from messages — system prompt is passed via systemPrompts
-    const modelMessages = params.messages
-      .filter((m) => m.role !== "system")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((m) => m as any);
+    const modelMessages = params.messages.flatMap((message) => {
+      if (message.role === "system") return [];
+      return [{ role: message.role, content: message.content }];
+    });
 
     const stream = chat({
       adapter: adapters[this.provider](this.model),
@@ -64,19 +64,14 @@ export class TanStackAIProvider implements ILLMProvider {
     for await (const chunk of stream) {
       // AG-UI: TEXT_MESSAGE_CONTENT carries the incremental token delta
       if (chunk.type === "TEXT_MESSAGE_CONTENT") {
-        yield (chunk as { type: "TEXT_MESSAGE_CONTENT"; delta: string }).delta;
+        yield chunk.delta;
       } else if (chunk.type === "RUN_FINISHED") {
-        // AG-UI: RUN_FINISHED carries token usage statistics
-        const finished = chunk as {
-          type: "RUN_FINISHED";
-          usage?: { promptTokens: number; completionTokens: number };
-        };
-        if (finished.usage) {
+        if (chunk.usage) {
           logger.info("llm:usage", {
             provider: this.provider,
             model: this.model,
-            inputTokens: finished.usage.promptTokens,
-            outputTokens: finished.usage.completionTokens,
+            inputTokens: chunk.usage.promptTokens,
+            outputTokens: chunk.usage.completionTokens,
           });
         }
       }
