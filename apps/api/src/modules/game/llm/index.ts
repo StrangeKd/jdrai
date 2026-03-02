@@ -134,6 +134,7 @@ export async function createLLMService(): Promise<LLMService> {
   const providers = new Map<string, ILLMProvider>([
     ["openai", new TanStackAIProvider("openai", env.LLM_OPENAI_MODEL)],
     ["anthropic", new TanStackAIProvider("anthropic", env.LLM_ANTHROPIC_MODEL)],
+    ["openrouter", new TanStackAIProvider("openrouter", env.LLM_OPENROUTER_MODEL)],
   ]);
 
   const fallbackOrder = env.LLM_FALLBACK_ORDER.filter(

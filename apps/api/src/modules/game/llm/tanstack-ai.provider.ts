@@ -8,23 +8,27 @@
 import { chat } from "@tanstack/ai";
 import { anthropicText } from "@tanstack/ai-anthropic";
 import { openaiText } from "@tanstack/ai-openai";
+import { openRouterText } from "@tanstack/ai-openrouter";
 
 import { logger } from "@/utils/logger";
 
 import type { GenerateParams, ILLMProvider, StreamParams } from "./llm.provider";
 
 // Cast model string to expected literal types — env vars are plain strings at runtime
-type ProviderAdapter = (model: string) => ReturnType<typeof openaiText> | ReturnType<typeof anthropicText>;
-const adapters: Record<"openai" | "anthropic", ProviderAdapter> = {
+type ProviderAdapter = (
+  model: string,
+) => ReturnType<typeof openaiText> | ReturnType<typeof anthropicText> | ReturnType<typeof openRouterText>;
+const adapters: Record<"openai" | "anthropic" | "openrouter", ProviderAdapter> = {
   openai: (model) => openaiText(model as Parameters<typeof openaiText>[0]),
   anthropic: (model) => anthropicText(model as Parameters<typeof anthropicText>[0]),
+  openrouter: (model) => openRouterText(model as Parameters<typeof openRouterText>[0]),
 };
 
 export class TanStackAIProvider implements ILLMProvider {
   readonly name: string;
 
   constructor(
-    private readonly provider: keyof typeof adapters,
+    private readonly provider: "openai" | "anthropic" | "openrouter",
     private readonly model: string,
   ) {
     this.name = `${provider}:${model}`;

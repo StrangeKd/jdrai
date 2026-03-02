@@ -15,7 +15,8 @@ const envSchema = z.object({
   VITE_API_URL: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
-  LLM_PRIMARY_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
+  OPENROUTER_API_KEY: z.string().optional(),
+  LLM_PRIMARY_PROVIDER: z.enum(["openai", "anthropic", "openrouter"]).default("openai"),
   LLM_FALLBACK_ORDER: z.preprocess(
     (value) => {
       if (typeof value !== "string") return ["anthropic"];
@@ -26,7 +27,7 @@ const envSchema = z.object({
         .filter(Boolean);
     },
     z
-      .array(z.enum(["openai", "anthropic"]))
+      .array(z.enum(["openai", "anthropic", "openrouter"]))
       .refine(
         (providers) => new Set(providers).size === providers.length,
         "LLM_FALLBACK_ORDER must not contain duplicate providers",
@@ -35,6 +36,7 @@ const envSchema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().default(30000),
   LLM_OPENAI_MODEL: z.string().default("gpt-4o"),
   LLM_ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
+  LLM_OPENROUTER_MODEL: z.string().default("openai/gpt-4o"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
