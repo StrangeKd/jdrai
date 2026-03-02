@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
-import { abandonAdventure, getAdventures, getTemplates } from "@/services/adventure.service";
+import type { AdventureCreateInput } from "@jdrai/shared";
+
+import { abandonAdventure, createAdventure, getAdventures, getTemplates } from "@/services/adventure.service";
 
 export function useActiveAdventures() {
   return useQuery({
@@ -23,6 +26,19 @@ export function useTemplates() {
     queryKey: ["templates"],
     queryFn: getTemplates,
     staleTime: 5 * 60 * 1000, // Templates rarely change — cache 5 minutes
+  });
+}
+
+export function useCreateAdventure() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: (input: AdventureCreateInput) => createAdventure(input),
+    onSuccess: async (adventure) => {
+      await queryClient.invalidateQueries({ queryKey: ["adventures"] });
+      await navigate({ to: "/adventure/$id", params: { id: adventure.id } });
+    },
   });
 }
 

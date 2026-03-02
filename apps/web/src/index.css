@@ -122,3 +122,10 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* Indeterminate loading bar animation (WF-E9-04, reused in E10) */
+@keyframes loading {
+  0%   { transform: translateX(-100%) scaleX(0.3); }
+  50%  { transform: translateX(50%) scaleX(0.7); }
+  100% { transform: translateX(200%) scaleX(0.3); }
+}
