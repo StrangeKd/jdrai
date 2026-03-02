@@ -11,10 +11,15 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().default(3000),
   API_URL: z.url().default("http://localhost:3000"),
   FRONTEND_URL: z.url().default("http://localhost:5173"),
-  VITE_API_URL: z.url().optional(), // Frontend only, may not be set in API context
+  // Empty string from .env means "not set" — preprocess to undefined before URL validation
+  VITE_API_URL: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   LLM_PRIMARY_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
+  LLM_FALLBACK_ORDER: z.string().default("anthropic"), // comma-separated provider names
+  LLM_TIMEOUT_MS: z.coerce.number().default(30000),
+  LLM_OPENAI_MODEL: z.string().default("gpt-4o"),
+  LLM_ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
