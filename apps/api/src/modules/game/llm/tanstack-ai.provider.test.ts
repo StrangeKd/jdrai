@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { chatMock, openaiTextMock, anthropicTextMock, loggerInfoMock } = vi.hoisted(() => ({
+const { chatMock, openaiTextMock, anthropicTextMock, openRouterTextMock, loggerInfoMock } = vi.hoisted(
+  () => ({
   chatMock: vi.fn(),
   openaiTextMock: vi.fn((model: string) => ({ provider: "openai", model })),
   anthropicTextMock: vi.fn((model: string) => ({ provider: "anthropic", model })),
+  openRouterTextMock: vi.fn((model: string) => ({ provider: "openrouter", model })),
   loggerInfoMock: vi.fn(),
-}));
+  }),
+);
 
 vi.mock("@tanstack/ai", () => ({
   chat: chatMock,
@@ -17,6 +20,10 @@ vi.mock("@tanstack/ai-openai", () => ({
 
 vi.mock("@tanstack/ai-anthropic", () => ({
   anthropicText: anthropicTextMock,
+}));
+
+vi.mock("@tanstack/ai-openrouter", () => ({
+  openRouterText: openRouterTextMock,
 }));
 
 vi.mock("@/utils/logger", () => ({
@@ -99,5 +106,28 @@ describe("TanStackAIProvider", () => {
 
     expect(result).toBe("The dungeon is dark.");
     expect(anthropicTextMock).toHaveBeenCalledWith("claude-sonnet-4-6");
+  });
+
+  it("uses OpenRouter adapter when provider is openrouter", async () => {
+    chatMock.mockReturnValueOnce(
+      makeChunks([
+        { type: "TEXT_MESSAGE_CONTENT", delta: "A new path unfolds." },
+        { type: "RUN_FINISHED" },
+      ]),
+    );
+
+    const provider = new TanStackAIProvider("openrouter", "openai/gpt-4o");
+    const result = await provider.generateResponse({
+      systemPrompt: "You are a GM",
+      messages: [{ role: "user", content: "Start the story" }],
+    });
+
+    expect(result).toBe("A new path unfolds.");
+    expect(openRouterTextMock).toHaveBeenCalledWith("openai/gpt-4o");
+    expect(chatMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [{ role: "user", content: "Start the story" }],
+      }),
+    );
   });
 });
