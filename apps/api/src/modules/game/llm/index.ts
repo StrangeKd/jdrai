@@ -49,45 +49,50 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
 // ---------------------------------------------------------------------------
 
 export interface LLMServiceConfig {
-  primaryProvider: string;
+  /** Key of the primary provider in the form "provider:model", e.g. "openrouter:arcee/trinity-large-preview:free" */
+  primaryKey: string;
+  /** Ordered fallback keys ("provider:model") tried after the primary fails */
   fallbackOrder: string[];
   timeoutMs: number;
 }
 
 export class LLMService {
   private providers: Map<string, ILLMProvider>;
-  private primaryProvider: string;
+  private primaryKey: string;
   private fallbackOrder: string[];
   private timeoutMs: number;
 
   /**
-   * @param providers  Map of provider name → ILLMProvider instance
-   * @param config     Routing configuration (primary, fallback order, timeout)
+   * @param providers  Map of "provider:model" key → ILLMProvider instance
+   * @param config     Routing configuration (primary key, fallback order, timeout)
    */
   constructor(providers: Map<string, ILLMProvider>, config: LLMServiceConfig) {
     this.providers = providers;
-    this.primaryProvider = config.primaryProvider;
+    this.primaryKey = config.primaryKey;
     this.fallbackOrder = config.fallbackOrder;
     this.timeoutMs = config.timeoutMs;
   }
 
   /**
    * Generate a complete LLM response.
-   * Tries primary provider first; falls back in order on failure.
+   * If params.modelKey is provided it overrides the primary key (head of chain).
+   * Tries each key in order; falls back on failure.
    * Applies per-call timeout and transient-error retry.
    */
   async generate(params: GenerateParams): Promise<string> {
-    const providerOrder = [this.primaryProvider, ...this.fallbackOrder];
+    const chain = params.modelKey
+      ? [params.modelKey, ...this.fallbackOrder]
+      : [this.primaryKey, ...this.fallbackOrder];
 
-    for (const providerName of providerOrder) {
-      const provider = this.getProvider(providerName);
+    for (const key of chain) {
+      const provider = this.getProvider(key);
       try {
         return await withTimeout(
           withRetry(() => provider.generateResponse(params)),
           this.timeoutMs,
         );
       } catch (error) {
-        logger.error(`[LLMService] Provider "${providerName}" failed:`, error);
+        logger.error(`[LLMService] Provider "${key}" failed:`, error);
         // Re-throw timeout immediately — no point trying fallbacks if the call timed out
         if (error instanceof AppError && error.code === "LLM_TIMEOUT") throw error;
       }
@@ -98,14 +103,16 @@ export class LLMService {
 
   /**
    * Stream an LLM response as an async iterable.
-   * Delegates directly to the primary provider — no mid-stream fallback.
+   * Uses params.modelKey if provided, otherwise falls back to the primary key.
+   * No mid-stream fallback is attempted.
    */
   async *stream(params: StreamParams): AsyncIterable<string> {
-    const provider = this.getProvider(this.primaryProvider);
+    const key = params.modelKey ?? this.primaryKey;
+    const provider = this.getProvider(key);
     try {
       yield* provider.streamResponse(params);
     } catch (error) {
-      logger.error(`[LLMService] Streaming provider "${this.primaryProvider}" failed:`, error);
+      logger.error(`[LLMService] Streaming provider "${key}" failed:`, error);
       throw new AppError(503, "LLM_ERROR", "LLM streaming failed");
     }
   }
@@ -131,19 +138,35 @@ export async function createLLMService(): Promise<LLMService> {
   // Dynamic import avoids top-level env side-effects in test environments
   const { env } = await import("@/config/env");
 
-  const providers = new Map<string, ILLMProvider>([
-    ["openai", new TanStackAIProvider("openai", env.LLM_OPENAI_MODEL)],
-    ["anthropic", new TanStackAIProvider("anthropic", env.LLM_ANTHROPIC_MODEL)],
-    ["openrouter", new TanStackAIProvider("openrouter", env.LLM_OPENROUTER_MODEL)],
-  ]);
+  // Index models by provider for easy access
+  const modelsByProvider: Record<"openai" | "anthropic" | "openrouter", string[]> = {
+    openai: env.LLM_OPENAI_MODELS,
+    anthropic: env.LLM_ANTHROPIC_MODELS,
+    openrouter: env.LLM_OPENROUTER_MODELS,
+  };
 
-  const fallbackOrder = env.LLM_FALLBACK_ORDER.filter(
-    (provider) => provider !== env.LLM_PRIMARY_PROVIDER,
+  // Build Map<"provider:model", ILLMProvider> for every configured model
+  const providers = new Map<string, ILLMProvider>();
+  for (const [providerName, models] of Object.entries(modelsByProvider) as Array<
+    ["openai" | "anthropic" | "openrouter", string[]]
+  >) {
+    for (const model of models) {
+      providers.set(`${providerName}:${model}`, new TanStackAIProvider(providerName, model));
+    }
+  }
+
+  // Build the flat ordered fallback chain: primary models first, then fallback providers' models
+  const dedupedFallbackProviders = env.LLM_FALLBACK_ORDER.filter(
+    (p) => p !== env.LLM_PRIMARY_PROVIDER,
   );
+  const chain: string[] = [
+    ...modelsByProvider[env.LLM_PRIMARY_PROVIDER].map((m) => `${env.LLM_PRIMARY_PROVIDER}:${m}`),
+    ...dedupedFallbackProviders.flatMap((p) => modelsByProvider[p].map((m) => `${p}:${m}`)),
+  ];
 
   return new LLMService(providers, {
-    primaryProvider: env.LLM_PRIMARY_PROVIDER,
-    fallbackOrder,
+    primaryKey: chain[0],
+    fallbackOrder: chain.slice(1),
     timeoutMs: env.LLM_TIMEOUT_MS,
   });
 }

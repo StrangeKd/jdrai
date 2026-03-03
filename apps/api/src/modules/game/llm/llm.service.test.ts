@@ -26,7 +26,7 @@ function makeMockProvider(name: string, overrides: Partial<ILLMProvider> = {}): 
 }
 
 const DEFAULT_CONFIG: LLMServiceConfig = {
-  primaryProvider: "primary",
+  primaryKey: "primary",
   fallbackOrder: ["fallback"],
   timeoutMs: 5000,
 };
@@ -130,6 +130,44 @@ describe("LLMService.generate()", () => {
     const result = await service.generate(params);
     expect(result).toBe("fallback ok");
   });
+
+  it("falls back through same-provider models before trying next provider", async () => {
+    // Simulates: openrouter:model-A → openrouter:model-B → anthropic:claude
+    const modelA = makeMockProvider("openrouter:model-a");
+    const modelB = makeMockProvider("openrouter:model-b");
+    const anthropicProvider = makeMockProvider("anthropic:claude");
+
+    vi.mocked(modelA.generateResponse).mockRejectedValue(new Error("model-a down"));
+
+    const multiModelService = new LLMService(
+      new Map([
+        ["openrouter:model-a", modelA],
+        ["openrouter:model-b", modelB],
+        ["anthropic:claude", anthropicProvider],
+      ]),
+      {
+        primaryKey: "openrouter:model-a",
+        fallbackOrder: ["openrouter:model-b", "anthropic:claude"],
+        timeoutMs: 5000,
+      },
+    );
+
+    const result = await multiModelService.generate(params);
+
+    expect(result).toBe("response from openrouter:model-b");
+    expect(modelA.generateResponse).toHaveBeenCalled();
+    expect(modelB.generateResponse).toHaveBeenCalledTimes(1);
+    expect(anthropicProvider.generateResponse).not.toHaveBeenCalled();
+  });
+
+  it("uses modelKey override instead of primary provider", async () => {
+    const result = await service.generate({ ...params, modelKey: "fallback" });
+
+    // "fallback" is head of chain — primary should not be called
+    expect(result).toBe("response from fallback");
+    expect(primary.generateResponse).not.toHaveBeenCalled();
+    expect(fallback.generateResponse).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -200,7 +238,7 @@ describe("LLMService timeout handling (AC-6)", () => {
 
     const service = new LLMService(
       new Map([["slow", slowProvider]]),
-      { primaryProvider: "slow", fallbackOrder: [], timeoutMs: 10 },
+      { primaryKey: "slow", fallbackOrder: [], timeoutMs: 10 },
     );
 
     await expect(

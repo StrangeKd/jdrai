@@ -35,9 +35,37 @@ const envSchema = z
         ),
     ),
     LLM_TIMEOUT_MS: z.coerce.number().default(30000),
-    LLM_OPENAI_MODEL: z.string().default("gpt-4o"),
-    LLM_ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
-    LLM_OPENROUTER_MODEL: z.string().default("openai/gpt-4o"),
+    // Ordered list of models per provider — comma-separated, trimmed, non-empty items only
+    LLM_OPENAI_MODELS: z.preprocess(
+      (value) => {
+        if (typeof value !== "string" || value.trim() === "") return ["gpt-4o"];
+        return value
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean);
+      },
+      z.array(z.string().min(1)),
+    ),
+    LLM_ANTHROPIC_MODELS: z.preprocess(
+      (value) => {
+        if (typeof value !== "string" || value.trim() === "") return ["claude-sonnet-4-6"];
+        return value
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean);
+      },
+      z.array(z.string().min(1)),
+    ),
+    LLM_OPENROUTER_MODELS: z.preprocess(
+      (value) => {
+        if (typeof value !== "string" || value.trim() === "") return ["openai/gpt-4o"];
+        return value
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean);
+      },
+      z.array(z.string().min(1)),
+    ),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   })
   .superRefine((data, ctx) => {
