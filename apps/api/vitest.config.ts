@@ -12,11 +12,15 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
     // Provide stub env vars so that env.ts passes Zod validation in tests that
-    // transitively import @/db (e.g. repository query-builder tests). No actual
-    // DB connection is made since only .toSQL() is called — postgres-js connects lazily.
+    // transitively import @/config/env or @/db. No real connections are made:
+    // postgres-js connects lazily and LLM providers are mocked in LLM tests.
     env: {
       DATABASE_URL: "postgresql://test:test@localhost:5432/test",
       BETTER_AUTH_SECRET: "test-secret-placeholder-32-chars!!",
+      // Stub API keys — satisfies superRefine regardless of LLM_PRIMARY_PROVIDER default
+      OPENAI_API_KEY: "test-openai-key",
+      ANTHROPIC_API_KEY: "test-anthropic-key",
+      OPENROUTER_API_KEY: "test-openrouter-key",
     },
   },
 });
