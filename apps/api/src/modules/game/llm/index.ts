@@ -164,8 +164,11 @@ export async function createLLMService(): Promise<LLMService> {
     ...dedupedFallbackProviders.flatMap((p) => modelsByProvider[p].map((m) => `${p}:${m}`)),
   ];
 
+  // chain is always non-empty: env validation guarantees at least one model per provider
+  const primaryKey = chain[0] as string;
+
   return new LLMService(providers, {
-    primaryKey: chain[0],
+    primaryKey,
     fallbackOrder: chain.slice(1),
     timeoutMs: env.LLM_TIMEOUT_MS,
   });
