@@ -9,7 +9,7 @@ describe("validation service", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.password?.[0]).toBe("Min. 8 caractères");
   });
 
@@ -19,7 +19,7 @@ describe("validation service", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.name?.[0]).toBe("Ce champ est requis");
   });
 });

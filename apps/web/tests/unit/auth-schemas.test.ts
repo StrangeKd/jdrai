@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { z } from "@/lib/validation";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -15,7 +16,7 @@ describe("auth schemas", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     // z.email() (zod v4) reports format error even on empty string
     expect(errors.email?.[0]).toBe("Adresse email invalide");
     // fields.requiredString() = z.string().min(1) → error map → "Ce champ est requis"
@@ -31,7 +32,7 @@ describe("auth schemas", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.password?.[0]).toBe("Min. 8 caractères");
   });
 
@@ -44,7 +45,7 @@ describe("auth schemas", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.confirmPassword?.[0]).toBe("Les mots de passe ne correspondent pas");
   });
 });
@@ -60,7 +61,7 @@ describe("forgotPasswordSchema", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.email?.[0]).toBe("Adresse email invalide");
   });
 
@@ -79,7 +80,7 @@ describe("resetPasswordSchema", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.password?.[0]).toBe("Min. 8 caractères");
   });
 
@@ -91,7 +92,7 @@ describe("resetPasswordSchema", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
 
-    const errors = result.error.flatten().fieldErrors;
+    const errors = z.flattenError(result.error).fieldErrors;
     expect(errors.confirmPassword?.[0]).toBe("Les mots de passe ne correspondent pas");
   });
 
