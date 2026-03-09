@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { MilestoneDTO } from "@jdrai/shared";
 
 import type { D20Result } from "./d20.service";
-import type { ContextWindowParams, GameContext, SystemPromptParams } from "./prompt-builder";
+import type { ContextWindowParams, GameContext } from "./prompt-builder";
 import { PromptBuilder } from "./prompt-builder";
 
 const builder = new PromptBuilder();
@@ -115,6 +115,15 @@ describe("PromptBuilder.buildSystemPrompt()", () => {
     expect(prompt).toContain("[/CHOIX]");
     expect(prompt).toContain("2 à 4 actions suggérées");
   });
+
+  it("includes signal emission rules (Section 5 — MJ IA System Spec v1.2) in all difficulties", () => {
+    for (const difficulty of ["easy", "normal", "hard", "nightmare"] as const) {
+      const prompt = builder.buildSystemPrompt({ difficulty });
+      expect(prompt).toContain("Règles d'émission des signaux");
+      expect(prompt).toContain("place-le TOUJOURS sur sa propre ligne");
+      expect(prompt).toContain("séparé du texte narratif par une ligne vide");
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -138,11 +147,28 @@ describe("PromptBuilder.buildD20InjectionBlock()", () => {
     expect(block).toContain("Lancer D20 : 17");
   });
 
-  it("includes DC breakdown", () => {
-    const result = makeD20Result({ baseDC: 12, difficultyModifier: 0, finalDC: 12 });
+  it("includes DC breakdown with exact spec format", () => {
+    const result = makeD20Result({
+      actionType: "medium",
+      difficulty: "normal",
+      baseDC: 12,
+      difficultyModifier: 0,
+      finalDC: 12,
+    });
     const block = builder.buildD20InjectionBlock(result, "attack");
-    expect(block).toContain("DC contextuel");
-    expect(block).toContain("12");
+    expect(block).toContain("DC contextuel : 12 (action moyenne) +0 (difficulté normal) = 12");
+  });
+
+  it("shows negative modifier sign for Easy difficulty without extra plus sign", () => {
+    const result = makeD20Result({
+      actionType: "trivial",
+      difficulty: "easy",
+      baseDC: 5,
+      difficultyModifier: -3,
+      finalDC: 2,
+    });
+    const block = builder.buildD20InjectionBlock(result, "walk");
+    expect(block).toContain("DC contextuel : 5 (action triviale) -3 (difficulté easy) = 2");
   });
 
   it("shows SUCCÈS CRITIQUE label for critical_success outcome", () => {
@@ -173,6 +199,21 @@ describe("PromptBuilder.buildD20InjectionBlock()", () => {
     const block = builder.buildD20InjectionBlock(makeD20Result(), "action");
     expect(block).toContain("Consigne :");
     expect(block).toContain("Ne pas mentionner le dé ni le score.");
+  });
+
+  it("shows + sign for positive character bonus", () => {
+    const block = builder.buildD20InjectionBlock(makeD20Result({ characterBonus: 2 }), "action");
+    expect(block).toContain("Bonus personnage : +2");
+  });
+
+  it("shows - sign for negative character bonus (no extra plus)", () => {
+    const block = builder.buildD20InjectionBlock(makeD20Result({ characterBonus: -2 }), "action");
+    expect(block).toContain("Bonus personnage : -2");
+  });
+
+  it("shows +0 for zero character bonus", () => {
+    const block = builder.buildD20InjectionBlock(makeD20Result({ characterBonus: 0 }), "action");
+    expect(block).toContain("Bonus personnage : +0");
   });
 
   it("is NOT present in buildSystemPrompt output (isolation check)", () => {
@@ -254,6 +295,33 @@ describe("PromptBuilder.buildContextWindow()", () => {
     expect(messages).toHaveLength(3);
   });
 
+  it("returns CW-002 fallback when milestones list is empty", () => {
+    const params: ContextWindowParams = {
+      systemPrompt: builder.buildSystemPrompt({ difficulty: "normal" }),
+      d20Block: builder.buildD20InjectionBlock(makeD20Result(), "action"),
+      playerAction: "action",
+      context: { milestones: [], currentMilestone: null, recentHistory: [] },
+    };
+    const messages = builder.buildContextWindow(params);
+    expect(messages[1]?.content).toBe(
+      "Contexte de l'aventure : En attente d'initialisation des milestones.",
+    );
+  });
+
+  it("returns CW-002 fallback when currentMilestone is null (no active milestone)", () => {
+    const completedMilestones = milestones.map((m) => ({ ...m, status: "completed" as const }));
+    const params: ContextWindowParams = {
+      systemPrompt: builder.buildSystemPrompt({ difficulty: "normal" }),
+      d20Block: builder.buildD20InjectionBlock(makeD20Result(), "action"),
+      playerAction: "action",
+      context: { milestones: completedMilestones, currentMilestone: null, recentHistory: [] },
+    };
+    const messages = builder.buildContextWindow(params);
+    expect(messages[1]?.content).toBe(
+      "Contexte de l'aventure : En attente d'initialisation des milestones.",
+    );
+  });
+
   it("milestone context marks active milestone with ● and completed with ✓", () => {
     const messages = builder.buildContextWindow(makeParams());
     const milestoneMsg = messages[1]?.content ?? "";
@@ -279,14 +347,14 @@ describe("PromptBuilder.buildContextWindow()", () => {
 // compressWorldState
 // ---------------------------------------------------------------------------
 
-describe("PromptBuilder.compressWorldState()", () => {
+describe("PromptBuilder.compressNarrativeContext()", () => {
   it("serialises an object to JSON string", () => {
     const state = { location: "forest", weather: "rain", npcMet: ["gardes", "sorcière"] };
-    const result = builder.compressWorldState(state);
+    const result = builder.compressNarrativeContext(state);
     expect(result).toBe(JSON.stringify(state));
   });
 
   it("handles empty object", () => {
-    expect(builder.compressWorldState({})).toBe("{}");
+    expect(builder.compressNarrativeContext({})).toBe("{}");
   });
 });

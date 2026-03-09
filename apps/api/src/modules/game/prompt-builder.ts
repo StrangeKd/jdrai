@@ -22,8 +22,12 @@ export interface GameContext {
   currentMilestone: MilestoneDTO | null;
   /** Raw chat history from DB — last N messages */
   recentHistory: Array<{ role: string; content: string }>;
-  /** Optional compressed world state (P1: basic JSON of key facts) */
-  worldState?: Record<string, unknown>;
+  /**
+   * Narrative context passed to the LLM (distinct from Adventure.state DB snapshot).
+   * P1: always an empty object `{}` — see IC-009.
+   * P2: will contain compressed key narrative facts (NPCs, locations, events).
+   */
+  narrativeContext?: Record<string, unknown>;
 }
 
 export interface ContextWindowParams {
@@ -79,11 +83,12 @@ export class PromptBuilder {
   // -------------------------------------------------------------------------
 
   /**
-   * Assembles the full Le Chroniqueur system prompt from 4 ordered sections:
+   * Assembles the full Le Chroniqueur system prompt from 5 ordered sections:
    *   1. Invariant persona
    *   2. Tone adapted to difficulty
    *   3. Fail state rules (GD-002)
    *   4. Suggested choices format (GDD §7.2)
+   *   5. Signal emission rules (MJ IA System Spec v1.2 §4 Section 5)
    *
    * Note: The [SYSTÈME — INVISIBLE AU JOUEUR] D20 block is NOT included here —
    * it changes per player action and is injected separately via buildD20InjectionBlock.
@@ -94,6 +99,7 @@ export class PromptBuilder {
       this.buildToneSection(params.difficulty),
       this.buildFailStateSection(params.difficulty),
       this.buildChoicesFormatSection(),
+      this.buildSignalEmissionSection(),
     ].join("\n\n");
   }
 
@@ -171,10 +177,12 @@ export class PromptBuilder {
   // -------------------------------------------------------------------------
 
   /**
-   * P1 basic implementation: serialises the worldState to a short JSON string.
-   * Future P2 implementations may apply summarization or key-picking heuristics.
+   * Compresses narrativeContext into a short JSON string for LLM injection.
+   * P1: never called (narrativeContext = `{}` per IC-009).
+   * P2: GameService will call this before building the context window to provide
+   * key narrative facts (NPCs, locations, events) beyond the 20-message history window.
    */
-  compressWorldState(state: Record<string, unknown>): string {
+  compressNarrativeContext(state: Record<string, unknown>): string {
     return JSON.stringify(state);
   }
 
@@ -265,10 +273,35 @@ export class PromptBuilder {
     ].join("\n");
   }
 
+  private buildSignalEmissionSection(): string {
+    return [
+      "Règles d'émission des signaux :",
+      "Quand tu dois émettre un signal système, place-le TOUJOURS sur sa propre ligne,",
+      "séparé du texte narratif par une ligne vide. Ne l'intègre jamais dans une phrase.",
+      "",
+      "Correct :",
+      "  \"...la victoire est à portée de main.\"",
+      "",
+      "  [MILESTONE_COMPLETE:La Traversée de la Forêt]",
+      "",
+      "  [CHOIX]",
+      "  1. Continuer vers le donjon",
+      "  [/CHOIX]",
+      "",
+      "Incorrect :",
+      "  \"...tu vaincs l'ennemi [HP_CHANGE:-10] et sors victorieux.\"",
+    ].join("\n");
+  }
+
   private buildMilestoneContext(
     milestones: MilestoneDTO[],
     currentMilestone: MilestoneDTO | null,
   ): string {
+    // CW-002: no active milestone (initialisation pending or all completed)
+    if (milestones.length === 0 || !currentMilestone) {
+      return "Contexte de l'aventure : En attente d'initialisation des milestones.";
+    }
+
     const lines = ["Contexte de l'aventure :", "Milestones :"];
 
     for (const milestone of milestones) {
