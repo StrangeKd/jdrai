@@ -167,10 +167,17 @@ export async function updateAdventureState(
 /** Marks an adventure as completed (or game_over). */
 export async function completeAdventure(
   adventureId: string,
-  _isGameOver: boolean,
+  isGameOver: boolean,
 ): Promise<void> {
   await db
     .update(adventures)
-    .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
+    .set({
+      status: "completed",
+      completedAt: new Date(),
+      updatedAt: new Date(),
+      state: sql`jsonb_set(${adventures.state}, '{completion}', ${JSON.stringify({
+        isGameOver,
+      })}::jsonb, true)`,
+    })
     .where(eq(adventures.id, adventureId));
 }

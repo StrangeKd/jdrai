@@ -55,7 +55,13 @@ export async function postActionHandler(
       io,
     });
 
-    res.json({ success: true, data: { messageId: result.messageId } });
+    res.json({
+      success: true,
+      data: {
+        messageId: result.messageId,
+        ...(result.response ? { response: result.response } : {}),
+      },
+    });
   } catch (error) {
     next(error);
   }

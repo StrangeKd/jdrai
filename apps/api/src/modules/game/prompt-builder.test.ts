@@ -45,6 +45,16 @@ const currentMilestone: MilestoneDTO = {
   description: "Trouver des indices sur le voleur.",
 };
 
+const character = {
+  id: "c1",
+  name: "Alya",
+  className: "Aventurier",
+  raceName: "Humain",
+  stats: { strength: 10, agility: 11, charisma: 9, karma: 8 },
+  currentHp: 18,
+  maxHp: 20,
+};
+
 // ---------------------------------------------------------------------------
 // buildSystemPrompt
 // ---------------------------------------------------------------------------
@@ -233,9 +243,11 @@ describe("PromptBuilder.buildContextWindow()", () => {
       d20Block: builder.buildD20InjectionBlock(makeD20Result(), "Je fouille la pièce."),
       playerAction: "Je fouille la pièce.",
       context: {
+        character,
         milestones,
         currentMilestone,
         recentHistory: [],
+        worldState: {},
         ...contextOverrides,
       },
     };
@@ -247,10 +259,10 @@ describe("PromptBuilder.buildContextWindow()", () => {
     expect(messages[0]?.content).toContain("Tu es Le Chroniqueur");
   });
 
-  it("second message is the milestone context (role: system)", () => {
+  it("fourth message is the milestone context (role: system)", () => {
     const messages = builder.buildContextWindow(makeParams());
-    expect(messages[1]?.role).toBe("system");
-    expect(messages[1]?.content).toContain("Milestones");
+    expect(messages[3]?.role).toBe("system");
+    expect(messages[3]?.content).toContain("Milestones");
   });
 
   it("last message contains D20 block and player action (role: user)", () => {
@@ -268,7 +280,7 @@ describe("PromptBuilder.buildContextWindow()", () => {
       { role: "user", content: "Je parle au barman." },
     ];
     const messages = builder.buildContextWindow(makeParams({ recentHistory: history }));
-    // messages: [system, system, assistant, user, user(final)]
+    // messages: [system, system, system, system, assistant, user, user(final)]
     const assistantMsg = messages.find((m) => m.content === "Vous entrez dans la taverne.");
     expect(assistantMsg?.role).toBe("assistant");
     const userMsg = messages.find((m) => m.content === "Je parle au barman.");
@@ -283,16 +295,16 @@ describe("PromptBuilder.buildContextWindow()", () => {
     }));
     const messages = builder.buildContextWindow(makeParams({ recentHistory: history }));
 
-    // Total: 2 system + 20 history + 1 final user = 23
-    expect(messages).toHaveLength(23);
+    // Total: 4 system + 20 history + 1 final user = 25
+    expect(messages).toHaveLength(25);
     // First history message should be message 10 (30 - 20 = offset 10)
-    expect(messages[2]?.content).toBe("Message 10");
+    expect(messages[4]?.content).toBe("Message 10");
   });
 
   it("works with empty history", () => {
     const messages = builder.buildContextWindow(makeParams({ recentHistory: [] }));
-    // 2 system + 0 history + 1 final user = 3
-    expect(messages).toHaveLength(3);
+    // 4 system + 0 history + 1 final user = 5
+    expect(messages).toHaveLength(5);
   });
 
   it("returns CW-002 fallback when milestones list is empty", () => {
@@ -300,10 +312,10 @@ describe("PromptBuilder.buildContextWindow()", () => {
       systemPrompt: builder.buildSystemPrompt({ difficulty: "normal" }),
       d20Block: builder.buildD20InjectionBlock(makeD20Result(), "action"),
       playerAction: "action",
-      context: { milestones: [], currentMilestone: null, recentHistory: [] },
+      context: { character, milestones: [], currentMilestone: null, recentHistory: [], worldState: {} },
     };
     const messages = builder.buildContextWindow(params);
-    expect(messages[1]?.content).toBe(
+    expect(messages[3]?.content).toBe(
       "Contexte de l'aventure : En attente d'initialisation des milestones.",
     );
   });
@@ -314,17 +326,23 @@ describe("PromptBuilder.buildContextWindow()", () => {
       systemPrompt: builder.buildSystemPrompt({ difficulty: "normal" }),
       d20Block: builder.buildD20InjectionBlock(makeD20Result(), "action"),
       playerAction: "action",
-      context: { milestones: completedMilestones, currentMilestone: null, recentHistory: [] },
+      context: {
+        character,
+        milestones: completedMilestones,
+        currentMilestone: null,
+        recentHistory: [],
+        worldState: {},
+      },
     };
     const messages = builder.buildContextWindow(params);
-    expect(messages[1]?.content).toBe(
+    expect(messages[3]?.content).toBe(
       "Contexte de l'aventure : En attente d'initialisation des milestones.",
     );
   });
 
   it("milestone context marks active milestone with ● and completed with ✓", () => {
     const messages = builder.buildContextWindow(makeParams());
-    const milestoneMsg = messages[1]?.content ?? "";
+    const milestoneMsg = messages[3]?.content ?? "";
     expect(milestoneMsg).toContain("✓ Arrivée au village");
     expect(milestoneMsg).toContain("● Enquête au marché");
     expect(milestoneMsg).toContain("○ Affronter le coupable");

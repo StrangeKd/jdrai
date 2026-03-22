@@ -9,7 +9,8 @@ export type ErrorCode =
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
   | "LLM_ERROR"
-  | "LLM_TIMEOUT";
+  | "LLM_TIMEOUT"
+  | "ADVENTURE_NOT_ACTIVE";
 
 export interface ApiError {
   success: false;

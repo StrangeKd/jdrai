@@ -5,7 +5,10 @@
 import type { Server } from "socket.io";
 
 import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { adventures } from "@/db/schema";
 import { logger } from "@/utils/logger";
+import { and, eq } from "drizzle-orm";
 
 import { gameService } from "./game.service";
 
@@ -30,9 +33,30 @@ export function registerGameSocket(io: Server): void {
     logger.info(`[Socket] Connected: ${socket.id} (user: ${socket.data.userId})`);
 
     // Join the Socket.io room for a given adventure
-    socket.on("game:join", ({ adventureId }: { adventureId: string }) => {
-      socket.join(`adventure:${adventureId}`);
-      logger.info(`[Socket] ${socket.id} joined adventure:${adventureId}`);
+    socket.on("game:join", async ({ adventureId }: { adventureId: string }) => {
+      try {
+        const userId = socket.data.userId as string | undefined;
+        if (!userId) {
+          logger.warn(`[Socket] Missing userId for ${socket.id} join attempt`);
+          return;
+        }
+
+        const [row] = await db
+          .select({ id: adventures.id })
+          .from(adventures)
+          .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
+          .limit(1);
+
+        if (!row) {
+          logger.warn(`[Socket] Forbidden join: ${socket.id} → adventure:${adventureId}`);
+          return;
+        }
+
+        socket.join(`adventure:${adventureId}`);
+        logger.info(`[Socket] ${socket.id} joined adventure:${adventureId}`);
+      } catch (err) {
+        logger.error("[Socket] game:join error:", err);
+      }
     });
 
     // Story 6.8 placeholder — resync after reconnection

@@ -4,7 +4,7 @@
  * Pure business logic: no DB, no LLM, no side effects.
  * GDD §4, §3.4, §6.2, §7.2 / Story 6.2 Task 2
  */
-import type { Difficulty, MilestoneDTO } from "@jdrai/shared";
+import type { AdventureCharacterDTO, Difficulty, MilestoneDTO } from "@jdrai/shared";
 
 import type { ActionType, D20Outcome, D20Result } from "./d20.service";
 import type { ChatMessage } from "./llm/llm.provider";
@@ -18,6 +18,7 @@ export interface SystemPromptParams {
 }
 
 export interface GameContext {
+  character: AdventureCharacterDTO;
   milestones: MilestoneDTO[];
   currentMilestone: MilestoneDTO | null;
   /** Raw chat history from DB — last N messages */
@@ -27,7 +28,7 @@ export interface GameContext {
    * P1: always an empty object `{}` — see IC-009.
    * P2: will contain compressed key narrative facts (NPCs, locations, events).
    */
-  narrativeContext?: Record<string, unknown>;
+  worldState: Record<string, unknown>;
 }
 
 export interface ContextWindowParams {
@@ -149,21 +150,33 @@ export class PromptBuilder {
     // 1. System prompt
     messages.push({ role: "system", content: params.systemPrompt });
 
-    // 2. Milestone context
+    // 2. Character context
+    messages.push({
+      role: "system",
+      content: this.buildCharacterContext(params.context.character),
+    });
+
+    // 3. World state context
+    messages.push({
+      role: "system",
+      content: this.buildWorldStateContext(params.context.worldState),
+    });
+
+    // 4. Milestone context
     const milestoneContext = this.buildMilestoneContext(
       params.context.milestones,
       params.context.currentMilestone,
     );
     messages.push({ role: "system", content: milestoneContext });
 
-    // 3. Recent history (capped to MAX_HISTORY_MESSAGES)
+    // 5. Recent history (capped to MAX_HISTORY_MESSAGES)
     const history = params.context.recentHistory.slice(-MAX_HISTORY_MESSAGES);
     for (const msg of history) {
       const role = msg.role === "assistant" ? "assistant" : "user";
       messages.push({ role, content: msg.content });
     }
 
-    // 4. D20 injection + player action as final user message
+    // 6. D20 injection + player action as final user message
     messages.push({
       role: "user",
       content: `${params.d20Block}\n\nAction : ${params.playerAction}`,
@@ -177,8 +190,8 @@ export class PromptBuilder {
   // -------------------------------------------------------------------------
 
   /**
-   * Compresses narrativeContext into a short JSON string for LLM injection.
-   * P1: never called (narrativeContext = `{}` per IC-009).
+   * Compresses worldState into a short JSON string for LLM injection.
+   * P1: always `{}` per IC-009.
    * P2: GameService will call this before building the context window to provide
    * key narrative facts (NPCs, locations, events) beyond the 20-message history window.
    */
@@ -321,5 +334,24 @@ export class PromptBuilder {
     }
 
     return lines.join("\n");
+  }
+
+  private buildCharacterContext(character: AdventureCharacterDTO): string {
+    return [
+      "Contexte du personnage :",
+      `Nom : ${character.name}`,
+      `Classe : ${character.className}`,
+      `Race : ${character.raceName}`,
+      `PV : ${character.currentHp}/${character.maxHp}`,
+      `Stats : FOR ${character.stats.strength}, AGI ${character.stats.agility}, CHA ${character.stats.charisma}, KAR ${character.stats.karma}`,
+    ].join("\n");
+  }
+
+  private buildWorldStateContext(worldState: Record<string, unknown>): string {
+    const compressed = this.compressNarrativeContext(worldState);
+    return [
+      "Contexte du monde (JSON) :",
+      compressed,
+    ].join("\n");
   }
 }

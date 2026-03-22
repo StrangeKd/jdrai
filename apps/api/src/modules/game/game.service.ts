@@ -2,22 +2,16 @@
  * GameService — orchestrates a full game turn (Story 6.3a Task 2).
  * Processes player action: D20 → prompt build → LLM stream → signal parse → DB persist.
  */
-import type { Socket } from "socket.io";
-
-import type { AdventureCharacterDTO, Difficulty, MilestoneDTO } from "@jdrai/shared";
-
-import { db } from "@/db";
-import {
-  adventureCharacters,
-  adventures,
-  messages,
-} from "@/db/schema";
-import { AppError } from "@/utils/errors";
-import { logger } from "@/utils/logger";
+/* eslint-disable simple-import-sort/imports */
 import { and, desc, eq } from "drizzle-orm";
 
-import { D20Service } from "./d20.service";
-import type { ActionType } from "./d20.service";
+import type { AdventureCharacterDTO, Difficulty, ErrorCode } from "@jdrai/shared";
+
+import { db } from "@/db";
+import { adventureCharacters, adventures, messages } from "@/db/schema";
+import { AppError } from "@/utils/errors";
+
+import { D20Service, type ActionType } from "./d20.service";
 import {
   completeAdventure,
   getActiveMilestone,
@@ -26,10 +20,11 @@ import {
   transitionMilestone,
   updateAdventureState,
   updateCharacterHp,
+  type GameStateSnapshot,
 } from "./game.repository";
-import type { GameStateSnapshot } from "./game.repository";
 import { LLMService, createLLMService } from "./llm/index";
 import { PromptBuilder } from "./prompt-builder";
+/* eslint-enable simple-import-sort/imports */
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +41,18 @@ export interface ProcessActionParams {
 
 export interface ProcessActionResult {
   messageId: string;
+  response?: ProcessActionResponse;
+}
+
+export interface ProcessActionResponse {
+  cleanText: string;
+  choices: SuggestedAction[];
+  stateChanges: {
+    hpChange?: number;
+    milestoneCompleted?: string | null;
+    adventureComplete: boolean;
+    isGameOver: boolean;
+  };
 }
 
 export interface SuggestedAction {
@@ -131,7 +138,7 @@ export function parseSignals(rawText: string): { cleanText: string; signals: Par
     }));
   }
 
-  let cleanText = rawText
+  const cleanText = rawText
     .replace(/\[MILESTONE_COMPLETE:[^\]]+\]/g, "")
     .replace(/\[HP_CHANGE:[+-]?\d+\]/g, "")
     .replace(/\[ADVENTURE_COMPLETE\]/g, "")
@@ -196,28 +203,31 @@ export class GameService {
    * Full turn orchestration — see Dev Notes for exact execution order.
    */
   async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
-    const { adventureId, userId, action, io } = params;
+    const { adventureId, userId, action, io, socketId } = params;
+    const shouldStream = Boolean(io && socketId);
 
     // 1. Load adventure + character + milestones + recent messages
-    const adventureRow = await db
+    const [adventureRow] = await db
       .select()
       .from(adventures)
-      .where(and(eq(adventures.id, adventureId)))
-      .limit(1)
-      .then((r) => r[0]);
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
 
     if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
     if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
     if (adventureRow.status !== "active") {
-      throw new AppError(400, "ADVENTURE_NOT_ACTIVE", "Cannot act on a completed adventure");
+      throw new AppError(
+        400,
+        "ADVENTURE_NOT_ACTIVE" as ErrorCode,
+        "Cannot act on a completed adventure",
+      );
     }
 
-    const characterRow = await db
+    const [characterRow] = await db
       .select()
       .from(adventureCharacters)
       .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1)
-      .then((r) => r[0]);
+      .limit(1);
 
     if (!characterRow) throw new AppError(404, "NOT_FOUND", "Character not found");
 
@@ -230,6 +240,8 @@ export class GameService {
       currentHp: characterRow.currentHp,
       maxHp: characterRow.maxHp,
     };
+    const worldState =
+      (adventureRow.state as { worldState?: Record<string, unknown> } | null)?.worldState ?? {};
 
     const allMilestones = await getMilestones(adventureId);
     const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
@@ -239,8 +251,8 @@ export class GameService {
       .from(messages)
       .where(eq(messages.adventureId, adventureId))
       .orderBy(desc(messages.createdAt))
-      .limit(20)
-      .then((rows) => rows.reverse());
+      .limit(20);
+    recentMessages.reverse();
 
     const recentHistory: GameMessageRow[] = recentMessages.map((m) => ({
       role: m.role,
@@ -268,9 +280,11 @@ export class GameService {
       d20Block,
       playerAction: action,
       context: {
+        character,
         milestones: allMilestones,
         currentMilestone: activeMilestone,
         recentHistory,
+        worldState,
       },
     });
 
@@ -292,7 +306,9 @@ export class GameService {
 
     // 8. Emit response-start
     const room = `adventure:${adventureId}`;
-    io?.to(room).emit("game:response-start", { adventureId });
+    if (shouldStream) {
+      io!.to(room).emit("game:response-start", { adventureId });
+    }
 
     // 9. Stream LLM response, emit chunks
     const llm = await this.getLLMService();
@@ -301,7 +317,9 @@ export class GameService {
       systemPrompt: combinedSystemPrompt,
       messages: conversationMessages,
     })) {
-      io?.to(room).emit("game:chunk", { adventureId, chunk });
+      if (shouldStream) {
+        io!.to(room).emit("game:chunk", { adventureId, chunk });
+      }
       fullResponse += chunk;
     }
 
@@ -321,19 +339,23 @@ export class GameService {
         outcome: d20Result.outcome,
         ...(signals.milestoneCompleted && { milestoneCompleted: signals.milestoneCompleted }),
         ...(signals.hpChange !== undefined && { hpChange: signals.hpChange }),
+        ...(signals.isGameOver && { isGameOver: true }),
       },
     });
 
     // 12. Apply signals (DB side effects)
-    await this.applySignals(signals, adventureId, io ? { to: (r: string) => io.to(r) } as unknown as import("socket.io").Server : undefined);
+    await this.applySignals(
+      signals,
+      adventureId,
+      shouldStream ? ({ to: (r: string) => io!.to(r) } as unknown as import("socket.io").Server) : undefined,
+    );
 
     // 13. Auto-save state
-    const updatedCharacter = await db
+    const [updatedCharacter] = await db
       .select({ currentHp: adventureCharacters.currentHp })
       .from(adventureCharacters)
       .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1)
-      .then((r) => r[0]);
+      .limit(1);
 
     const updatedActiveMilestone = await getActiveMilestone(adventureId);
 
@@ -341,25 +363,34 @@ export class GameService {
       lastPlayerAction: action,
       currentHp: updatedCharacter?.currentHp ?? character.currentHp,
       activeMilestoneId: updatedActiveMilestone?.id ?? null,
-      worldState: {},
+      worldState,
       updatedAt: new Date().toISOString(),
     });
 
     // 14. Emit response-complete
-    io?.to(room).emit("game:response-complete", {
-      adventureId,
-      messageId: assistantMessageId,
-      cleanText,
-      choices: signals.choices,
-      stateChanges: {
-        hpChange: signals.hpChange,
-        milestoneCompleted: signals.milestoneCompleted ?? null,
-        adventureComplete: signals.adventureComplete,
-        isGameOver: signals.isGameOver,
-      },
-    });
+    const stateChanges = {
+      ...(signals.hpChange !== undefined ? { hpChange: signals.hpChange } : {}),
+      milestoneCompleted: signals.milestoneCompleted ?? null,
+      adventureComplete: signals.adventureComplete,
+      isGameOver: signals.isGameOver,
+    };
 
-    return { messageId: assistantMessageId };
+    if (shouldStream) {
+      io!.to(room).emit("game:response-complete", {
+        adventureId,
+        messageId: assistantMessageId,
+        cleanText,
+        choices: signals.choices,
+        stateChanges,
+      });
+    }
+
+    return shouldStream
+      ? { messageId: assistantMessageId }
+      : {
+          messageId: assistantMessageId,
+          response: { cleanText, choices: signals.choices, stateChanges },
+        };
   }
 
   /**
@@ -416,22 +447,20 @@ export class GameService {
    * Used by game:resync (Story 6.8 placeholder).
    */
   async getState(adventureId: string, userId: string) {
-    const adventureRow = await db
+    const [adventureRow] = await db
       .select()
       .from(adventures)
       .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
-      .limit(1)
-      .then((r) => r[0]);
+      .limit(1);
 
     if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
 
     const activeMilestone = await getActiveMilestone(adventureId);
-    const characterRow = await db
+    const [characterRow] = await db
       .select({ currentHp: adventureCharacters.currentHp, maxHp: adventureCharacters.maxHp })
       .from(adventureCharacters)
       .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1)
-      .then((r) => r[0]);
+      .limit(1);
 
     return {
       adventureId,
