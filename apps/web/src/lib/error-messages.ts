@@ -13,6 +13,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   INTERNAL_ERROR: "Une erreur inattendue est survenue.",
   LLM_ERROR: "Le MJ rencontre des difficultés…",
   LLM_TIMEOUT: "Le MJ met trop de temps à répondre…",
+  ADVENTURE_NOT_ACTIVE: "Cette aventure est déjà terminée.",
 };
 
 export function getErrorMessage(code: ErrorCode): string {
