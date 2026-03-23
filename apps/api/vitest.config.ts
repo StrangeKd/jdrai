@@ -11,6 +11,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    exclude: ["src/**/*.integration.test.ts"],
     // Provide stub env vars so that env.ts passes Zod validation in tests that
     // transitively import @/config/env or @/db. No real connections are made:
     // postgres-js connects lazily and LLM providers are mocked in LLM tests.
