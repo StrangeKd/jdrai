@@ -2,13 +2,13 @@
  * game.socket.ts — Socket.io handlers for the game module.
  * Auth middleware verifies the Better Auth session cookie on connection.
  */
+import { and, eq } from "drizzle-orm";
 import type { Server } from "socket.io";
 
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { adventures } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { logger } from "@/utils/logger";
-import { and, eq } from "drizzle-orm";
 
 import { gameService } from "./game.service";
 
