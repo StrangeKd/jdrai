@@ -34,9 +34,9 @@ export interface ProcessActionParams {
   adventureId: string;
   userId: string;
   action: string;
-  choiceId?: string;
-  socketId?: string;
-  io?: import("socket.io").Server;
+  choiceId?: string | undefined;
+  socketId?: string | undefined;
+  io?: import("socket.io").Server | undefined;
 }
 
 export interface ProcessActionResult {
