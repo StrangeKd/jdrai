@@ -563,9 +563,10 @@ export class GameService {
 
     try {
       const llm = await this.getLLMService();
-      const response = await llm.generate({
+      const response = await llm.generateResponse({
         systemPrompt: "",
         messages: [{ role: "user", content: prompt }],
+        maxAttempts: 2,
       });
       const parsed: unknown = JSON.parse(response);
       const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
@@ -627,8 +628,9 @@ export class GameService {
       .select()
       .from(messages)
       .where(eq(messages.adventureId, adventureId))
-      .orderBy(asc(messages.createdAt))
+      .orderBy(desc(messages.createdAt))
       .limit(50);
+    messageRows.reverse();
 
     // 4. Load milestones — initialize if empty
     let allMilestones = await getMilestones(adventureId);

@@ -10,7 +10,7 @@
  * Requires: jdrai-db Docker container running
  * Run via: pnpm test:integration
  */
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "@/db";
@@ -47,7 +47,7 @@ const gameService = new GameService();
 
 function makeLLMMock(response: string) {
   return {
-    generate: vi.fn().mockResolvedValue(response),
+    generateResponse: vi.fn().mockResolvedValue(response),
     stream: vi.fn(),
   } as unknown as LLMService;
 }
@@ -200,7 +200,7 @@ describe("initializeMilestones() — LLM failure fallback (AC #4)", () => {
   it("inserts 3 generic milestones when LLM throws", async () => {
     injectLLM(
       gameService,
-      { generate: vi.fn().mockRejectedValue(new Error("LLM unavailable")) } as unknown as LLMService,
+      { generateResponse: vi.fn().mockRejectedValue(new Error("LLM unavailable")) } as unknown as LLMService,
     );
 
     const [advRow] = await db
@@ -376,12 +376,9 @@ describe("getState() — AC #5", () => {
     const state = await gameService.getState(adventureId, TEST_USER_ID);
 
     expect(state.messages).toHaveLength(50);
-    // Ordered ASC — first message content should be lower-numbered
-    const firstContent = state.messages[0]!.content;
-    const lastContent = state.messages[49]!.content;
-    const firstNum = parseInt(firstContent.replace("Message ", ""), 10);
-    const lastNum = parseInt(lastContent.replace("Message ", ""), 10);
-    expect(firstNum).toBeLessThan(lastNum);
+    // Last 50 inserted are Message 10..59, ordered ASC
+    expect(state.messages[0]!.content).toBe("Message 10");
+    expect(state.messages[49]!.content).toBe("Message 59");
   });
 });
 
@@ -434,12 +431,18 @@ describe("getMessages() — AC #6", () => {
 
   it("limits to 100 messages maximum", async () => {
     // Insert 110 messages
-    const vals = Array.from({ length: 110 }, (_, i) => ({
+    const vals: Array<{
+      adventureId: string;
+      milestoneId: string | null;
+      role: "user";
+      content: string;
+      metadata: Record<string, unknown>;
+    }> = Array.from({ length: 110 }, (_, i) => ({
       adventureId,
-      milestoneId: null as string | null,
-      role: "user" as const,
+      milestoneId: null,
+      role: "user",
       content: `Msg ${i}`,
-      metadata: {} as Record<string, unknown>,
+      metadata: {},
     }));
     await db.insert(messages).values(vals);
 
