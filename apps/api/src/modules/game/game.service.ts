@@ -3,12 +3,22 @@
  * Processes player action: D20 → prompt build → LLM stream → signal parse → DB persist.
  */
 /* eslint-disable simple-import-sort/imports */
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 
-import type { AdventureCharacterDTO, Difficulty, ErrorCode } from "@jdrai/shared";
+import type {
+  AdventureCharacterDTO,
+  AdventureDTO,
+  Difficulty,
+  ErrorCode,
+  GameMessageDTO,
+  GameStateDTO,
+  MilestoneDTO,
+} from "@jdrai/shared";
 
 import { db } from "@/db";
-import { adventureCharacters, adventures, messages } from "@/db/schema";
+import { adventureCharacters, adventures, messages, milestones } from "@/db/schema";
+import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/errors";
 
 import { D20Service, type ActionType } from "./d20.service";
@@ -25,6 +35,106 @@ import {
 import { LLMService, createLLMService } from "./llm/index";
 import { PromptBuilder } from "./prompt-builder";
 /* eslint-enable simple-import-sort/imports */
+
+// ---------------------------------------------------------------------------
+// Milestone initialization — schema, fallback, prompt builder
+// ---------------------------------------------------------------------------
+
+/** Zod schema for LLM milestone generation response (AC #3). */
+const MilestoneInitResponseSchema = z.object({
+  milestones: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(100),
+        description: z.string().min(1).max(300),
+      }),
+    )
+    .min(2)
+    .max(8),
+});
+
+/** Fallback used when LLM milestone generation fails (AC #4). */
+const FALLBACK_MILESTONES = [
+  {
+    name: "Prologue",
+    description: "Le début de l'aventure — mise en place du contexte et des enjeux.",
+  },
+  {
+    name: "Le Cœur de l'Aventure",
+    description: "Le développement central — obstacles et révélations.",
+  },
+  {
+    name: "Épilogue",
+    description: "La résolution finale — climax et conclusion de l'histoire.",
+  },
+];
+
+/** Maps EstimatedDuration to a human-readable label for the LLM prompt. */
+function durationLabel(d: AdventureDTO["estimatedDuration"]): string {
+  return { short: "courte", medium: "moyenne", long: "longue" }[d];
+}
+
+/** Builds the LLM prompt for milestone generation (AC #2). */
+function buildMilestoneInitPrompt(adventure: AdventureDTO): string {
+  return `Tu es un assistant de game design.
+Génère la liste des milestones (jalons narratifs) pour une aventure de jeu de rôle fantasy.
+
+Paramètres :
+- Titre de l'aventure : ${adventure.title}
+- Durée estimée : ${durationLabel(adventure.estimatedDuration)} (courte = 2-3 milestones, moyenne = 4-5, longue = 6+)
+
+Réponds UNIQUEMENT avec un JSON valide, sans markdown, dans ce format exact :
+{
+  "milestones": [
+    { "name": "Nom court du jalon", "description": "Objectif narratif en 1 phrase" },
+    ...
+  ]
+}
+
+Règles :
+- Le premier milestone est le début de l'aventure (mise en place)
+- Le dernier milestone est la résolution finale (climax + épilogue)
+- Les noms sont courts (3-6 mots), évocateurs, en français
+- Les descriptions sont orientées objectif narratif, pas action spécifique`;
+}
+
+/** Builds an AdventureDTO from raw DB rows (used by getState). */
+function buildAdventureDTO(
+  adventureRow: typeof adventures.$inferSelect,
+  characterRow: typeof adventureCharacters.$inferSelect | undefined,
+  currentMilestoneName: string | null = null,
+): AdventureDTO {
+  const characterDTO: AdventureCharacterDTO = {
+    id: characterRow?.id ?? "",
+    name: characterRow?.name ?? "Aventurier",
+    className: "Aventurier", // P1: always default
+    raceName: "Humain", // P1: always default
+    stats: (characterRow?.stats as AdventureCharacterDTO["stats"]) ?? {
+      strength: 10,
+      agility: 10,
+      charisma: 10,
+      karma: 10,
+    },
+    currentHp: characterRow?.currentHp ?? 20,
+    maxHp: characterRow?.maxHp ?? 20,
+  };
+
+  const dto: AdventureDTO = {
+    id: adventureRow.id,
+    title: adventureRow.title,
+    status: adventureRow.status,
+    difficulty: adventureRow.difficulty as Difficulty,
+    estimatedDuration: adventureRow.estimatedDuration as AdventureDTO["estimatedDuration"],
+    startedAt: (adventureRow.startedAt ?? adventureRow.createdAt).toISOString(),
+    lastPlayedAt: (adventureRow.lastPlayedAt ?? adventureRow.createdAt).toISOString(),
+    currentMilestone: currentMilestoneName,
+    character: characterDTO,
+  };
+
+  if (adventureRow.tone) dto.tone = adventureRow.tone as AdventureDTO["tone"];
+
+  return dto;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -443,33 +553,158 @@ export class GameService {
   }
 
   /**
-   * Returns the current game state for a given adventure.
-   * Used by game:resync (Story 6.8 placeholder).
+   * Initializes milestones for an adventure via a one-shot LLM call (AC #1-4).
+   * Falls back to 3 generic milestones if LLM fails — never blocks the player.
    */
-  async getState(adventureId: string, userId: string) {
+  async initializeMilestones(adventure: AdventureDTO): Promise<MilestoneDTO[]> {
+    const prompt = buildMilestoneInitPrompt(adventure);
+
+    let milestoneData: Array<{ name: string; description: string }>;
+
+    try {
+      const llm = await this.getLLMService();
+      const response = await llm.generate({
+        systemPrompt: "",
+        messages: [{ role: "user", content: prompt }],
+      });
+      const parsed: unknown = JSON.parse(response);
+      const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
+      milestoneData = validated;
+    } catch (error) {
+      logger.error("[GameService] initializeMilestones LLM/parse failed, using fallback:", error);
+      milestoneData = FALLBACK_MILESTONES;
+    }
+
+    const rows = await db
+      .insert(milestones)
+      .values(
+        milestoneData.map((m, i) => ({
+          adventureId: adventure.id,
+          name: m.name,
+          description: m.description,
+          sortOrder: i,
+          status: (i === 0 ? "active" : "pending") as "active" | "pending",
+        })),
+      )
+      .returning();
+
+    return rows.map((r) => {
+      const dto: MilestoneDTO = {
+        id: r.id,
+        name: r.name,
+        sortOrder: r.sortOrder,
+        status: r.status,
+      };
+      if (r.description) dto.description = r.description;
+      return dto;
+    });
+  }
+
+  /**
+   * Returns the full game state for GET /api/adventures/:id/state (AC #5).
+   * Triggers initializeMilestones() if no milestones exist yet.
+   */
+  async getState(adventureId: string, userId: string): Promise<GameStateDTO> {
+    // 1. Load adventure — 404/403 guards
     const [adventureRow] = await db
       .select()
       .from(adventures)
-      .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
+      .where(eq(adventures.id, adventureId))
       .limit(1);
 
     if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
+    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
 
-    const activeMilestone = await getActiveMilestone(adventureId);
+    // 2. Load character
     const [characterRow] = await db
-      .select({ currentHp: adventureCharacters.currentHp, maxHp: adventureCharacters.maxHp })
+      .select()
       .from(adventureCharacters)
       .where(eq(adventureCharacters.adventureId, adventureId))
       .limit(1);
 
+    // 3. Load last 50 messages ordered createdAt ASC
+    const messageRows = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.adventureId, adventureId))
+      .orderBy(asc(messages.createdAt))
+      .limit(50);
+
+    // 4. Load milestones — initialize if empty
+    let allMilestones = await getMilestones(adventureId);
+
+    if (allMilestones.length === 0) {
+      const adventureDTO = buildAdventureDTO(adventureRow, characterRow);
+      allMilestones = await this.initializeMilestones(adventureDTO);
+    }
+
+    // 5. Build response DTOs
+    const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
+    const adventureDTO = buildAdventureDTO(adventureRow, characterRow, activeMilestone?.name ?? null);
+
+    const gameMessages: GameMessageDTO[] = messageRows.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      milestoneId: m.milestoneId ?? null,
+      createdAt: m.createdAt.toISOString(),
+    }));
+
     return {
-      adventureId,
-      status: adventureRow.status,
-      activeMilestone,
-      currentHp: characterRow?.currentHp ?? 20,
-      maxHp: characterRow?.maxHp ?? 20,
-      state: adventureRow.state,
+      adventure: adventureDTO,
+      messages: gameMessages,
+      milestones: allMilestones,
+      isStreaming: false,
     };
+  }
+
+  /**
+   * Returns messages for GET /api/adventures/:id/messages (AC #6).
+   * Optionally filtered by milestoneId; limit 100, ordered createdAt ASC.
+   */
+  async getMessages(
+    adventureId: string,
+    userId: string,
+    milestoneId?: string,
+  ): Promise<{ messages: GameMessageDTO[]; total: number }> {
+    // Auth check
+    const [adventureRow] = await db
+      .select({ id: adventures.id })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
+
+    // Re-query with userId for 403 check
+    const [owned] = await db
+      .select({ id: adventures.id })
+      .from(adventures)
+      .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
+      .limit(1);
+
+    if (!owned) throw new AppError(403, "FORBIDDEN", "Not your adventure");
+
+    const rows = await db
+      .select()
+      .from(messages)
+      .where(
+        milestoneId
+          ? and(eq(messages.adventureId, adventureId), eq(messages.milestoneId, milestoneId))
+          : eq(messages.adventureId, adventureId),
+      )
+      .orderBy(asc(messages.createdAt))
+      .limit(100);
+
+    const gameMsgs: GameMessageDTO[] = rows.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      milestoneId: m.milestoneId ?? null,
+      createdAt: m.createdAt.toISOString(),
+    }));
+
+    return { messages: gameMsgs, total: gameMsgs.length };
   }
 }
 

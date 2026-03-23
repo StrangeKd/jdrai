@@ -1,12 +1,12 @@
 /**
- * GameController tests (Story 6.3a Task 5 — AC-8)
+ * GameController tests (Story 6.3a Task 5 — AC-8 / Story 6.3b Task 3 — AC-5,6)
  * Mocks the service layer to test HTTP routing and response formatting.
  */
 import express, { type Express, type Request } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { UserDTO } from "@jdrai/shared";
+import type { GameStateDTO, MilestoneDTO, UserDTO } from "@jdrai/shared";
 
 import { errorHandler } from "@/middleware/error.middleware";
 import { AppError } from "@/utils/errors";
@@ -14,10 +14,12 @@ import { AppError } from "@/utils/errors";
 vi.mock("./game.service", () => ({
   gameService: {
     processAction: vi.fn(),
+    getState: vi.fn(),
+    getMessages: vi.fn(),
   },
 }));
 
-import { postActionHandler } from "./game.controller";
+import { getMessagesHandler, getStateHandler, postActionHandler } from "./game.controller";
 import { gameService } from "./game.service";
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,8 @@ function makeApp(): Express {
     next();
   });
   app.post("/adventures/:id/action", postActionHandler);
+  app.get("/adventures/:id/state", getStateHandler);
+  app.get("/adventures/:id/messages", getMessagesHandler);
   app.use(errorHandler);
   return app;
 }
@@ -163,5 +167,141 @@ describe("POST /adventures/:id/action (AC-8)", () => {
     expect(gameService.processAction).toHaveBeenCalledWith(
       expect.objectContaining({ choiceId: "choice-123" }),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /adventures/:id/state (AC-5)
+// ---------------------------------------------------------------------------
+
+const MOCK_MILESTONE: MilestoneDTO = {
+  id: "m-1",
+  name: "Prologue",
+  sortOrder: 0,
+  status: "active",
+};
+
+const MOCK_GAME_STATE: GameStateDTO = {
+  adventure: {
+    id: "adv-1",
+    title: "La Quête du Graal",
+    status: "active",
+    difficulty: "normal",
+    estimatedDuration: "medium",
+    startedAt: "2026-03-01T00:00:00.000Z",
+    lastPlayedAt: "2026-03-01T00:00:00.000Z",
+    currentMilestone: "Prologue",
+    character: {
+      id: "char-1",
+      name: "Héros",
+      className: "Aventurier",
+      raceName: "Humain",
+      stats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
+      currentHp: 20,
+      maxHp: 20,
+    },
+  },
+  messages: [],
+  milestones: [MOCK_MILESTONE],
+  isStreaming: false,
+};
+
+describe("GET /adventures/:id/state (AC-5)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("valid request → 200 with GameStateDTO", async () => {
+    vi.mocked(gameService.getState).mockResolvedValueOnce(MOCK_GAME_STATE);
+
+    const res = await request(makeApp()).get("/adventures/adv-1/state");
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.isStreaming).toBe(false);
+    expect(res.body.data.milestones).toHaveLength(1);
+    expect(gameService.getState).toHaveBeenCalledWith("adv-1", "user-1");
+  });
+
+  it("adventure not found → 404 NOT_FOUND", async () => {
+    vi.mocked(gameService.getState).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
+
+    const res = await request(makeApp()).get("/adventures/unknown/state");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("wrong owner → 403 FORBIDDEN", async () => {
+    vi.mocked(gameService.getState).mockRejectedValueOnce(
+      new AppError(403, "FORBIDDEN", "Not your adventure"),
+    );
+
+    const res = await request(makeApp()).get("/adventures/adv-other/state");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /adventures/:id/messages (AC-6)
+// ---------------------------------------------------------------------------
+
+describe("GET /adventures/:id/messages (AC-6)", () => {
+  // resetAllMocks clears the once queue too, preventing bleed-through between tests
+  beforeEach(() => vi.resetAllMocks());
+
+  it("no milestoneId → 200 with all messages", async () => {
+    vi.mocked(gameService.getMessages).mockResolvedValueOnce({ messages: [], total: 0 });
+
+    const res = await request(makeApp()).get("/adventures/adv-1/messages");
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.messages).toEqual([]);
+    expect(res.body.data.total).toBe(0);
+    expect(gameService.getMessages).toHaveBeenCalledWith("adv-1", "user-1", undefined);
+  });
+
+  it("with valid milestoneId → passes UUID to service", async () => {
+    // Use a valid RFC 4122 UUID (version bit must be 1-5 for Zod v4 strict validation)
+    const mid = "123e4567-e89b-12d3-a456-426614174000";
+    vi.mocked(gameService.getMessages).mockResolvedValueOnce({ messages: [], total: 0 });
+
+    const res = await request(makeApp()).get(`/adventures/adv-1/messages?milestoneId=${mid}`);
+
+    expect(res.status).toBe(200);
+    expect(gameService.getMessages).toHaveBeenCalledWith("adv-1", "user-1", mid);
+  });
+
+  it("invalid milestoneId (not UUID) → 400 VALIDATION_ERROR", async () => {
+    const res = await request(makeApp()).get("/adventures/adv-1/messages?milestoneId=not-a-uuid");
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(gameService.getMessages).not.toHaveBeenCalled();
+  });
+
+  it("adventure not found → 404 NOT_FOUND", async () => {
+    vi.mocked(gameService.getMessages).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
+
+    const res = await request(makeApp()).get("/adventures/unknown/messages");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("wrong owner → 403 FORBIDDEN", async () => {
+    vi.mocked(gameService.getMessages).mockRejectedValueOnce(
+      new AppError(403, "FORBIDDEN", "Not your adventure"),
+    );
+
+    const res = await request(makeApp()).get("/adventures/adv-other/messages");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 });

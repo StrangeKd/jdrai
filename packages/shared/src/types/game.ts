@@ -1,7 +1,9 @@
 /**
  * Game-session types shared between API and future clients.
- * Story 6.2 Task 3.
+ * Story 6.2 Task 3 / Story 6.3b Task 1.
  */
+import type { AdventureDTO } from "./adventure";
+import type { MilestoneDTO } from "./milestone";
 
 export type ActionType = "trivial" | "easy" | "medium" | "hard" | "very_hard";
 
@@ -29,4 +31,27 @@ export interface MessageMetadata {
   milestoneCompleted?: string;
   /** HP delta applied by this message (positive = heal, negative = damage) */
   hpChange?: number;
+}
+
+/**
+ * A single game message returned by the REST API.
+ * metadata (D20 data) is intentionally excluded from the DTO in P1.
+ */
+export interface GameMessageDTO {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  milestoneId: string | null;
+  createdAt: string;
+}
+
+/**
+ * Full game state snapshot returned by GET /api/adventures/:id/state.
+ * isStreaming is always false on REST; Socket.io manages live state.
+ */
+export interface GameStateDTO {
+  adventure: AdventureDTO;
+  messages: GameMessageDTO[];
+  milestones: MilestoneDTO[];
+  isStreaming: boolean;
 }
