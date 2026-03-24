@@ -78,6 +78,10 @@ export class TanStackAIProvider implements ILLMProvider {
             outputTokens: chunk.usage.completionTokens,
           });
         }
+      } else if (chunk.type === "RUN_ERROR") {
+        const errMsg = (chunk as { type: string; error?: { message?: string } }).error?.message ?? "Unknown LLM error";
+        logger.error(`[TanStackAI] RUN_ERROR from ${this.provider}:${this.model}: ${errMsg}`);
+        throw new Error(errMsg);
       }
     }
   }

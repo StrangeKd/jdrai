@@ -188,7 +188,7 @@ export function createSocketAdapter(adventureId: string) {
 
       // Submit player action — server will respond via socket events
       await withTimeout(
-        api.post(`/api/adventures/${adventureId}/action`, {
+        api.post(`/api/v1/adventures/${adventureId}/action`, {
           action: actionContent,
           ...(choiceId ? { choiceId } : {}),
         }),

@@ -314,7 +314,8 @@ export class GameService {
    */
   async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
     const { adventureId, userId, action, io, socketId } = params;
-    const shouldStream = Boolean(io && socketId);
+    // Stream whenever io is available — socketId is not needed since we emit to the room
+    const shouldStream = Boolean(io);
 
     // 1. Load adventure + character + milestones + recent messages
     const [adventureRow] = await db
@@ -423,14 +424,22 @@ export class GameService {
     // 9. Stream LLM response, emit chunks
     const llm = await this.getLLMService();
     let fullResponse = "";
-    for await (const chunk of llm.stream({
-      systemPrompt: combinedSystemPrompt,
-      messages: conversationMessages,
-    })) {
-      if (shouldStream) {
-        io!.to(room).emit("game:chunk", { adventureId, chunk });
+    try {
+      for await (const chunk of llm.stream({
+        systemPrompt: combinedSystemPrompt,
+        messages: conversationMessages,
+      })) {
+        if (shouldStream) {
+          io!.to(room).emit("game:chunk", { adventureId, chunk });
+        }
+        fullResponse += chunk;
       }
-      fullResponse += chunk;
+    } catch (error) {
+      logger.error("[GameService] LLM stream failed:", error);
+      if (shouldStream) {
+        io!.to(room).emit("game:error", { adventureId, error: "Le Chroniqueur est indisponible. Veuillez réessayer." });
+      }
+      throw error;
     }
 
     // 10. Parse signals
