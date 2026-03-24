@@ -7,14 +7,14 @@
  *                                     → useChat manages messages / isLoading state
  *
  * This hook is wired into the game screen UI in Story 6.4.
- * The socket connection itself is established in Story 6.3.
+ * The socket connection is established by useGameSession (Story 6.4 Task 2).
  */
 import type { StreamChunk } from "@tanstack/ai";
 import type { TextPart, UIMessage } from "@tanstack/ai-client";
 import { stream, useChat } from "@tanstack/ai-react";
 
 import { api } from "@/services/api";
-import { socket } from "@/services/socket.service";
+import { getSocket } from "@/services/socket.service";
 
 const ACTION_REQUEST_TIMEOUT_MS = 10_000;
 const STREAM_IDLE_TIMEOUT_MS = 20_000;
@@ -88,7 +88,8 @@ function extractTextFromUIMessage(message: UIMessage): string {
  */
 export function createSocketAdapter(adventureId: string) {
   return stream(async function* socketStreamFactory(messages) {
-    if (!socket.connected) {
+    const socket = getSocket();
+    if (!socket?.connected) {
       throw new Error("Game socket is not connected");
     }
 
@@ -137,22 +138,24 @@ export function createSocketAdapter(adventureId: string) {
       ]);
 
     // Register socket listeners BEFORE the POST to avoid race conditions
-    const onChunk = (content: string) => {
+    // game:chunk payload: { adventureId, chunk: string }
+    const onChunk = (data: { adventureId: string; chunk: string }) => {
       resetIdleTimeout();
-      const chunk: StreamChunk = {
+      const streamChunk: StreamChunk = {
         type: "TEXT_MESSAGE_CONTENT",
         messageId,
-        delta: content,
+        delta: data.chunk,
         timestamp: Date.now(),
       };
-      queue.push(chunk);
+      queue.push(streamChunk);
     };
 
     const onComplete = () => {
       closeQueue();
     };
 
-    const onError = (message: string) => {
+    const onError = (data: { error: string } | string) => {
+      const message = typeof data === "string" ? data : data.error;
       closeWithError(new Error(`Game stream error: ${message}`));
     };
 
@@ -202,10 +205,11 @@ export function createSocketAdapter(adventureId: string) {
  *
  * Exposes:
  * - `messages` — full conversation history (UIMessage[])
- * - `sendMessage` — submit a player action (string or multimodal)
+ * - `sendMessage` — submit a player action (triggers ConnectionAdapter)
  * - `isStreaming` — true while the Game Master is generating a response
  *
- * Consumed by StreamingText and ChoiceList in Story 6.4.
+ * Called internally by useGameSession (Story 6.4 Task 2).
+ * The socket must be connected (via connect()) before sendMessage is called.
  */
 export function useGameChat(adventureId: string) {
   const { messages, sendMessage, isLoading, stop, error } = useChat({

@@ -47,7 +47,7 @@ vi.mock("@/services/api", () => ({
 }));
 
 vi.mock("@/services/socket.service", () => ({
-  socket,
+  getSocket: () => socket,
 }));
 
 import { createSocketAdapter, useGameChat } from "@/hooks/useGameChat";
