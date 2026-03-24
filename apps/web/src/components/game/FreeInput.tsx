@@ -5,7 +5,7 @@
  * AC: #7, #8 — disabled during loading/streaming; placeholder adapts to state.
  * Enter key submits (if not disabled and input not empty).
  */
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +34,6 @@ export function FreeInput({
   placeholder,
 }: FreeInputProps) {
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const resolvedPlaceholder = resolvePlaceholder(isLoading, isStreaming, placeholder);
 
   const handleSubmit = () => {
@@ -69,7 +67,6 @@ export function FreeInput({
 
       {/* Text input */}
       <Input
-        ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

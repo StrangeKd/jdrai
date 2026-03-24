@@ -5,14 +5,12 @@
  * Uses useGameSession for all game state (socket + REST).
  * Story 6.5 will fill in SessionHeader and CharacterPanel placeholders.
  */
-import { useEffect } from "react";
-
 import { createFileRoute } from "@tanstack/react-router";
-
-import { useGameSession } from "@/hooks/useGameSession";
+import { useEffect } from "react";
 
 import { FreeInput } from "@/components/game/FreeInput";
 import { NarrationPanel } from "@/components/game/NarrationPanel";
+import { useGameSession } from "@/hooks/useGameSession";
 
 export const Route = createFileRoute("/_authenticated/adventure/$id")({
   component: GameSessionPage,
@@ -53,6 +51,15 @@ function GameSessionPage() {
         }
       }
 
+      // Enter: focus free input when not focused
+      if (!isInputFocused && e.key === "Enter") {
+        const input = document.querySelector<HTMLInputElement>('input[aria-label="Votre action"]');
+        if (input && !isLocked) {
+          e.preventDefault();
+          input.focus();
+        }
+      }
+
       // Escape: placeholder for Story 6.5 pause menu
       if (e.key === "Escape") {
         // TODO Story 6.5: setShowPauseMenu(true)
@@ -70,14 +77,14 @@ function GameSessionPage() {
   return (
     <div className="fixed inset-0 flex flex-col bg-stone-950 text-amber-100 overflow-hidden">
       {/* SessionHeader placeholder — Story 6.5 will complete this */}
-      <header className="flex-shrink-0 h-12 flex items-center justify-between px-4 border-b border-stone-800 bg-stone-900">
+      <header className="shrink-0 h-12 flex items-center justify-between px-4 border-b border-stone-800 bg-stone-900">
         <span className="text-sm font-medium text-amber-200 truncate">{adventureTitle}</span>
         {/* TODO Story 6.5: pause menu button */}
       </header>
 
       {/* CharacterPanel placeholder — Story 6.5 will implement this */}
       {/* Height reserved so layout doesn't shift when CharacterPanel is added */}
-      <div className="flex-shrink-0 h-10" aria-hidden="true" />
+      <div className="shrink-0 h-10" aria-hidden="true" />
 
       {/* NarrationPanel — fills all remaining space (AC: #2) */}
       <div className="flex-1 min-h-0 flex justify-center overflow-hidden">
@@ -100,14 +107,14 @@ function GameSessionPage() {
       {gameError && (
         <div
           role="alert"
-          className="flex-shrink-0 px-4 py-2 bg-red-900/80 text-red-200 text-sm text-center border-t border-red-700"
+          className="shrink-0 px-4 py-2 bg-red-900/80 text-red-200 text-sm text-center border-t border-red-700"
         >
           {gameError}
         </div>
       )}
 
       {/* FreeInput — fixed at bottom of screen (AC: #7) */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <FreeInput
           disabled={isLocked}
           isStreaming={isStreaming}

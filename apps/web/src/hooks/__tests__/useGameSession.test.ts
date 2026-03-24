@@ -159,11 +159,20 @@ describe("useGameSession", () => {
       await result.current.sendAction("J'avance prudemment");
     });
 
-    expect(mockSendMessage).toHaveBeenCalledWith("J'avance prudemment");
+    expect(mockSendMessage).toHaveBeenCalledWith("J'avance prudemment", undefined);
+  });
+
+  it("forwards choiceId when submitting a suggested action", async () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => {
+      await result.current.sendAction("Attaquer", "choice-1");
+    });
+
+    expect(mockSendMessage).toHaveBeenCalledWith("Attaquer", "choice-1");
   });
 
   it("sendAction sets playerEcho immediately", async () => {
-    let capturedEcho: string | null = null;
     mockSendMessage.mockImplementation(() => {
       // echo should already be set when sendMessage is called
       return Promise.resolve();
@@ -196,6 +205,17 @@ describe("useGameSession", () => {
     expect(result.current.isStreaming).toBe(true);
   });
 
+  it("ignores socket chunks from another adventureId", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:response-start", { adventureId: "adv-1" });
+      mockSocket.trigger("game:chunk", { adventureId: "adv-2", chunk: "Intrus" });
+    });
+
+    expect(result.current.streamingBuffer).toBe("");
+  });
+
   it("game:response-complete replaces streamingBuffer with cleanText and sets choices", () => {
     const { result } = renderHook(() => useGameSession("adv-1"));
 
@@ -226,6 +246,23 @@ describe("useGameSession", () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.choices).toHaveLength(2);
     expect(result.current.choices[0]!.label).toBe("Attaquer");
+  });
+
+  it("ignores response-complete from another adventureId", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:response-start", { adventureId: "adv-1" });
+      mockSocket.trigger("game:chunk", { adventureId: "adv-1", chunk: "Texte local" });
+      mockSocket.trigger("game:response-complete", {
+        adventureId: "adv-2",
+        cleanText: "Ne doit pas remplacer",
+        choices: [{ id: "x", label: "X", type: "suggested" }],
+      });
+    });
+
+    expect(result.current.currentScene).toBe("Vous vous réveillez dans une forêt sombre.");
+    expect(result.current.streamingBuffer).toBe("Texte local");
   });
 
   it("game:error sets gameError and resets loading flags", () => {

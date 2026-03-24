@@ -16,12 +16,14 @@ import { io, type Socket } from "socket.io-client";
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 let _socket: Socket | null = null;
+let _currentAdventureId: string | null = null;
 
 /**
  * Connects to the Socket.io server and joins the adventure room.
  * Idempotent: returns the existing socket if already connected.
  */
 export function connect(adventureId: string): Socket {
+  _currentAdventureId = adventureId;
   if (_socket?.connected) {
     // Socket already connected — re-emit join in case of route re-mount
     _socket.emit("game:join", { adventureId });
@@ -42,8 +44,12 @@ export function connect(adventureId: string): Socket {
 
 /** Disconnects from the Socket.io server and clears the singleton. */
 export function disconnect(): void {
+  if (_socket?.connected && _currentAdventureId) {
+    _socket.emit("game:leave", { adventureId: _currentAdventureId });
+  }
   _socket?.disconnect();
   _socket = null;
+  _currentAdventureId = null;
 }
 
 /** Returns the current socket instance, or null if not yet connected. */

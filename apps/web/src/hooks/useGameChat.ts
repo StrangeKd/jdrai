@@ -102,6 +102,23 @@ export function createSocketAdapter(adventureId: string) {
         : typeof (lastMessage as { content?: unknown } | undefined)?.content === "string"
           ? String((lastMessage as { content: string }).content)
           : "";
+    const choiceIdFromMetadata =
+      lastMessage &&
+      typeof lastMessage === "object" &&
+      "metadata" in lastMessage &&
+      typeof (lastMessage as { metadata?: unknown }).metadata === "object" &&
+      (lastMessage as { metadata?: { choiceId?: unknown } }).metadata &&
+      typeof (lastMessage as { metadata?: { choiceId?: unknown } }).metadata?.choiceId === "string"
+        ? ((lastMessage as { metadata?: { choiceId?: string } }).metadata?.choiceId ?? undefined)
+        : undefined;
+    const choiceIdFromRoot =
+      lastMessage &&
+      typeof lastMessage === "object" &&
+      "choiceId" in lastMessage &&
+      typeof (lastMessage as { choiceId?: unknown }).choiceId === "string"
+        ? ((lastMessage as { choiceId?: string }).choiceId ?? undefined)
+        : undefined;
+    const choiceId = choiceIdFromMetadata ?? choiceIdFromRoot;
 
     const queue = new AsyncQueue<StreamChunk>();
     const messageId = `msg-${Date.now()}`;
@@ -140,6 +157,7 @@ export function createSocketAdapter(adventureId: string) {
     // Register socket listeners BEFORE the POST to avoid race conditions
     // game:chunk payload: { adventureId, chunk: string }
     const onChunk = (data: { adventureId: string; chunk: string }) => {
+      if (data.adventureId !== adventureId) return;
       resetIdleTimeout();
       const streamChunk: StreamChunk = {
         type: "TEXT_MESSAGE_CONTENT",
@@ -150,11 +168,13 @@ export function createSocketAdapter(adventureId: string) {
       queue.push(streamChunk);
     };
 
-    const onComplete = () => {
+    const onComplete = (data?: { adventureId?: string }) => {
+      if (data?.adventureId && data.adventureId !== adventureId) return;
       closeQueue();
     };
 
-    const onError = (data: { error: string } | string) => {
+    const onError = (data: { adventureId?: string; error: string } | string) => {
+      if (typeof data !== "string" && data.adventureId && data.adventureId !== adventureId) return;
       const message = typeof data === "string" ? data : data.error;
       closeWithError(new Error(`Game stream error: ${message}`));
     };
@@ -170,6 +190,7 @@ export function createSocketAdapter(adventureId: string) {
       await withTimeout(
         api.post(`/api/adventures/${adventureId}/action`, {
           action: actionContent,
+          ...(choiceId ? { choiceId } : {}),
         }),
         ACTION_REQUEST_TIMEOUT_MS,
       );
@@ -216,9 +237,17 @@ export function useGameChat(adventureId: string) {
     connection: createSocketAdapter(adventureId),
   });
 
+  const sendGameMessage = async (action: string, choiceId?: string) => {
+    const payload: Parameters<typeof sendMessage>[0] = {
+      content: action,
+      ...(choiceId ? { choiceId, metadata: { choiceId } } : {}),
+    };
+    await sendMessage(payload);
+  };
+
   return {
     messages,
-    sendMessage,
+    sendMessage: sendGameMessage,
     isStreaming: isLoading,
     stop,
     error,

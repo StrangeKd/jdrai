@@ -62,6 +62,17 @@ function makeUserMessage(content: string) {
   ];
 }
 
+function makeUserMessageWithChoice(content: string, choiceId: string) {
+  return [
+    {
+      id: "msg-1",
+      role: "user",
+      parts: [{ type: "text", content }],
+      metadata: { choiceId },
+    },
+  ];
+}
+
 describe("useGameChat socket adapter", () => {
   beforeEach(() => {
     socket.connected = true;
@@ -121,5 +132,36 @@ describe("useGameChat socket adapter", () => {
     expect(useChatMock).toHaveBeenCalledWith(
       expect.objectContaining({ connection: expect.anything() }),
     );
+  });
+
+  it("forwards choiceId when present in message metadata", async () => {
+    const adapter = createSocketAdapter("adv-choice") as {
+      connect: (messages: ReturnType<typeof makeUserMessageWithChoice>) => AsyncIterable<unknown>;
+    };
+    const iterator = adapter.connect(makeUserMessageWithChoice("attack", "choice-7"))[Symbol.asyncIterator]();
+
+    const pending = iterator.next();
+    await Promise.resolve();
+    socket.emit("game:response-complete", { adventureId: "adv-choice" });
+    await pending;
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/adventures/adv-choice/action", {
+      action: "attack",
+      choiceId: "choice-7",
+    });
+  });
+
+  it("ignores response-complete from another adventure", async () => {
+    const adapter = createSocketAdapter("adv-main") as {
+      connect: (messages: ReturnType<typeof makeUserMessage>) => AsyncIterable<unknown>;
+    };
+    const iterator = adapter.connect(makeUserMessage("inspect room"))[Symbol.asyncIterator]();
+
+    const pending = iterator.next();
+    await Promise.resolve();
+    socket.emit("game:response-complete", { adventureId: "adv-other" });
+    socket.emit("game:response-complete", { adventureId: "adv-main" });
+
+    await expect(pending).resolves.toEqual({ value: undefined, done: true });
   });
 });

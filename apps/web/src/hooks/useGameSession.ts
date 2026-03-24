@@ -10,9 +10,8 @@
  *
  * Consumed by the /$id game session route (Story 6.4 Task 3).
  */
-import { useEffect, useState } from "react";
-
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import type { ApiResponse, GameStateDTO, SuggestedAction } from "@jdrai/shared";
 
@@ -85,7 +84,8 @@ export function useGameSession(adventureId: string): GameSessionState {
   useEffect(() => {
     const sock = connect(adventureId);
 
-    const onResponseStart = () => {
+    const onResponseStart = (data?: { adventureId?: string }) => {
+      if (data?.adventureId && data.adventureId !== adventureId) return;
       setIsLoading(false);
       setIsStreaming(true);
       setStreamingBuffer("");
@@ -93,14 +93,17 @@ export function useGameSession(adventureId: string): GameSessionState {
 
     // game:chunk payload: { adventureId, chunk }
     const onChunk = (data: { adventureId: string; chunk: string }) => {
+      if (data.adventureId !== adventureId) return;
       setStreamingBuffer((prev) => prev + data.chunk);
     };
 
     // game:response-complete payload: { adventureId, messageId, cleanText, choices, stateChanges }
     const onResponseComplete = (data: {
+      adventureId?: string;
       cleanText: string;
       choices?: SuggestedAction[];
     }) => {
+      if (data.adventureId && data.adventureId !== adventureId) return;
       setCurrentScene(data.cleanText);
       setStreamingBuffer("");
       setChoices(data.choices ?? []);
@@ -114,7 +117,8 @@ export function useGameSession(adventureId: string): GameSessionState {
       console.debug("[useGameSession] game:state-update", data);
     };
 
-    const onError = (data: { error: string } | string) => {
+    const onError = (data: { adventureId?: string; error: string } | string) => {
+      if (typeof data !== "string" && data.adventureId && data.adventureId !== adventureId) return;
       const message = typeof data === "string" ? data : (data.error ?? "Une erreur est survenue.");
       setGameError(message);
       setIsLoading(false);
@@ -142,7 +146,7 @@ export function useGameSession(adventureId: string): GameSessionState {
   // sendAction
   // ---------------------------------------------------------------------------
 
-  async function sendAction(action: string, _choiceId?: string): Promise<void> {
+  async function sendAction(action: string, choiceId?: string): Promise<void> {
     // Guard against double-submit
     if (isLoading || isStreaming) return;
 
@@ -156,7 +160,7 @@ export function useGameSession(adventureId: string): GameSessionState {
       //  1. POSTs action to /api/adventures/:id/action
       //  2. Yields socket chunks until game:response-complete
       // Game state updates happen via the socket listeners above.
-      await sendMessage(action);
+      await sendMessage(action, choiceId);
       // isLoading/isStreaming are already reset by socket event handlers
     } catch {
       setIsLoading(false);
