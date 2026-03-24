@@ -152,6 +152,34 @@ describe("useGameSession", () => {
     expect(result.current.currentScene).toBe("Vous vous réveillez dans une forêt sombre.");
   });
 
+  it("seeds choices from last assistant message on reload (session restore)", () => {
+    const restoredChoices = [
+      { id: "c1", label: "Explorer la grotte", type: "suggested" as const },
+      { id: "c2", label: "Rebrousser chemin", type: "suggested" as const },
+    ];
+    mockUseQuery.mockReturnValue({
+      data: {
+        ...gameStateResponse,
+        data: {
+          ...gameStateResponse.data,
+          messages: [
+            {
+              id: "msg-1",
+              role: "assistant",
+              content: "Vous vous réveillez dans une forêt sombre.",
+              milestoneId: null,
+              createdAt: new Date().toISOString(),
+              choices: restoredChoices,
+            },
+          ],
+        },
+      },
+    });
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.choices).toHaveLength(2);
+    expect(result.current.choices[0]!.label).toBe("Explorer la grotte");
+  });
+
   it("sendAction sets isLoading=true and calls sendMessage", async () => {
     const { result } = renderHook(() => useGameSession("adv-1"));
 
@@ -297,5 +325,52 @@ describe("useGameSession", () => {
   it("returns gameState from the REST query", () => {
     const { result } = renderHook(() => useGameSession("adv-1"));
     expect(result.current.gameState).toEqual(gameStateResponse.data);
+  });
+
+  it("emits game:request-intro and sets isLoading when adventure has no messages", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        ...gameStateResponse,
+        data: {
+          ...gameStateResponse.data,
+          messages: [],
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(mockSocket.emit).toHaveBeenCalledWith("game:request-intro", { adventureId: "adv-1" });
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it("does not emit game:request-intro when messages already exist", () => {
+    // Default gameStateResponse has messages — mockSocket.emit should not be called for intro
+    renderHook(() => useGameSession("adv-1"));
+
+    expect(mockSocket.emit).not.toHaveBeenCalledWith(
+      "game:request-intro",
+      expect.anything(),
+    );
+  });
+
+  it("does not emit game:request-intro twice on re-render", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        ...gameStateResponse,
+        data: {
+          ...gameStateResponse.data,
+          messages: [],
+        },
+      },
+    });
+
+    const { rerender } = renderHook(() => useGameSession("adv-1"));
+    rerender();
+
+    const introCalls = (mockSocket.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === "game:request-intro",
+    );
+    expect(introCalls).toHaveLength(1);
   });
 });

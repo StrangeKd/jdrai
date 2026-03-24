@@ -145,7 +145,7 @@ describe("useGameChat socket adapter", () => {
     socket.emit("game:response-complete", { adventureId: "adv-choice" });
     await pending;
 
-    expect(apiPostMock).toHaveBeenCalledWith("/api/adventures/adv-choice/action", {
+    expect(apiPostMock).toHaveBeenCalledWith("/api/v1/adventures/adv-choice/action", {
       action: "attack",
       choiceId: "choice-7",
     });

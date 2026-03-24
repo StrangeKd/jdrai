@@ -313,7 +313,7 @@ export class GameService {
    * Full turn orchestration — see Dev Notes for exact execution order.
    */
   async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
-    const { adventureId, userId, action, io, socketId } = params;
+    const { adventureId, userId, action, io } = params;
     // Stream whenever io is available — socketId is not needed since we emit to the room
     const shouldStream = Boolean(io);
 
@@ -437,7 +437,12 @@ export class GameService {
     } catch (error) {
       logger.error("[GameService] LLM stream failed:", error);
       if (shouldStream) {
-        io!.to(room).emit("game:error", { adventureId, error: "Le Chroniqueur est indisponible. Veuillez réessayer." });
+        io!
+          .to(room)
+          .emit("game:error", {
+            adventureId,
+            error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+          });
       }
       throw error;
     }
@@ -459,6 +464,8 @@ export class GameService {
         ...(signals.milestoneCompleted && { milestoneCompleted: signals.milestoneCompleted }),
         ...(signals.hpChange !== undefined && { hpChange: signals.hpChange }),
         ...(signals.isGameOver && { isGameOver: true }),
+        // Persisted for session restore on page reload (used by GET /state)
+        ...(signals.choices.length > 0 && { choices: signals.choices }),
       },
     });
 
@@ -466,7 +473,9 @@ export class GameService {
     await this.applySignals(
       signals,
       adventureId,
-      shouldStream ? ({ to: (r: string) => io!.to(r) } as unknown as import("socket.io").Server) : undefined,
+      shouldStream
+        ? ({ to: (r: string) => io!.to(r) } as unknown as import("socket.io").Server)
+        : undefined,
     );
 
     // 13. Auto-save state
@@ -651,15 +660,26 @@ export class GameService {
 
     // 5. Build response DTOs
     const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
-    const adventureDTO = buildAdventureDTO(adventureRow, characterRow, activeMilestone?.name ?? null);
+    const adventureDTO = buildAdventureDTO(
+      adventureRow,
+      characterRow,
+      activeMilestone?.name ?? null,
+    );
 
-    const gameMessages: GameMessageDTO[] = messageRows.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      milestoneId: m.milestoneId ?? null,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const gameMessages: GameMessageDTO[] = messageRows.map((m) => {
+      const meta = m.metadata as Record<string, unknown> | null;
+      const dto: GameMessageDTO = {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        milestoneId: m.milestoneId ?? null,
+        createdAt: m.createdAt.toISOString(),
+      };
+      if (Array.isArray(meta?.choices) && meta.choices.length > 0) {
+        dto.choices = meta.choices as SuggestedAction[];
+      }
+      return dto;
+    });
 
     return {
       adventure: adventureDTO,
@@ -667,6 +687,139 @@ export class GameService {
       milestones: allMilestones,
       isStreaming: false,
     };
+  }
+
+  /**
+   * Generates the adventure introduction (first GM message) without requiring a player action.
+   * Called via socket event game:request-intro when the player opens a fresh adventure.
+   * Only the assistant message is inserted — no user message, no D20 roll.
+   * Idempotent: silently returns if messages already exist.
+   */
+  async generateIntroduction(
+    adventureId: string,
+    userId: string,
+    io: import("socket.io").Server,
+  ): Promise<void> {
+    // 1. Load adventure — auth guards
+    const [adventureRow] = await db
+      .select()
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
+    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
+    if (adventureRow.status !== "active") return;
+
+    // 2. Idempotency: skip if messages already exist
+    const [existingMessage] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(eq(messages.adventureId, adventureId))
+      .limit(1);
+
+    if (existingMessage) return;
+
+    // 3. Load character + milestones
+    const [characterRow] = await db
+      .select()
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    if (!characterRow) throw new AppError(404, "NOT_FOUND", "Character not found");
+
+    const character: AdventureCharacterDTO = {
+      id: characterRow.id,
+      name: characterRow.name,
+      className: "Aventurier",
+      raceName: "Humain",
+      stats: characterRow.stats as AdventureCharacterDTO["stats"],
+      currentHp: characterRow.currentHp,
+      maxHp: characterRow.maxHp,
+    };
+
+    const allMilestones = await getMilestones(adventureId);
+    const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
+
+    // 4. Build intro context window (no D20, no player action history)
+    const systemPrompt = this.promptBuilder.buildSystemPrompt({
+      difficulty: adventureRow.difficulty as Difficulty,
+    });
+
+    const introDirective =
+      "[SYSTÈME — INTRODUCTION]\n" +
+      "C'est le tout début de l'aventure. Aucune action du joueur n'a encore eu lieu.\n" +
+      "Présente la scène d'ouverture de manière immersive : ambiance, lieu, situation initiale.\n" +
+      "Conclus en proposant 2 à 3 premières actions suggérées au format [CHOIX]...[/CHOIX].";
+
+    const contextWindow = this.promptBuilder.buildContextWindow({
+      systemPrompt,
+      d20Block: introDirective,
+      playerAction: "",
+      context: {
+        character,
+        milestones: allMilestones,
+        currentMilestone: activeMilestone,
+        recentHistory: [],
+        worldState: {},
+      },
+    });
+
+    const combinedSystemPrompt = contextWindow
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
+    const conversationMessages = contextWindow.filter((m) => m.role !== "system");
+
+    // 5. Emit response-start
+    const room = `adventure:${adventureId}`;
+    io.to(room).emit("game:response-start", { adventureId });
+
+    // 6. Stream LLM response, emit chunks
+    const llm = await this.getLLMService();
+    let fullResponse = "";
+    try {
+      for await (const chunk of llm.stream({
+        systemPrompt: combinedSystemPrompt,
+        messages: conversationMessages,
+      })) {
+        io.to(room).emit("game:chunk", { adventureId, chunk });
+        fullResponse += chunk;
+      }
+    } catch (error) {
+      logger.error("[GameService] generateIntroduction LLM stream failed:", error);
+      io.to(room).emit("game:error", {
+        adventureId,
+        error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+      });
+      throw error;
+    }
+
+    // 7. Parse signals + insert assistant message only
+    const { cleanText, signals } = parseSignals(fullResponse);
+
+    const assistantMessageId = await insertMessage({
+      adventureId,
+      milestoneId: activeMilestone?.id ?? null,
+      role: "assistant",
+      content: cleanText,
+      metadata: {
+        ...(signals.choices.length > 0 && { choices: signals.choices }),
+      },
+    });
+
+    // 8. Emit response-complete
+    io.to(room).emit("game:response-complete", {
+      adventureId,
+      messageId: assistantMessageId,
+      cleanText,
+      choices: signals.choices,
+      stateChanges: {
+        adventureComplete: false,
+        isGameOver: false,
+      },
+    });
   }
 
   /**
@@ -707,13 +860,20 @@ export class GameService {
       .orderBy(asc(messages.createdAt))
       .limit(100);
 
-    const gameMsgs: GameMessageDTO[] = rows.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      milestoneId: m.milestoneId ?? null,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const gameMsgs: GameMessageDTO[] = rows.map((m) => {
+      const meta = m.metadata as Record<string, unknown> | null;
+      const dto: GameMessageDTO = {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        milestoneId: m.milestoneId ?? null,
+        createdAt: m.createdAt.toISOString(),
+      };
+      if (Array.isArray(meta?.choices) && meta.choices.length > 0) {
+        dto.choices = meta.choices as SuggestedAction[];
+      }
+      return dto;
+    });
 
     return { messages: gameMsgs, total: gameMsgs.length };
   }

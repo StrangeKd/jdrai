@@ -11,7 +11,7 @@
  * Consumed by the /$id game session route (Story 6.4 Task 3).
  */
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ApiResponse, GameStateDTO, SuggestedAction } from "@jdrai/shared";
 
@@ -52,6 +52,8 @@ export function useGameSession(adventureId: string): GameSessionState {
   const [isStreaming, setIsStreaming] = useState(false);
   const [gameError, setGameError] = useState<string | null>(null);
   const [isInGameSession, setIsInGameSession] = useState(true);
+  // Prevents double-triggering the intro request across re-renders
+  const introRequestedRef = useRef(false);
 
   // TanStack AI streaming layer — handles HTTP action POST + chunk streaming
   const { sendMessage } = useGameChat(adventureId);
@@ -68,14 +70,41 @@ export function useGameSession(adventureId: string): GameSessionState {
 
   const gameState = gameStateResponse?.data ?? null;
 
-  // Seed currentScene from the last assistant message on initial load
+  // Seed currentScene and choices from the last assistant message on initial load
   useEffect(() => {
     if (!gameState) return;
     const lastAssistant = [...(gameState.messages ?? [])].reverse().find((m) => m.role === "assistant");
     if (lastAssistant) {
       setCurrentScene(lastAssistant.content);
+      setChoices(lastAssistant.choices ?? []);
     }
   }, [gameState]);
+
+  // Auto-request intro when the adventure has no messages yet
+  useEffect(() => {
+    if (!gameState) return;
+    if ((gameState.messages ?? []).length > 0) return;
+    if (gameState.adventure.status !== "active") return;
+    if (introRequestedRef.current) return;
+
+    introRequestedRef.current = true;
+    setIsLoading(true);
+
+    const sock = getSocket();
+    if (!sock) return;
+
+    const emitIntroRequest = () => {
+      // game:join is emitted first (registered before this handler in socket.service),
+      // so the socket is guaranteed to be in the room when the server receives this event.
+      sock.emit("game:request-intro", { adventureId });
+    };
+
+    if (sock.connected) {
+      emitIntroRequest();
+    } else {
+      sock.once("connect", emitIntroRequest);
+    }
+  }, [gameState, adventureId]);
 
   // ---------------------------------------------------------------------------
   // Socket connection lifecycle + game event handlers
