@@ -83,12 +83,13 @@ export class LLMService {
     const chain = params.modelKey
       ? [params.modelKey, ...this.fallbackOrder]
       : [this.primaryKey, ...this.fallbackOrder];
+    const maxAttempts = params.maxAttempts ?? 3;
 
     for (const key of chain) {
       const provider = this.getProvider(key);
       try {
         return await withTimeout(
-          withRetry(() => provider.generateResponse(params)),
+          withRetry(() => provider.generateResponse(params), maxAttempts),
           this.timeoutMs,
         );
       } catch (error) {
@@ -99,6 +100,13 @@ export class LLMService {
     }
 
     throw new AppError(503, "LLM_ERROR", "All LLM providers failed");
+  }
+
+  /**
+   * Alias for generate() to align with story terminology (non-streaming).
+   */
+  async generateResponse(params: GenerateParams): Promise<string> {
+    return this.generate(params);
   }
 
   /**

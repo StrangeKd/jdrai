@@ -1,6 +1,8 @@
 /**
- * GameController — HTTP handlers for the game module (Story 6.3a Task 4).
+ * GameController — HTTP handlers for the game module (Story 6.3a Task 4 / Story 6.3b Task 3).
  * POST /api/v1/adventures/:id/action
+ * GET  /api/v1/adventures/:id/state
+ * GET  /api/v1/adventures/:id/messages
  */
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
@@ -10,13 +12,17 @@ import { AppError } from "@/utils/errors";
 import { gameService } from "./game.service";
 
 // ---------------------------------------------------------------------------
-// Validation schema
+// Validation schemas
 // ---------------------------------------------------------------------------
 
 const PlayerActionSchema = z.object({
   action: z.string().min(1).max(2000),
   choiceId: z.string().min(1).optional(),
   socketId: z.string().optional(),
+});
+
+const MessagesQuerySchema = z.object({
+  milestoneId: z.string().uuid().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -62,6 +68,50 @@ export async function postActionHandler(
         ...(result.response ? { response: result.response } : {}),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/v1/adventures/:id/state
+ * Returns full GameStateDTO; triggers milestone initialization if milestones are empty.
+ */
+export async function getStateHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const adventureId = req.params["id"]!;
+    const userId = req.user!.id;
+    const state = await gameService.getState(adventureId, userId);
+    res.json({ success: true, data: state });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/v1/adventures/:id/messages?milestoneId=
+ * Returns messages filtered by milestone (optional); limit 100, ordered createdAt ASC.
+ */
+export async function getMessagesHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const adventureId = req.params["id"]!;
+    const userId = req.user!.id;
+
+    const parsed = MessagesQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid query params");
+    }
+
+    const result = await gameService.getMessages(adventureId, userId, parsed.data.milestoneId);
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

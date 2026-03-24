@@ -13,6 +13,8 @@ export interface GenerateParams {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  /** Overrides default LLMService retry attempts for this call. */
+  maxAttempts?: number;
   /**
    * Optional override — if set, LLMService routes to this specific "provider:model" key
    * instead of the configured primary provider.
