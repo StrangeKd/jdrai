@@ -110,6 +110,102 @@ function emitSocketEvent(event: string, data: unknown) {
 // Tests
 // ---------------------------------------------------------------------------
 
+describe("useGameSession — Story 6.6 extensions", () => {
+  beforeEach(() => {
+    listeners.clear();
+    apiPostMock.mockReset();
+    apiGetMock.mockReset();
+    socket.connected = true;
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllTimers();
+  });
+
+  it("game:state-update milestone_complete with nextMilestone → sets showMilestoneOverlay=true and milestoneOverlayName", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      emitSocketEvent("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: "La Forêt Sombre",
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(true);
+    expect(result.current.milestoneOverlayName).toBe("La Forêt Sombre");
+  });
+
+  it("game:state-update milestone_complete with nextMilestone=null → does NOT show overlay", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      emitSocketEvent("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: null,
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(false);
+    expect(result.current.milestoneOverlayName).toBeNull();
+  });
+
+  it("milestone overlay auto-clears after 2500ms", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      emitSocketEvent("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: "Prologue",
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(false);
+    expect(result.current.milestoneOverlayName).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it("openHistoryDrawer / closeHistoryDrawer toggle isHistoryDrawerOpen", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isHistoryDrawerOpen).toBe(false);
+
+    act(() => result.current.openHistoryDrawer());
+    expect(result.current.isHistoryDrawerOpen).toBe(true);
+
+    act(() => result.current.closeHistoryDrawer());
+    expect(result.current.isHistoryDrawerOpen).toBe(false);
+  });
+
+  it("isFirstLaunch=false when messages are present (resumed adventure)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    // stableQueryData has messages: [{ role: "assistant", ... }]
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
+
+  it("game:response-start sets isFirstLaunch=false", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    // Manually set isFirstLaunch-like scenario: simulate the event
+    act(() => {
+      emitSocketEvent("game:response-start", { adventureId: "adv-1" });
+    });
+
+    // After response-start, isFirstLaunch must be false
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
+});
+
 describe("useGameSession — Story 6.5 extensions", () => {
   beforeEach(() => {
     listeners.clear();

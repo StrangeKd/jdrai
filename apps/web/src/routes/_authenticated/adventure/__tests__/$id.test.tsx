@@ -37,6 +37,18 @@ vi.mock("@/components/game/FreeInput", () => ({
   ),
 }));
 
+vi.mock("@/components/game/HistoryDrawer", () => ({
+  HistoryDrawer: () => <div data-testid="history-drawer" />,
+}));
+
+vi.mock("@/components/game/MilestoneOverlay", () => ({
+  MilestoneOverlay: () => null,
+}));
+
+vi.mock("@/components/game/IntroSession", () => ({
+  IntroSession: () => null,
+}));
+
 vi.mock("@/components/game/PauseMenu", () => ({
   PauseMenu: ({
     isOpen,
@@ -102,6 +114,13 @@ vi.mock("@/hooks/useGameSession", async () => {
         openPauseMenu: () => setIsPauseMenuOpen(true),
         closePauseMenu: () => setIsPauseMenuOpen(false),
         manualSave: manualSaveMock,
+        // Story 6.6
+        showMilestoneOverlay: false,
+        milestoneOverlayName: null,
+        isHistoryDrawerOpen: false,
+        isFirstLaunch: false,
+        openHistoryDrawer: vi.fn(),
+        closeHistoryDrawer: vi.fn(),
       };
     },
   };
