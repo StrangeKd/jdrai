@@ -65,7 +65,8 @@ export function useGameSession(adventureId: string): GameSessionState {
   const { data: gameStateResponse } = useQuery<ApiResponse<GameStateDTO>>({
     queryKey: ["adventure", adventureId, "state"],
     queryFn: () => api.get<ApiResponse<GameStateDTO>>(`/api/v1/adventures/${adventureId}/state`),
-    staleTime: Infinity, // Real-time state comes via Socket.io; REST is initial load only
+    staleTime: 0,               // Always refetch on mount — ensures fresh state after navigation
+    refetchOnWindowFocus: false, // Real-time updates come via Socket.io, not polling
   });
 
   const gameState = gameStateResponse?.data ?? null;
