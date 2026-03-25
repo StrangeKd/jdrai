@@ -75,7 +75,12 @@ afterEach(cleanup);
 
 describe("HistoryDrawer", () => {
   beforeEach(() => {
-    useQueryMock.mockReturnValue({ data: messages, isLoading: false });
+    useQueryMock.mockReturnValue({
+      data: messages,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
   });
 
   it("renders milestone groups with messages when open", () => {
@@ -111,7 +116,12 @@ describe("HistoryDrawer", () => {
   });
 
   it("shows loading skeleton while messages are loading", () => {
-    useQueryMock.mockReturnValue({ data: [], isLoading: true });
+    useQueryMock.mockReturnValue({
+      data: [],
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
 
     render(
       <HistoryDrawer
@@ -128,7 +138,12 @@ describe("HistoryDrawer", () => {
   });
 
   it("shows empty state when no messages", () => {
-    useQueryMock.mockReturnValue({ data: [], isLoading: false });
+    useQueryMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
 
     render(
       <HistoryDrawer
@@ -162,6 +177,8 @@ describe("HistoryDrawer", () => {
     useQueryMock.mockReturnValue({
       data: [{ id: "x", role: "assistant", content: longContent, milestoneId: "m1", createdAt: "2026-03-01T00:00:00Z" }],
       isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
     });
 
     render(
@@ -175,5 +192,28 @@ describe("HistoryDrawer", () => {
 
     const displayed = screen.getByText(/^A+\.\.\./);
     expect(displayed.textContent).toHaveLength(203); // 200 chars + "..."
+  });
+
+  it("shows error state and retries when message fetch fails", () => {
+    const refetch = vi.fn();
+    useQueryMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+
+    render(
+      <HistoryDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        adventureId="adv-1"
+        milestones={milestones}
+      />,
+    );
+
+    expect(screen.getByText("Impossible de charger l'historique.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Réessayer" }));
+    expect(refetch).toHaveBeenCalledOnce();
   });
 });

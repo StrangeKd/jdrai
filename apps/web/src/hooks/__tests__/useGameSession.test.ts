@@ -334,6 +334,10 @@ describe("useGameSession", () => {
         ...gameStateResponse,
         data: {
           ...gameStateResponse.data,
+          adventure: {
+            ...gameStateResponse.data.adventure,
+            status: "completed",
+          },
           messages: [],
         },
       },

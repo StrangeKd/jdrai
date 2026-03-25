@@ -179,8 +179,7 @@ export function useGameSession(adventureId: string): GameSessionState {
     if (!gameState) return;
     if (hasAutoStarted.current) return;
 
-    const isNew =
-      (gameState.messages ?? []).length === 0 && gameState.adventure.status === "active";
+    const isNew = (gameState.messages ?? []).length === 0;
     setIsFirstLaunch(isNew);
 
     if (isNew) {

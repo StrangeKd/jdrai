@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
 
 import type { GameMessageDTO, MilestoneDTO } from "@jdrai/shared";
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { fetchMessages } from "@/services/adventure.service";
 
@@ -56,29 +56,35 @@ interface HistoryDrawerProps {
 export function HistoryDrawer({ isOpen, onClose, adventureId, milestones }: HistoryDrawerProps) {
   const activeMilestoneRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
+  const {
+    data: messages = [],
+    isLoading: isLoadingMessages,
+    isError: isMessagesError,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: ["adventure", adventureId, "messages"],
     queryFn: () => fetchMessages(adventureId),
     enabled: isOpen,
     staleTime: 30_000,
   });
 
-  // Scroll to the active milestone section when the drawer opens
+  const groups = groupByMilestone(messages, milestones);
+  const activeGroupId = groups.find((group) => group.milestone.status === "active")?.milestone.id;
+
+  // Scroll to the active milestone section when the drawer opens and data is ready
   useEffect(() => {
     if (!isOpen || !activeMilestoneRef.current) return;
     const timer = setTimeout(() => {
       activeMilestoneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
     return () => clearTimeout(timer);
-  }, [isOpen]);
-
-  const groups = groupByMilestone(messages, milestones);
+  }, [isOpen, isLoadingMessages, activeGroupId]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className="w-full md:w-96 p-0 flex flex-col"
+        className="w-full md:w-96 p-0 flex flex-col min-h-0"
         showCloseButton={false}
       >
         <SheetHeader className="px-4 py-3 border-b shrink-0">
@@ -92,9 +98,12 @@ export function HistoryDrawer({ isOpen, onClose, adventureId, milestones }: Hist
             </button>
             <SheetTitle className="text-base">Historique</SheetTitle>
           </div>
+          <SheetDescription className="sr-only">
+            Historique de l&apos;aventure, regroupé par milestones en lecture seule.
+          </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-4 py-3 space-y-4">
             {isLoadingMessages && (
               <div className="space-y-3" aria-busy="true" aria-label="Chargement de l'historique">
@@ -108,13 +117,27 @@ export function HistoryDrawer({ isOpen, onClose, adventureId, milestones }: Hist
               </div>
             )}
 
-            {!isLoadingMessages && groups.length === 0 && (
+            {!isLoadingMessages && isMessagesError && (
+              <div className="text-sm text-center py-8 space-y-3">
+                <p className="text-destructive">Impossible de charger l&apos;historique.</p>
+                <button
+                  type="button"
+                  onClick={() => void refetchMessages()}
+                  className="text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+                >
+                  Réessayer
+                </button>
+              </div>
+            )}
+
+            {!isLoadingMessages && !isMessagesError && groups.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
                 Aucun message dans cette aventure.
               </p>
             )}
 
             {!isLoadingMessages &&
+              !isMessagesError &&
               groups.map(({ milestone, messages: groupMessages }) => {
                 const isActive = milestone.status === "active";
                 return (
