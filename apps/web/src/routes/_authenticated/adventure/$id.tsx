@@ -4,10 +4,11 @@
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
  */
-import { createFileRoute, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useBlocker, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { CharacterPanel } from "@/components/game/CharacterPanel";
+import { ExitConfirmModal } from "@/components/game/ExitConfirmModal";
 import { FreeInput } from "@/components/game/FreeInput";
 import { HistoryDrawer } from "@/components/game/HistoryDrawer";
 import { IntroSession } from "@/components/game/IntroSession";
@@ -55,7 +56,39 @@ export function GameSessionPage() {
     openHistoryDrawer,
     closeHistoryDrawer,
     dismissIntro,
+    // Story 6.7
+    isInGameSession,
+    isExitModalOpen,
+    openExitModal,
+    closeExitModal,
+    isConfirmingExit,
+    confirmExit,
   } = useGameSession(adventureId, { isNew: isNewAdventure });
+
+  // Story 6.7 — Router blocker: intercepts in-app navigation and browser back button
+  // while isInGameSession=true (adventure not yet complete).
+  const blocker = useBlocker({
+    shouldBlockFn: () => isInGameSession && !isAdventureComplete,
+    withResolver: true,
+  });
+
+  // Unified modal open state: manual (PauseMenu quit) OR router-blocked navigation
+  const isExitModalActuallyOpen = isExitModalOpen || blocker.status === "blocked";
+
+  // Confirm: save + navigate (or proceed blocked navigation)
+  const handleConfirmExit = () => {
+    if (blocker.status === "blocked") {
+      void confirmExit(() => blocker.proceed());
+    } else {
+      void confirmExit();
+    }
+  };
+
+  // Cancel: stay in session
+  const handleCancelExit = () => {
+    if (blocker.status === "blocked") blocker.reset();
+    closeExitModal();
+  };
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -197,9 +230,7 @@ export function GameSessionPage() {
         onClose={closePauseMenu}
         onSave={handleManualSave}
         onHistory={openHistoryDrawer}
-        onQuit={() => {
-          // TODO Story 6.7: confirm and quit adventure
-        }}
+        onQuit={() => { closePauseMenu(); openExitModal(); }}
         lastSavedAt={lastSavedAt}
         isSaving={isSaving}
       />
@@ -223,6 +254,15 @@ export function GameSessionPage() {
         visible={isFirstLaunch}
         isClickable={isStreaming}
         onDismiss={dismissIntro}
+      />
+
+      {/* ExitConfirmModal — Story 6.7, highest z-index (110) */}
+      <ExitConfirmModal
+        isOpen={isExitModalActuallyOpen}
+        onConfirm={handleConfirmExit}
+        onCancel={handleCancelExit}
+        lastSavedAt={lastSavedAt}
+        isConfirming={isConfirmingExit}
       />
     </div>
   );

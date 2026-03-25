@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", () => ({
     }),
   useRouterState: ({ select }: { select: (s: { location: { state: unknown } }) => unknown }) =>
     select({ location: { state: {} } }),
+  useBlocker: () => ({ status: "idle", proceed: vi.fn(), reset: vi.fn() }),
 }));
 
 vi.mock("@/components/game/SessionHeader", () => ({
@@ -49,6 +50,10 @@ vi.mock("@/components/game/MilestoneOverlay", () => ({
 
 vi.mock("@/components/game/IntroSession", () => ({
   IntroSession: () => null,
+}));
+
+vi.mock("@/components/game/ExitConfirmModal", () => ({
+  ExitConfirmModal: () => null,
 }));
 
 vi.mock("@/components/game/PauseMenu", () => ({
@@ -124,6 +129,13 @@ vi.mock("@/hooks/useGameSession", async () => {
         openHistoryDrawer: vi.fn(),
         closeHistoryDrawer: vi.fn(),
         dismissIntro: vi.fn(),
+        // Story 6.7
+        isInGameSession: true,
+        isExitModalOpen: false,
+        openExitModal: vi.fn(),
+        closeExitModal: vi.fn(),
+        isConfirmingExit: false,
+        confirmExit: vi.fn().mockResolvedValue(undefined),
       };
     },
   };
