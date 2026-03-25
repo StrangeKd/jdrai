@@ -46,6 +46,7 @@ export interface D20Result {
 // ---------------------------------------------------------------------------
 
 const BASE_DC: Record<ActionType, number> = {
+  narrative: 0, // sentinel — never used at runtime (no D20 roll for narrative actions)
   trivial: 5,
   easy: 8,
   medium: 12,

@@ -64,6 +64,7 @@ const NARRATIVE_INSTRUCTIONS: Record<D20Outcome, string> = {
 };
 
 const ACTION_TYPE_LABELS: Record<ActionType, string> = {
+  narrative: "narrative", // sentinel — never used at runtime (no D20 block for narrative actions)
   trivial: "triviale",
   easy: "facile",
   medium: "moyenne",
@@ -129,6 +130,31 @@ export class PromptBuilder {
       `Bonus personnage : ${bonusSign}${result.characterBonus}`,
       `Résultat final : ${result.totalScore} vs DC ${result.finalDC} → ${outcomeLabel}`,
       `Consigne : ${narrativeInstruction}`,
+    ].join("\n");
+  }
+
+  // -------------------------------------------------------------------------
+  // buildSimpleInjectionBlock
+  // -------------------------------------------------------------------------
+
+  /**
+   * Builds the hidden system block for narrative and trivial actions.
+   * No D20 roll data — instructs the LLM to advance naturally or auto-succeed.
+   * narrative: no obstacle, no resolution roll.
+   * trivial: automatic success, optional descriptive touch.
+   */
+  buildSimpleInjectionBlock(actionType: "narrative" | "trivial", playerAction: string): string {
+    if (actionType === "narrative") {
+      return [
+        "[SYSTÈME — INVISIBLE AU JOUEUR]",
+        `Action du joueur : "${playerAction}"`,
+        "Type : action narrative — fais avancer l'histoire naturellement, sans obstacle ni jet de résolution.",
+      ].join("\n");
+    }
+    return [
+      "[SYSTÈME — INVISIBLE AU JOUEUR]",
+      `Action du joueur : "${playerAction}"`,
+      "Type : action triviale — succès automatique, ajoute une touche descriptive si pertinent.",
     ].join("\n");
   }
 
