@@ -1,4 +1,9 @@
-import type { AdventureCreateInput, AdventureDTO, AdventureTemplateDTO } from "@jdrai/shared";
+import type {
+  AdventureCreateInput,
+  AdventureDTO,
+  AdventureTemplateDTO,
+  GameMessageDTO,
+} from "@jdrai/shared";
 
 import { api } from "@/services/api";
 
@@ -24,4 +29,13 @@ export async function abandonAdventure(adventureId: string) {
     { status: "abandoned" },
   );
   return response.data;
+}
+
+/** Fetch full message history for an adventure (up to 100 messages). */
+export async function fetchMessages(adventureId: string): Promise<GameMessageDTO[]> {
+  const response = await api.get<{
+    success: true;
+    data: { messages: GameMessageDTO[]; total: number };
+  }>(`/api/v1/adventures/${adventureId}/messages`);
+  return response.data.messages;
 }

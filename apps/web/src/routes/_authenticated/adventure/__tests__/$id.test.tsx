@@ -11,6 +11,8 @@ vi.mock("@tanstack/react-router", () => ({
       ...(opts as object),
       useParams: () => ({ id: "adv-1" }),
     }),
+  useRouterState: ({ select }: { select: (s: { location: { state: unknown } }) => unknown }) =>
+    select({ location: { state: {} } }),
 }));
 
 vi.mock("@/components/game/SessionHeader", () => ({
@@ -35,6 +37,18 @@ vi.mock("@/components/game/FreeInput", () => ({
       submit
     </button>
   ),
+}));
+
+vi.mock("@/components/game/HistoryDrawer", () => ({
+  HistoryDrawer: () => <div data-testid="history-drawer" />,
+}));
+
+vi.mock("@/components/game/MilestoneOverlay", () => ({
+  MilestoneOverlay: () => null,
+}));
+
+vi.mock("@/components/game/IntroSession", () => ({
+  IntroSession: () => null,
 }));
 
 vi.mock("@/components/game/PauseMenu", () => ({
@@ -102,6 +116,14 @@ vi.mock("@/hooks/useGameSession", async () => {
         openPauseMenu: () => setIsPauseMenuOpen(true),
         closePauseMenu: () => setIsPauseMenuOpen(false),
         manualSave: manualSaveMock,
+        // Story 6.6
+        showMilestoneOverlay: false,
+        milestoneOverlayName: null,
+        isHistoryDrawerOpen: false,
+        isFirstLaunch: false,
+        openHistoryDrawer: vi.fn(),
+        closeHistoryDrawer: vi.fn(),
+        dismissIntro: vi.fn(),
       };
     },
   };

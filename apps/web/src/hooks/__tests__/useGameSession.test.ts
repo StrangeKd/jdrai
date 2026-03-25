@@ -327,34 +327,42 @@ describe("useGameSession", () => {
     expect(result.current.gameState).toEqual(gameStateResponse.data);
   });
 
-  it("emits game:request-intro and sets isLoading when adventure has no messages", () => {
+  // Story 6.6: game:request-intro replaced by sendAction("Commencer l'aventure")
+  // isFirstLaunch is now initialized from options.isNew (not derived from message count)
+  it("calls sendMessage when adventure has no messages (auto-start trigger)", async () => {
     mockUseQuery.mockReturnValue({
       data: {
         ...gameStateResponse,
         data: {
           ...gameStateResponse.data,
+          adventure: {
+            ...gameStateResponse.data.adventure,
+            status: "completed",
+          },
           messages: [],
         },
       },
     });
 
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    expect(mockSocket.emit).toHaveBeenCalledWith("game:request-intro", { adventureId: "adv-1" });
-    expect(result.current.isLoading).toBe(true);
-  });
-
-  it("does not emit game:request-intro when messages already exist", () => {
-    // Default gameStateResponse has messages — mockSocket.emit should not be called for intro
     renderHook(() => useGameSession("adv-1"));
 
-    expect(mockSocket.emit).not.toHaveBeenCalledWith(
-      "game:request-intro",
-      expect.anything(),
-    );
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
   });
 
-  it("does not emit game:request-intro twice on re-render", () => {
+  it("initializes isFirstLaunch=true when options.isNew=true is passed", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
+    expect(result.current.isFirstLaunch).toBe(true);
+  });
+
+  it("does not set isFirstLaunch=true when messages already exist", () => {
+    // Default gameStateResponse has messages
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isFirstLaunch).toBe(false);
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not call sendMessage twice on re-render (hasAutoStarted guard)", async () => {
     mockUseQuery.mockReturnValue({
       data: {
         ...gameStateResponse,
@@ -368,9 +376,6 @@ describe("useGameSession", () => {
     const { rerender } = renderHook(() => useGameSession("adv-1"));
     rerender();
 
-    const introCalls = (mockSocket.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
-      ([event]) => event === "game:request-intro",
-    );
-    expect(introCalls).toHaveLength(1);
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
   });
 });

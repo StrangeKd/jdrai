@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
+// Extend TanStack Router's HistoryState to allow passing isNew flag on navigation
+declare module "@tanstack/react-router" {
+  interface HistoryState {
+    isNew?: boolean;
+  }
+}
+
 import type { AdventureCreateInput } from "@jdrai/shared";
 
 import { abandonAdventure, createAdventure, getAdventures, getTemplates } from "@/services/adventure.service";
@@ -37,7 +44,7 @@ export function useCreateAdventure() {
     mutationFn: (input: AdventureCreateInput) => createAdventure(input),
     onSuccess: async (adventure) => {
       await queryClient.invalidateQueries({ queryKey: ["adventures"] });
-      await navigate({ to: "/adventure/$id", params: { id: adventure.id } });
+      await navigate({ to: "/adventure/$id", params: { id: adventure.id }, state: { isNew: true } });
     },
   });
 }

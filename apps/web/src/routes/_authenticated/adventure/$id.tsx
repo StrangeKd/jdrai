@@ -4,11 +4,14 @@
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { CharacterPanel } from "@/components/game/CharacterPanel";
 import { FreeInput } from "@/components/game/FreeInput";
+import { HistoryDrawer } from "@/components/game/HistoryDrawer";
+import { IntroSession } from "@/components/game/IntroSession";
+import { MilestoneOverlay } from "@/components/game/MilestoneOverlay";
 import { NarrationPanel } from "@/components/game/NarrationPanel";
 import { PauseMenu } from "@/components/game/PauseMenu";
 import { SessionHeader } from "@/components/game/SessionHeader";
@@ -20,6 +23,9 @@ export const Route = createFileRoute("/_authenticated/adventure/$id")({
 
 export function GameSessionPage() {
   const { id: adventureId } = Route.useParams();
+  const isNewAdventure = useRouterState({
+    select: (s) => !!s.location.state.isNew,
+  });
 
   const {
     gameState,
@@ -41,13 +47,22 @@ export function GameSessionPage() {
     openPauseMenu,
     closePauseMenu,
     manualSave,
-  } = useGameSession(adventureId);
+    // Story 6.6
+    showMilestoneOverlay,
+    milestoneOverlayName,
+    isHistoryDrawerOpen,
+    isFirstLaunch,
+    openHistoryDrawer,
+    closeHistoryDrawer,
+    dismissIntro,
+  } = useGameSession(adventureId, { isNew: isNewAdventure });
 
   const [isSaving, setIsSaving] = useState(false);
 
   const isLocked = isLoading || isStreaming;
   const character = gameState?.adventure?.character;
   const adventureTitle = gameState?.adventure.title ?? "Aventure";
+  const milestones = gameState?.milestones ?? [];
 
   // ---------------------------------------------------------------------------
   // Story 7.x stub — redirect when adventure ends
@@ -172,9 +187,7 @@ export function GameSessionPage() {
           isStreaming={isStreaming}
           isLoading={isLoading}
           onSubmit={(text) => void sendAction(text)}
-          onHistoryClick={() => {
-            // TODO Story 6.6: open HistoryDrawer
-          }}
+          onHistoryClick={openHistoryDrawer}
         />
       </div>
 
@@ -183,14 +196,33 @@ export function GameSessionPage() {
         isOpen={isPauseMenuOpen}
         onClose={closePauseMenu}
         onSave={handleManualSave}
-        onHistory={() => {
-          // TODO Story 6.6: open HistoryDrawer
-        }}
+        onHistory={openHistoryDrawer}
         onQuit={() => {
           // TODO Story 6.7: confirm and quit adventure
         }}
         lastSavedAt={lastSavedAt}
         isSaving={isSaving}
+      />
+
+      {/* HistoryDrawer — Story 6.6 */}
+      <HistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={closeHistoryDrawer}
+        adventureId={adventureId}
+        milestones={milestones}
+      />
+
+      {/* MilestoneOverlay — Story 6.6 */}
+      <MilestoneOverlay
+        visible={showMilestoneOverlay}
+        milestoneName={milestoneOverlayName}
+      />
+
+      {/* IntroSession — Story 6.6, shown only on first launch of new adventure */}
+      <IntroSession
+        visible={isFirstLaunch}
+        isClickable={isStreaming}
+        onDismiss={dismissIntro}
       />
     </div>
   );

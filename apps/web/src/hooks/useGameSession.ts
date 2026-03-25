@@ -7,10 +7,12 @@
  *  - Handle all socket events: response-start, chunk, response-complete, state-update, error
  *  - Manage game display state: currentScene, streamingBuffer, playerEcho, choices
  *  - Manage HP state, autosave indicator, pause menu state (Story 6.5)
+ *  - Manage milestone overlay, history drawer, session intro state (Story 6.6)
  *  - Expose sendAction() which submits the player action via useGameChat
  *  - Expose manualSave(), openPauseMenu(), closePauseMenu() (Story 6.5)
+ *  - Expose openHistoryDrawer(), closeHistoryDrawer() (Story 6.6)
  *
- * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7).
+ * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7 / Story 6.6 Task 7).
  */
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -83,6 +85,14 @@ export interface GameSessionState {
   isAdventureComplete: boolean;
   /** true when the adventure ended with game_over (Story 6.5 stub, Story 7.x will use) */
   isGameOver: boolean;
+  /** true while the milestone celebration overlay is visible (Story 6.6) */
+  showMilestoneOverlay: boolean;
+  /** Name of the milestone being celebrated, or null (Story 6.6) */
+  milestoneOverlayName: string | null;
+  /** true while the history drawer is open (Story 6.6) */
+  isHistoryDrawerOpen: boolean;
+  /** true on first load when adventure has no messages yet — shows IntroSession (Story 6.6) */
+  isFirstLaunch: boolean;
   /** Submit a player action (free text or choice label) */
   sendAction: (action: string, choiceId?: string) => Promise<void>;
   /** Open the pause overlay (Story 6.5) */
@@ -91,9 +101,15 @@ export interface GameSessionState {
   closePauseMenu: () => void;
   /** Manually save the adventure via POST /adventures/:id/save (Story 6.5) */
   manualSave: () => Promise<void>;
+  /** Open the history drawer (Story 6.6) */
+  openHistoryDrawer: () => void;
+  /** Close the history drawer (Story 6.6) */
+  closeHistoryDrawer: () => void;
+  /** Immediately dismiss the intro overlay (bypasses minimum display timer) (Story 6.6) */
+  dismissIntro: () => void;
 }
 
-export function useGameSession(adventureId: string): GameSessionState {
+export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
   const [currentScene, setCurrentScene] = useState("");
   const [streamingBuffer, setStreamingBuffer] = useState("");
   const [playerEcho, setPlayerEcho] = useState<string | null>(null);
@@ -110,10 +126,22 @@ export function useGameSession(adventureId: string): GameSessionState {
   const [isPauseMenuOpen, setIsPauseMenuOpen] = useState(false);
   const [isAdventureComplete, setIsAdventureComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  // Story 6.6 — Milestone overlay + history drawer + session intro
+  const [showMilestoneOverlay, setShowMilestoneOverlay] = useState(false);
+  const [milestoneOverlayName, setMilestoneOverlayName] = useState<string | null>(null);
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  // Initialized from options.isNew so the overlay is visible before gameState loads
+  const [isFirstLaunch, setIsFirstLaunch] = useState(options?.isNew ?? false);
   // Timer ref for autosave indicator auto-clear (prevents stale setState after unmount)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Prevents double-triggering the intro request across re-renders
-  const introRequestedRef = useRef(false);
+  // Timer ref for milestone overlay auto-dismiss
+  const milestoneOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timer ref for intro delayed hide (enforces 2s minimum display)
+  const introHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Minimum timestamp until which the intro must stay visible (ensures readability)
+  const introMinDisplayUntilRef = useRef<number>(options?.isNew ? Date.now() + 2000 : 0);
+  // Prevents double-triggering the intro request across re-renders (renamed from introRequestedRef)
+  const hasAutoStarted = useRef(false);
 
   // TanStack AI streaming layer — handles HTTP action POST + chunk streaming
   const { sendMessage } = useGameChat(adventureId);
@@ -152,31 +180,20 @@ export function useGameSession(adventureId: string): GameSessionState {
     }
   }, [gameState]);
 
-  // Auto-request intro when the adventure has no messages yet
+  // Story 6.6 — Auto-trigger first GM narration on new adventures (no messages yet).
+  // isFirstLaunch is already set from options.isNew — no need to re-derive it here.
   useEffect(() => {
     if (!gameState) return;
-    if ((gameState.messages ?? []).length > 0) return;
-    if (gameState.adventure.status !== "active") return;
-    if (introRequestedRef.current) return;
+    if (hasAutoStarted.current) return;
 
-    introRequestedRef.current = true;
-    setIsLoading(true);
-
-    const sock = getSocket();
-    if (!sock) return;
-
-    const emitIntroRequest = () => {
-      // game:join is emitted first (registered before this handler in socket.service),
-      // so the socket is guaranteed to be in the room when the server receives this event.
-      sock.emit("game:request-intro", { adventureId });
-    };
-
-    if (sock.connected) {
-      emitIntroRequest();
-    } else {
-      sock.once("connect", emitIntroRequest);
+    const isNew = (gameState.messages ?? []).length === 0;
+    if (isNew) {
+      hasAutoStarted.current = true;
+      // Trigger first GM narration through the standard action flow.
+      // isLoading and isStreaming are both false at this point (initial load).
+      void sendAction("Commencer l'aventure");
     }
-  }, [gameState, adventureId]);
+  }, [gameState]);
 
   // ---------------------------------------------------------------------------
   // Story 6.5 — Autosave indicator helper (clears after 2s, debounced)
@@ -224,13 +241,23 @@ export function useGameSession(adventureId: string): GameSessionState {
       setLastSavedAt(new Date());
       // Story 6.5: trigger autosave indicator after each completed GM response
       triggerAutosaveIndicator();
+      // Story 6.6: dismiss IntroSession after first narration completes.
+      // Enforces a 2s minimum display so the player has time to read the intro text.
+      const remaining = introMinDisplayUntilRef.current - Date.now();
+      if (remaining > 0) {
+        introHideTimerRef.current = setTimeout(() => setIsFirstLaunch(false), remaining);
+      } else {
+        setIsFirstLaunch(false);
+      }
     };
 
     // game:state-update — Story 6.5: handle hp_change, adventure_complete, game_over
+    //                     Story 6.6: handle milestone_complete
     const onStateUpdate = (data: {
       type?: string;
       currentHp?: number;
       maxHp?: number;
+      nextMilestone?: string | null;
     }) => {
       if (data.type === "hp_change") {
         if (data.currentHp !== undefined) setCurrentHp(data.currentHp);
@@ -240,6 +267,18 @@ export function useGameSession(adventureId: string): GameSessionState {
       } else if (data.type === "game_over") {
         setIsAdventureComplete(true);
         setIsGameOver(true);
+      } else if (data.type === "milestone_complete") {
+        // Only show overlay when there is a next milestone.
+        // nextMilestone=null means the last milestone completed → adventure ending.
+        if (data.nextMilestone) {
+          setMilestoneOverlayName(data.nextMilestone);
+          setShowMilestoneOverlay(true);
+          if (milestoneOverlayTimerRef.current) clearTimeout(milestoneOverlayTimerRef.current);
+          milestoneOverlayTimerRef.current = setTimeout(() => {
+            setShowMilestoneOverlay(false);
+            setMilestoneOverlayName(null);
+          }, 2500);
+        }
       }
     };
 
@@ -263,8 +302,10 @@ export function useGameSession(adventureId: string): GameSessionState {
       sock.off("game:response-complete", onResponseComplete as (...args: unknown[]) => void);
       sock.off("game:state-update", onStateUpdate as (...args: unknown[]) => void);
       sock.off("game:error", onError as (...args: unknown[]) => void);
-      // Clear autosave timer to prevent setState after unmount
+      // Clear timers to prevent setState after unmount
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      if (milestoneOverlayTimerRef.current) clearTimeout(milestoneOverlayTimerRef.current);
+      if (introHideTimerRef.current) clearTimeout(introHideTimerRef.current);
       disconnect();
       setIsInGameSession(false);
     };
@@ -322,6 +363,23 @@ export function useGameSession(adventureId: string): GameSessionState {
   }
 
   // ---------------------------------------------------------------------------
+  // Story 6.6 — History drawer actions
+  // ---------------------------------------------------------------------------
+
+  function openHistoryDrawer() {
+    setIsHistoryDrawerOpen(true);
+  }
+
+  function closeHistoryDrawer() {
+    setIsHistoryDrawerOpen(false);
+  }
+
+  function dismissIntro() {
+    if (introHideTimerRef.current) clearTimeout(introHideTimerRef.current);
+    setIsFirstLaunch(false);
+  }
+
+  // ---------------------------------------------------------------------------
   // Story 6.5 — Manual save via POST /adventures/:id/save
   // ---------------------------------------------------------------------------
 
@@ -357,9 +415,16 @@ export function useGameSession(adventureId: string): GameSessionState {
     isPauseMenuOpen,
     isAdventureComplete,
     isGameOver,
+    showMilestoneOverlay,
+    milestoneOverlayName,
+    isHistoryDrawerOpen,
+    isFirstLaunch,
     sendAction: sendActionWrapped,
     openPauseMenu,
     closePauseMenu,
     manualSave,
+    openHistoryDrawer,
+    closeHistoryDrawer,
+    dismissIntro,
   };
 }
