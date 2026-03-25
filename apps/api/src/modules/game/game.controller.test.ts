@@ -16,6 +16,7 @@ vi.mock("./game.service", () => ({
     processAction: vi.fn(),
     getState: vi.fn(),
     getMessages: vi.fn(),
+    autoSave: vi.fn(),
   },
 }));
 
@@ -27,12 +28,16 @@ vi.mock("@/db", () => ({
         findFirst: vi.fn(),
       },
     },
-    update: vi.fn(),
+    select: vi.fn(),
   },
 }));
 
 vi.mock("@/db/schema", () => ({
   adventures: {},
+  adventureCharacters: {
+    currentHp: "currentHp",
+    adventureId: "adventureId",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -345,8 +350,13 @@ describe("POST /adventures/:id/save (AC-5)", () => {
 
   it("active adventure + correct owner → 200 with savedAt", async () => {
     vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(ACTIVE_ADVENTURE as never);
-    const updateSet = vi.fn().mockReturnValue({ where: vi.fn() });
-    vi.mocked(db.update).mockReturnValue({ set: updateSet } as never);
+    const selectFrom = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValueOnce([{ currentHp: 20 }]),
+      }),
+    });
+    vi.mocked(db.select).mockReturnValue({ from: selectFrom } as never);
+    vi.mocked(gameService.autoSave).mockResolvedValueOnce(undefined);
 
     const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
 
@@ -355,6 +365,13 @@ describe("POST /adventures/:id/save (AC-5)", () => {
     expect(res.body.data.savedAt).toBeDefined();
     // savedAt must be a valid ISO timestamp
     expect(() => new Date(res.body.data.savedAt as string)).not.toThrow();
+    expect(gameService.autoSave).toHaveBeenCalledOnce();
+    expect(gameService.autoSave).toHaveBeenCalledWith(
+      "adv-1",
+      expect.objectContaining({
+        currentHp: 20,
+      }),
+    );
   });
 
   it("adventure not found → 404 NOT_FOUND", async () => {
@@ -364,6 +381,18 @@ describe("POST /adventures/:id/save (AC-5)", () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("wrong owner → 403 FORBIDDEN", async () => {
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce({
+      ...ACTIVE_ADVENTURE,
+      userId: "another-user",
+    } as never);
+
+    const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 
   it("adventure not active → 400 ADVENTURE_NOT_ACTIVE", async () => {

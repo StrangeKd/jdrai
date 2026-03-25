@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/adventure/$id")({
   component: GameSessionPage,
 });
 
-function GameSessionPage() {
+export function GameSessionPage() {
   const { id: adventureId } = Route.useParams();
 
   const {
@@ -119,11 +119,11 @@ function GameSessionPage() {
       {/* SessionHeader — fixed top-0, h-14 (Story 6.5) */}
       <SessionHeader
         title={adventureTitle}
-        character={character}
         currentHp={currentHp}
         maxHp={maxHp}
         showAutosaveIndicator={showAutosaveIndicator}
         onPauseMenuOpen={openPauseMenu}
+        {...(character ? { character } : {})}
       />
 
       {/* CharacterPanel — mobile only, fixed top-14, h-10 (Story 6.5) */}

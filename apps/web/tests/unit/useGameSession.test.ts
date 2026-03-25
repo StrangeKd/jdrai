@@ -165,6 +165,7 @@ describe("useGameSession — Story 6.5 extensions", () => {
   it("shows autosave indicator for 2s after game:response-complete", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useGameSession("adv-1"));
+    const initialSavedAtMs = result.current.lastSavedAt?.getTime() ?? 0;
 
     expect(result.current.showAutosaveIndicator).toBe(false);
 
@@ -177,6 +178,7 @@ describe("useGameSession — Story 6.5 extensions", () => {
     });
 
     expect(result.current.showAutosaveIndicator).toBe(true);
+    expect((result.current.lastSavedAt?.getTime() ?? 0) > initialSavedAtMs).toBe(true);
 
     act(() => {
       vi.advanceTimersByTime(2000);

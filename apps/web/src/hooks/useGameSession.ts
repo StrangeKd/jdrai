@@ -193,6 +193,7 @@ export function useGameSession(adventureId: string): GameSessionState {
       setIsStreaming(false);
       setIsLoading(false);
       setPlayerEcho(null);
+      setLastSavedAt(new Date());
       // Story 6.5: trigger autosave indicator after each completed GM response
       triggerAutosaveIndicator();
     };

@@ -6,11 +6,11 @@
  * POST /api/v1/adventures/:id/save   (Story 6.5)
  */
 import type { NextFunction, Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { adventures } from "@/db/schema";
+import { adventureCharacters, adventures } from "@/db/schema";
 import { AppError } from "@/utils/errors";
 
 import { gameService } from "./game.service";
@@ -111,21 +111,48 @@ export async function postSaveHandler(
     const userId = req.user!.id;
 
     const adventure = await db.query.adventures.findFirst({
-      where: and(eq(adventures.id, adventureId), eq(adventures.userId, userId)),
+      where: eq(adventures.id, adventureId),
     });
 
     if (!adventure) {
       throw new AppError(404, "NOT_FOUND", "Adventure not found");
     }
+    if (adventure.userId !== userId) {
+      throw new AppError(403, "FORBIDDEN", "Not your adventure");
+    }
     if (adventure.status !== "active") {
       throw new AppError(400, "ADVENTURE_NOT_ACTIVE", "Cannot save a non-active adventure");
     }
 
+    const [character] = await db
+      .select({ currentHp: adventureCharacters.currentHp })
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    const previousState = (adventure.state ?? {}) as Record<string, unknown>;
+    const worldState =
+      typeof previousState["worldState"] === "object" &&
+      previousState["worldState"] !== null &&
+      !Array.isArray(previousState["worldState"])
+        ? (previousState["worldState"] as Record<string, unknown>)
+        : {};
+
+    await gameService.autoSave(adventureId, {
+      lastPlayerAction:
+        typeof previousState["lastPlayerAction"] === "string" ? previousState["lastPlayerAction"] : "",
+      currentHp:
+        character?.currentHp ??
+        (typeof previousState["currentHp"] === "number" ? previousState["currentHp"] : 0),
+      activeMilestoneId:
+        typeof previousState["activeMilestoneId"] === "string"
+          ? previousState["activeMilestoneId"]
+          : null,
+      worldState,
+      updatedAt: new Date().toISOString(),
+    });
+
     const savedAt = new Date();
-    await db
-      .update(adventures)
-      .set({ lastPlayedAt: savedAt })
-      .where(eq(adventures.id, adventureId));
 
     res.json({ success: true, data: { savedAt: savedAt.toISOString() } });
   } catch (error) {
