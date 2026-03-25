@@ -86,6 +86,12 @@ export function GameSessionPage() {
         }
       }
 
+      // Space: open pause menu when input is not focused
+      if (!isInputFocused && e.key === " ") {
+        e.preventDefault();
+        if (!isPauseMenuOpen) openPauseMenu();
+      }
+
       // Escape: toggle pause menu (Story 6.5 — replaces Story 6.4 no-op)
       if (e.key === "Escape") {
         if (isPauseMenuOpen) {
