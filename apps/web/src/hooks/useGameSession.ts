@@ -15,6 +15,7 @@
  * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7 / Story 6.6 Task 7).
  */
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import type { ApiResponse, GameStateDTO, SuggestedAction } from "@jdrai/shared";
@@ -107,6 +108,20 @@ export interface GameSessionState {
   closeHistoryDrawer: () => void;
   /** Immediately dismiss the intro overlay (bypasses minimum display timer) (Story 6.6) */
   dismissIntro: () => void;
+  /** true when the exit confirmation modal is open (Story 6.7) */
+  isExitModalOpen: boolean;
+  /** Open the exit confirmation modal (Story 6.7) */
+  openExitModal: () => void;
+  /** Close the exit confirmation modal (Story 6.7) */
+  closeExitModal: () => void;
+  /** true while save + navigate are in progress during exit (Story 6.7) */
+  isConfirmingExit: boolean;
+  /**
+   * Confirm exit: auto-saves then navigates away.
+   * If onNavigate is provided (e.g. blocker.proceed()), calls it instead of navigate(/hub).
+   * Story 6.7
+   */
+  confirmExit: (onNavigate?: () => void) => Promise<void>;
 }
 
 export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
@@ -126,6 +141,9 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   const [isPauseMenuOpen, setIsPauseMenuOpen] = useState(false);
   const [isAdventureComplete, setIsAdventureComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  // Story 6.7 — Exit confirmation modal + beforeunload guard
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isConfirmingExit, setIsConfirmingExit] = useState(false);
   // Story 6.6 — Milestone overlay + history drawer + session intro
   const [showMilestoneOverlay, setShowMilestoneOverlay] = useState(false);
   const [milestoneOverlayName, setMilestoneOverlayName] = useState<string | null>(null);
@@ -142,6 +160,9 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   const introMinDisplayUntilRef = useRef<number>(options?.isNew ? Date.now() + 2000 : 0);
   // Prevents double-triggering the intro request across re-renders (renamed from introRequestedRef)
   const hasAutoStarted = useRef(false);
+
+  // TanStack Router navigation
+  const navigate = useNavigate();
 
   // TanStack AI streaming layer — handles HTTP action POST + chunk streaming
   const { sendMessage } = useGameChat(adventureId);
@@ -179,6 +200,19 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
       setLastSavedAt(new Date(gameState.adventure.lastPlayedAt));
     }
   }, [gameState]);
+
+  // Story 6.7 — beforeunload guard: prevents tab close / refresh during active session.
+  // Custom modal cannot be shown for beforeunload (browser limitation) — native dialog only.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isInGameSession) {
+        e.preventDefault();
+        e.returnValue = ""; // Required for Chrome; message ignored by modern browsers
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isInGameSession]);
 
   // Story 6.6 — Auto-trigger first GM narration on new adventures (no messages yet).
   // isFirstLaunch is already set from options.isNew — no need to re-derive it here.
@@ -380,6 +414,42 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   }
 
   // ---------------------------------------------------------------------------
+  // Story 6.7 — Exit confirmation modal actions
+  // ---------------------------------------------------------------------------
+
+  function openExitModal() {
+    setIsExitModalOpen(true);
+  }
+
+  function closeExitModal() {
+    setIsExitModalOpen(false);
+  }
+
+  async function confirmExit(onNavigate?: () => void): Promise<void> {
+    setIsConfirmingExit(true);
+
+    // Save silently — data is already auto-saved; this just refreshes lastPlayedAt
+    try {
+      await manualSave();
+    } catch {
+      // Silent — don't block exit on save failure
+    }
+
+    // MUST be set to false before navigate() / blocker.proceed() to prevent
+    // the beforeunload listener from firing during the router transition.
+    setIsInGameSession(false);
+
+    if (onNavigate) {
+      onNavigate(); // e.g. blocker.proceed() — let TanStack Router complete blocked navigation
+    } else {
+      void navigate({ to: "/hub" });
+    }
+
+    // May not execute if navigate unmounts the component — that is fine
+    setIsConfirmingExit(false);
+  }
+
+  // ---------------------------------------------------------------------------
   // Story 6.5 — Manual save via POST /adventures/:id/save
   // ---------------------------------------------------------------------------
 
@@ -426,5 +496,10 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     openHistoryDrawer,
     closeHistoryDrawer,
     dismissIntro,
+    isExitModalOpen,
+    openExitModal,
+    closeExitModal,
+    isConfirmingExit,
+    confirmExit,
   };
 }

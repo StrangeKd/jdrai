@@ -71,6 +71,12 @@ const { apiPostMock, apiGetMock, listeners, socket, stableQueryData } = vi.hoist
   };
 });
 
+const navigateMock = vi.fn();
+
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
+
 vi.mock("@/services/socket.service", () => ({
   connect: () => socket,
   disconnect: vi.fn(),
@@ -109,6 +115,93 @@ function emitSocketEvent(event: string, data: unknown) {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe("useGameSession — Story 6.7 extensions", () => {
+  beforeEach(() => {
+    listeners.clear();
+    apiPostMock.mockReset();
+    apiGetMock.mockReset();
+    navigateMock.mockReset();
+    socket.connected = true;
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllTimers();
+  });
+
+  it("isInGameSession is true on mount", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.isInGameSession).toBe(true);
+  });
+
+  it("beforeunload is prevented when isInGameSession=true", () => {
+    renderHook(() => useGameSession("adv-1"));
+
+    const event = new Event("beforeunload") as BeforeUnloadEvent;
+    Object.defineProperty(event, "returnValue", { writable: true, value: "" });
+    const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  it("openExitModal / closeExitModal toggle isExitModalOpen", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isExitModalOpen).toBe(false);
+
+    act(() => result.current.openExitModal());
+    expect(result.current.isExitModalOpen).toBe(true);
+
+    act(() => result.current.closeExitModal());
+    expect(result.current.isExitModalOpen).toBe(false);
+  });
+
+  it("confirmExit() calls manualSave, sets isInGameSession=false, navigates to /hub", async () => {
+    apiPostMock.mockResolvedValue({ success: true, data: { savedAt: "2026-03-25T10:00:00.000Z" } });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => {
+      await result.current.confirmExit();
+    });
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/v1/adventures/adv-1/save", {});
+    expect(result.current.isInGameSession).toBe(false);
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/hub" });
+  });
+
+  it("confirmExit(onNavigate) calls onNavigate instead of navigate", async () => {
+    apiPostMock.mockResolvedValue({ success: true, data: { savedAt: "2026-03-25T10:00:00.000Z" } });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    const onNavigate = vi.fn();
+
+    await act(async () => {
+      await result.current.confirmExit(onNavigate);
+    });
+
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("confirmExit() still navigates when manualSave fails", async () => {
+    apiPostMock.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => {
+      await result.current.confirmExit();
+    });
+
+    expect(result.current.isInGameSession).toBe(false);
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/hub" });
+  });
+});
 
 describe("useGameSession — Story 6.6 extensions", () => {
   beforeEach(() => {
