@@ -23,10 +23,19 @@ interface IntroSessionProps {
 export function IntroSession({ visible, isClickable, onDismiss }: IntroSessionProps) {
   // Keep rendered during fade-out transition, unmount only after transition completes
   const [shouldRender, setShouldRender] = useState(visible);
+  // Loading dots: index of the currently dim dot (cycles 0→1→2→0…)
+  const [dimIndex, setDimIndex] = useState(0);
 
   useEffect(() => {
     if (visible) setShouldRender(true);
   }, [visible]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDimIndex((prev) => (prev + 1) % 3);
+    }, 600);
+    return () => clearInterval(id);
+  }, []);
 
   const handleTransitionEnd = () => {
     if (!visible) setShouldRender(false);
@@ -57,12 +66,21 @@ export function IntroSession({ visible, isClickable, onDismiss }: IntroSessionPr
       >
         Il était une fois...
       </p>
-      {/* Line 2: fades in after 600ms */}
+      {/* Line 2: fades in after 600ms, with cycling loading dots */}
       <p
-        className="mt-4 text-base md:text-lg text-muted-foreground text-center px-8 animate-fade-in opacity-0"
+        className="mt-4 text-base md:text-lg text-muted-foreground text-center px-8 animate-fade-in opacity-0 inline-flex items-center gap-1"
         style={{ animationDelay: "600ms", animationFillMode: "forwards" }}
       >
-        une âme en quête d&apos;aventure.
+        <span>une âme en quête d&apos;aventure</span>
+        <span className="inline-flex items-center gap-[3px] ml-0.5" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="inline-block w-[3px] h-[3px] rounded-full bg-current transition-opacity duration-300"
+              style={{ opacity: dimIndex === i ? 0.2 : 1 }}
+            />
+          ))}
+        </span>
       </p>
 
       {/* Skip button — appears once streaming starts */}
@@ -76,10 +94,11 @@ export function IntroSession({ visible, isClickable, onDismiss }: IntroSessionPr
           }}
           className={cn(
             "absolute bottom-8 right-8",
-            "flex items-center justify-center w-10 h-10 rounded-full",
-            "border border-amber-400/40 text-amber-400/60",
+            "flex items-center justify-center w-12 h-12 rounded-full",
+            "border border-white-400/40 text-white-400/60",
             "hover:border-amber-400 hover:text-amber-400",
-            "transition-colors animate-fade-in",
+            "transition-colors animate-fade-in bg-stone-800",
+            "cursor-pointer",
           )}
         >
           <svg
@@ -89,7 +108,7 @@ export function IntroSession({ visible, isClickable, onDismiss }: IntroSessionPr
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
