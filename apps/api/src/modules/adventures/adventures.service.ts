@@ -165,7 +165,15 @@ export async function getAdventuresForUser(
     : undefined;
 
   const rows = await findAdventuresByUser(userId, status);
-  return rows.map(mapRowToDTO);
+  // Deduplicate: the milestones LEFT JOIN can produce multiple rows per adventure
+  // when an adventure has more than one active milestone (data inconsistency guard).
+  const seen = new Set<string>();
+  const uniqueRows = rows.filter((row) => {
+    if (seen.has(row.adventure.id)) return false;
+    seen.add(row.adventure.id);
+    return true;
+  });
+  return uniqueRows.map(mapRowToDTO);
 }
 
 export async function getAdventureById(id: string, userId: string): Promise<AdventureDTO> {

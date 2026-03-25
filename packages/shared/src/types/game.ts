@@ -34,8 +34,19 @@ export interface MessageMetadata {
 }
 
 /**
+ * A player-facing choice suggested by the GM at the end of a narration turn.
+ * Emitted by the server in game:response-complete and used by ChoiceList.
+ */
+export interface SuggestedAction {
+  id: string;
+  label: string;
+  type: "suggested";
+}
+
+/**
  * A single game message returned by the REST API.
  * metadata (D20 data) is intentionally excluded from the DTO in P1.
+ * choices is included for assistant messages to allow session restore on reload.
  */
 export interface GameMessageDTO {
   id: string;
@@ -43,6 +54,8 @@ export interface GameMessageDTO {
   content: string;
   milestoneId: string | null;
   createdAt: string;
+  /** Suggested choices attached to this assistant message (restored on reload). */
+  choices?: SuggestedAction[];
 }
 
 /**

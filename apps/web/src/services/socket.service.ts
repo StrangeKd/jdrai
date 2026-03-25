@@ -1,31 +1,58 @@
 /**
- * Socket service — stub for Story 6.1.
- * Real Socket.io connection (URL, auth, reconnection) wired in Story 6.3.
+ * socket.service.ts — Socket.io client singleton for game sessions (Story 6.4 Task 1).
  *
- * Exports a typed socket-like interface consumed by useGameChat.
+ * Connects to the backend with Better Auth session cookies (withCredentials: true).
+ * Joins the adventure room on connect so the client receives all game:* events.
+ *
+ * Usage:
+ *   connect(adventureId)  — call on game session mount
+ *   disconnect()           — call on game session unmount
+ *   getSocket()            — access socket instance (e.g. to register event listeners)
  */
-import { EventEmitter } from "eventemitter3";
+import { io, type Socket } from "socket.io-client";
 
-// Game socket event types
-export type GameSocketEvents = {
-  "game:chunk": [content: string];
-  "game:response-complete": [];
-  "game:error": [message: string];
-  "game:session-start": [adventureId: string];
-};
+// Use VITE_API_URL when defined (explicit cross-origin setup).
+// Falls back to empty string → socket.io uses current window origin (same-origin / reverse proxy in prod).
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
-type EventCallback = (...args: unknown[]) => void;
+let _socket: Socket | null = null;
+let _currentAdventureId: string | null = null;
 
-export interface IGameSocket {
-  on(event: string, callback: EventCallback): void;
-  off(event: string, callback: EventCallback): void;
-  emit(event: string, ...args: unknown[]): void;
-  connected: boolean;
+/**
+ * Connects to the Socket.io server and joins the adventure room.
+ * Idempotent: returns the existing socket if already connected.
+ */
+export function connect(adventureId: string): Socket {
+  _currentAdventureId = adventureId;
+  if (_socket?.connected) {
+    // Socket already connected — re-emit join in case of route re-mount
+    _socket.emit("game:join", { adventureId });
+    return _socket;
+  }
+
+  _socket = io(API_BASE, {
+    withCredentials: true, // Send Better Auth session cookie
+    transports: ["websocket"],
+  });
+
+  _socket.on("connect", () => {
+    _socket!.emit("game:join", { adventureId });
+  });
+
+  return _socket;
 }
 
-/** Stub socket — replaced with real socket.io instance in Story 6.3 */
-class StubGameSocket extends EventEmitter implements IGameSocket {
-  readonly connected = false;
+/** Disconnects from the Socket.io server and clears the singleton. */
+export function disconnect(): void {
+  if (_socket?.connected && _currentAdventureId) {
+    _socket.emit("game:leave", { adventureId: _currentAdventureId });
+  }
+  _socket?.disconnect();
+  _socket = null;
+  _currentAdventureId = null;
 }
 
-export const socket: IGameSocket = new StubGameSocket();
+/** Returns the current socket instance, or null if not yet connected. */
+export function getSocket(): Socket | null {
+  return _socket;
+}
