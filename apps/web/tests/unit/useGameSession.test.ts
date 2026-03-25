@@ -193,15 +193,15 @@ describe("useGameSession — Story 6.6 extensions", () => {
     expect(result.current.isFirstLaunch).toBe(false);
   });
 
-  it("game:response-start sets isFirstLaunch=false", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
+  it("dismissIntro() immediately sets isFirstLaunch=false", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
 
-    // Manually set isFirstLaunch-like scenario: simulate the event
+    expect(result.current.isFirstLaunch).toBe(true);
+
     act(() => {
-      emitSocketEvent("game:response-start", { adventureId: "adv-1" });
+      result.current.dismissIntro();
     });
 
-    // After response-start, isFirstLaunch must be false
     expect(result.current.isFirstLaunch).toBe(false);
   });
 });

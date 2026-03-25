@@ -105,6 +105,8 @@ export interface GameSessionState {
   openHistoryDrawer: () => void;
   /** Close the history drawer (Story 6.6) */
   closeHistoryDrawer: () => void;
+  /** Immediately dismiss the intro overlay (bypasses minimum display timer) (Story 6.6) */
+  dismissIntro: () => void;
 }
 
 export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
@@ -372,6 +374,11 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     setIsHistoryDrawerOpen(false);
   }
 
+  function dismissIntro() {
+    if (introHideTimerRef.current) clearTimeout(introHideTimerRef.current);
+    setIsFirstLaunch(false);
+  }
+
   // ---------------------------------------------------------------------------
   // Story 6.5 — Manual save via POST /adventures/:id/save
   // ---------------------------------------------------------------------------
@@ -418,5 +425,6 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     manualSave,
     openHistoryDrawer,
     closeHistoryDrawer,
+    dismissIntro,
   };
 }

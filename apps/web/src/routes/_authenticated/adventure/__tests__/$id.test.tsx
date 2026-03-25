@@ -123,6 +123,7 @@ vi.mock("@/hooks/useGameSession", async () => {
         isFirstLaunch: false,
         openHistoryDrawer: vi.fn(),
         closeHistoryDrawer: vi.fn(),
+        dismissIntro: vi.fn(),
       };
     },
   };

@@ -54,6 +54,7 @@ export function GameSessionPage() {
     isFirstLaunch,
     openHistoryDrawer,
     closeHistoryDrawer,
+    dismissIntro,
   } = useGameSession(adventureId, { isNew: isNewAdventure });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -218,7 +219,11 @@ export function GameSessionPage() {
       />
 
       {/* IntroSession — Story 6.6, shown only on first launch of new adventure */}
-      <IntroSession visible={isFirstLaunch} />
+      <IntroSession
+        visible={isFirstLaunch}
+        isClickable={isStreaming}
+        onDismiss={dismissIntro}
+      />
     </div>
   );
 }
