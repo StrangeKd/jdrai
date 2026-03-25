@@ -188,7 +188,6 @@ export function useGameSession(adventureId: string): GameSessionState {
       // isLoading and isStreaming are both false at this point (initial load).
       void sendAction("Commencer l'aventure");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState]);
 
   // ---------------------------------------------------------------------------
