@@ -56,3 +56,29 @@ export function disconnect(): void {
 export function getSocket(): Socket | null {
   return _socket;
 }
+
+// ---------------------------------------------------------------------------
+// DEV-only debug helper
+// Exposes window.__triggerGameEvent(event, payload) in the browser console
+// so socket event handlers can be tested without a real server response.
+//
+// Usage:
+//   __triggerGameEvent('game:state-update', { type: 'milestone_complete', nextMilestone: 'La Forêt Sombre' })
+//   __triggerGameEvent('game:state-update', { type: 'hp_change', currentHp: 5, maxHp: 20 })
+//   __triggerGameEvent('game:response-start', { adventureId: '<id>' })
+// ---------------------------------------------------------------------------
+
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__triggerGameEvent = (
+    event: string,
+    payload: unknown,
+  ) => {
+    const sock = getSocket();
+    if (!sock) {
+      console.warn("[DEV] No active socket — navigate to /adventure/:id first");
+      return;
+    }
+    sock.listeners(event).forEach((fn) => (fn as (p: unknown) => void)(payload));
+    console.log(`[DEV] Triggered "${event}"`, payload);
+  };
+}
