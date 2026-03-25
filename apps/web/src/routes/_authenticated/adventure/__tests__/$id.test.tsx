@@ -3,6 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const manualSaveMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const sendActionMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const confirmExitMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const closeExitModalMock = vi.hoisted(() => vi.fn());
+const openExitModalMock = vi.hoisted(() => vi.fn());
+const blockerProceedMock = vi.hoisted(() => vi.fn());
+const blockerResetMock = vi.hoisted(() => vi.fn());
+const testState = vi.hoisted(() => ({
+  blockerStatus: "idle" as "idle" | "blocked",
+  isExitModalOpen: false,
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute:
@@ -13,7 +22,11 @@ vi.mock("@tanstack/react-router", () => ({
     }),
   useRouterState: ({ select }: { select: (s: { location: { state: unknown } }) => unknown }) =>
     select({ location: { state: {} } }),
-  useBlocker: () => ({ status: "idle", proceed: vi.fn(), reset: vi.fn() }),
+  useBlocker: () => ({
+    status: testState.blockerStatus,
+    proceed: blockerProceedMock,
+    reset: blockerResetMock,
+  }),
 }));
 
 vi.mock("@/components/game/SessionHeader", () => ({
@@ -53,7 +66,25 @@ vi.mock("@/components/game/IntroSession", () => ({
 }));
 
 vi.mock("@/components/game/ExitConfirmModal", () => ({
-  ExitConfirmModal: () => null,
+  ExitConfirmModal: ({
+    isOpen,
+    onConfirm,
+    onCancel,
+  }: {
+    isOpen: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }) =>
+    isOpen ? (
+      <div data-testid="exit-modal">
+        <button type="button" onClick={onConfirm}>
+          confirm-exit
+        </button>
+        <button type="button" onClick={onCancel}>
+          cancel-exit
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("@/components/game/PauseMenu", () => ({
@@ -131,11 +162,11 @@ vi.mock("@/hooks/useGameSession", async () => {
         dismissIntro: vi.fn(),
         // Story 6.7
         isInGameSession: true,
-        isExitModalOpen: false,
-        openExitModal: vi.fn(),
-        closeExitModal: vi.fn(),
+        isExitModalOpen: testState.isExitModalOpen,
+        openExitModal: openExitModalMock,
+        closeExitModal: closeExitModalMock,
         isConfirmingExit: false,
-        confirmExit: vi.fn().mockResolvedValue(undefined),
+        confirmExit: confirmExitMock,
       };
     },
   };
@@ -147,6 +178,13 @@ describe("GameSessionPage pause menu wiring", () => {
   beforeEach(() => {
     manualSaveMock.mockClear();
     sendActionMock.mockClear();
+    confirmExitMock.mockClear();
+    closeExitModalMock.mockClear();
+    openExitModalMock.mockClear();
+    blockerProceedMock.mockClear();
+    blockerResetMock.mockClear();
+    testState.blockerStatus = "idle";
+    testState.isExitModalOpen = false;
   });
 
   afterEach(() => {
@@ -172,5 +210,39 @@ describe("GameSessionPage pause menu wiring", () => {
     await waitFor(() => {
       expect(manualSaveMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("does not toggle pause menu with Escape when exit confirmation modal is open", () => {
+    testState.isExitModalOpen = true;
+    render(<GameSessionPage />);
+    expect(screen.getByTestId("pause-state")).toHaveTextContent("closed");
+    expect(screen.getByTestId("exit-modal")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByTestId("pause-state")).toHaveTextContent("closed");
+  });
+
+  it("calls confirmExit with blocker.proceed callback when navigation is blocked", async () => {
+    testState.blockerStatus = "blocked";
+    confirmExitMock.mockImplementation(async (onNavigate?: () => void) => {
+      onNavigate?.();
+    });
+
+    render(<GameSessionPage />);
+    fireEvent.click(screen.getByRole("button", { name: "confirm-exit" }));
+
+    await waitFor(() => {
+      expect(confirmExitMock).toHaveBeenCalledTimes(1);
+      expect(blockerProceedMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("resets blocker and closes modal on exit cancel when navigation is blocked", () => {
+    testState.blockerStatus = "blocked";
+    render(<GameSessionPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "cancel-exit" }));
+    expect(blockerResetMock).toHaveBeenCalledTimes(1);
+    expect(closeExitModalMock).toHaveBeenCalledTimes(1);
   });
 });

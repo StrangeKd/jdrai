@@ -141,7 +141,9 @@ export function GameSessionPage() {
       }
 
       // Escape: toggle pause menu (Story 6.5 — replaces Story 6.4 no-op)
+      // Story 6.7: while exit confirmation is open, require explicit modal choice.
       if (e.key === "Escape") {
+        if (isExitModalActuallyOpen || isConfirmingExit) return;
         if (isPauseMenuOpen) {
           closePauseMenu();
         } else {
@@ -152,7 +154,16 @@ export function GameSessionPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [choices, isLocked, sendAction, isPauseMenuOpen, openPauseMenu, closePauseMenu]);
+  }, [
+    choices,
+    isLocked,
+    sendAction,
+    isPauseMenuOpen,
+    openPauseMenu,
+    closePauseMenu,
+    isExitModalActuallyOpen,
+    isConfirmingExit,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Manual save handler (tracks isSaving for PauseMenu loading state)
