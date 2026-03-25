@@ -208,7 +208,7 @@ const SIGNAL_PATTERNS = {
 export function classifyAction(action: string): ActionType {
   const lower = action.toLowerCase();
   if (
-    /\blis\b|regarde(?!r\b)|observe|écoute|examine|sui[st]|va vers|vais vers|avance vers|se dirige vers/.test(
+    /\blis\b|regarde(?!r\b)|observe|écoute|examine|sui[st]|\bavanc|va vers|vais vers|se dirige vers/.test(
       lower,
     )
   )

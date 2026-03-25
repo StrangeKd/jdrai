@@ -34,6 +34,7 @@ describe("classifyAction()", () => {
     expect(classifyAction("Je suis le garde")).toBe("narrative");
     expect(classifyAction("Je vais vers la sortie")).toBe("narrative");
     expect(classifyAction("J'avance vers la lumière")).toBe("narrative");
+    expect(classifyAction("Avancer prudemment vers la clairière")).toBe("narrative");
     expect(classifyAction("Il se dirige vers la forêt")).toBe("narrative");
   });
 
