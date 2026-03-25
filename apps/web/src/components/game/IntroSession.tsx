@@ -64,22 +64,29 @@ export function IntroSession({ visible, isClickable, onDismiss }: IntroSessionPr
         className="text-xl md:text-2xl font-serif text-foreground text-center px-8 animate-fade-in"
         style={{ animationDelay: "0ms" }}
       >
-        Il était une fois...
+        Il était une fois
       </p>
       {/* Line 2: fades in after 600ms, with cycling loading dots */}
       <p
-        className="mt-4 text-base md:text-lg text-muted-foreground text-center px-8 animate-fade-in opacity-0 inline-flex items-center gap-1"
+        className="mt-4 text-base md:text-lg text-muted-foreground text-center px-8 animate-fade-in opacity-0 inline-flex items-baseline justify-center gap-1"
         style={{ animationDelay: "600ms", animationFillMode: "forwards" }}
       >
         <span>une âme en quête d&apos;aventure</span>
-        <span className="inline-flex items-center gap-[3px] ml-0.5" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="inline-block w-[3px] h-[3px] rounded-full bg-current transition-opacity duration-300"
-              style={{ opacity: dimIndex === i ? 0.2 : 1 }}
-            />
-          ))}
+        <span className="inline-flex items-baseline gap-[3px] ml-0.5" aria-hidden="true">
+          {isClickable && visible
+            ? [0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="inline-block w-[3px] h-[3px] rounded-full bg-current transition-opacity duration-300"
+                />
+              ))
+            : [0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="inline-block w-[3px] h-[3px] rounded-full bg-current transition-opacity duration-300"
+                  style={{ opacity: dimIndex === i ? 0.2 : 1 }}
+                />
+              ))}
         </span>
       </p>
 

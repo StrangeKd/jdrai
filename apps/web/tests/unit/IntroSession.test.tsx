@@ -21,7 +21,7 @@ describe("IntroSession", () => {
   it("renders intro text when visible=true", () => {
     render(<IntroSession visible={true} isClickable={false} onDismiss={noop} />);
 
-    expect(screen.getByText("Il était une fois...")).toBeInTheDocument();
+    expect(screen.getByText("Il était une fois")).toBeInTheDocument();
     expect(screen.getByText(/une âme en quête/)).toBeInTheDocument();
   });
 
