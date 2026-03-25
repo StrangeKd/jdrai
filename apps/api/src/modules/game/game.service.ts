@@ -208,15 +208,15 @@ const SIGNAL_PATTERNS = {
 export function classifyAction(action: string): ActionType {
   const lower = action.toLowerCase();
   if (
-    /\blis\b|regarde(?!r\b)|observe|écoute|examine|sui[st]|\bavanc|va vers|vais vers|se dirige vers/.test(
+    /\blis\b|\blir|\bregard|observe|écoute|examine|\bsuiv|\bapproch|sui[st]|\bavanc|va vers|vais vers|se dirige vers/.test(
       lower,
     )
   )
     return "narrative";
-  if (/enchant|magie|sort |spell|forcer|enfonc|désamorc/.test(lower)) return "very_hard";
+  if (/enchant|magie|\bsort\b|spell|forcer|enfonc|désamorc/.test(lower)) return "very_hard";
   if (/attaqu|combat|intimid|piège|trap/.test(lower)) return "hard";
   if (/parle|discut|négoci/.test(lower)) return "easy";
-  if (/ouvrir|ouvre|march/.test(lower)) return "trivial";
+  if (/ouvrir|ouvre|march|\bprendr|\bramass|\bsaisi|\brepose|\brepos\b/.test(lower)) return "trivial";
   return "medium";
 }
 

@@ -16,6 +16,7 @@ import { classifyAction, computeCharacterBonus, parseSignals } from "./game.serv
 describe("classifyAction()", () => {
   it("returns very_hard for magic keywords", () => {
     expect(classifyAction("Je lance un sort sur l'ennemi")).toBe("very_hard");
+    expect(classifyAction("Lancer un sort")).toBe("very_hard");
     expect(classifyAction("J'utilise ma magie pour ouvrir la porte")).toBe("very_hard");
   });
 
@@ -26,6 +27,7 @@ describe("classifyAction()", () => {
   });
 
   it("returns narrative for purely narrative actions (Story 6.4b)", () => {
+    // Conjugated forms
     expect(classifyAction("Je lis la lettre")).toBe("narrative");
     expect(classifyAction("Je regarde autour de moi")).toBe("narrative");
     expect(classifyAction("J'observe la salle")).toBe("narrative");
@@ -34,8 +36,14 @@ describe("classifyAction()", () => {
     expect(classifyAction("Je suis le garde")).toBe("narrative");
     expect(classifyAction("Je vais vers la sortie")).toBe("narrative");
     expect(classifyAction("J'avance vers la lumière")).toBe("narrative");
-    expect(classifyAction("Avancer prudemment vers la clairière")).toBe("narrative");
     expect(classifyAction("Il se dirige vers la forêt")).toBe("narrative");
+    // Infinitive forms (default LLM choices)
+    expect(classifyAction("Lire l'inscription sur la pierre")).toBe("narrative");
+    expect(classifyAction("Regarder autour de moi")).toBe("narrative");
+    expect(classifyAction("Suivre le chemin vers le nord")).toBe("narrative");
+    expect(classifyAction("S'approcher de la source")).toBe("narrative");
+    expect(classifyAction("Approcher prudemment")).toBe("narrative");
+    expect(classifyAction("Avancer prudemment vers la clairière")).toBe("narrative");
   });
 
   it("returns easy for social keywords (observe/examine no longer easy)", () => {
@@ -44,9 +52,12 @@ describe("classifyAction()", () => {
     expect(classifyAction("Je négocie un accord")).toBe("easy");
   });
 
-  it("returns trivial for movement keywords", () => {
+  it("returns trivial for movement/simple interaction keywords", () => {
     expect(classifyAction("Je marche vers la sortie")).toBe("trivial");
     expect(classifyAction("J'ouvre la porte")).toBe("trivial");
+    expect(classifyAction("Prendre un moment de repos près de la source")).toBe("trivial");
+    expect(classifyAction("Ramasser l'objet")).toBe("trivial");
+    expect(classifyAction("Se reposer un moment")).toBe("trivial");
   });
 
   it("returns medium for unrecognised action", () => {
