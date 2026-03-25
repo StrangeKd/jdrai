@@ -25,15 +25,27 @@ describe("classifyAction()", () => {
     expect(classifyAction("J'intimide le marchand")).toBe("hard");
   });
 
-  it("returns easy for social/observation keywords", () => {
+  it("returns narrative for purely narrative actions (Story 6.4b)", () => {
+    expect(classifyAction("Je lis la lettre")).toBe("narrative");
+    expect(classifyAction("Je regarde autour de moi")).toBe("narrative");
+    expect(classifyAction("J'observe la salle")).toBe("narrative");
+    expect(classifyAction("J'examine l'inscription")).toBe("narrative");
+    expect(classifyAction("J'écoute derrière la porte")).toBe("narrative");
+    expect(classifyAction("Je suis le garde")).toBe("narrative");
+    expect(classifyAction("Je vais vers la sortie")).toBe("narrative");
+    expect(classifyAction("J'avance vers la lumière")).toBe("narrative");
+    expect(classifyAction("Il se dirige vers la forêt")).toBe("narrative");
+  });
+
+  it("returns easy for social keywords (observe/examine no longer easy)", () => {
     expect(classifyAction("Je parle au barman")).toBe("easy");
-    expect(classifyAction("J'observe la salle")).toBe("easy");
-    expect(classifyAction("J'examine l'inscription")).toBe("easy");
+    expect(classifyAction("Je discute avec le marchand")).toBe("easy");
+    expect(classifyAction("Je négocie un accord")).toBe("easy");
   });
 
   it("returns trivial for movement keywords", () => {
     expect(classifyAction("Je marche vers la sortie")).toBe("trivial");
-    expect(classifyAction("Je vais vers le village")).toBe("trivial");
+    expect(classifyAction("J'ouvre la porte")).toBe("trivial");
   });
 
   it("returns medium for unrecognised action", () => {

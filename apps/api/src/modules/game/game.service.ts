@@ -21,7 +21,7 @@ import { adventureCharacters, adventures, messages, milestones } from "@/db/sche
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/errors";
 
-import { D20Service, type ActionType } from "./d20.service";
+import { D20Service, type ActionType, type D20Result } from "./d20.service";
 import {
   completeAdventure,
   getActiveMilestone,
@@ -207,10 +207,16 @@ const SIGNAL_PATTERNS = {
  */
 export function classifyAction(action: string): ActionType {
   const lower = action.toLowerCase();
+  if (
+    /\blis\b|regarde(?!r\b)|observe|écoute|examine|sui[st]|va vers|vais vers|avance vers|se dirige vers/.test(
+      lower,
+    )
+  )
+    return "narrative";
   if (/enchant|magie|sort |spell|forcer|enfonc|désamorc/.test(lower)) return "very_hard";
   if (/attaqu|combat|intimid|piège|trap/.test(lower)) return "hard";
-  if (/parle|discut|négoci|regard|observ|examin/.test(lower)) return "easy";
-  if (/ouvrir|march|vais|aller vers|se dirig/.test(lower)) return "trivial";
+  if (/parle|discut|négoci/.test(lower)) return "easy";
+  if (/ouvrir|ouvre|march/.test(lower)) return "trivial";
   return "medium";
 }
 
@@ -374,18 +380,34 @@ export class GameService {
     const actionType = classifyAction(action);
     const characterBonus = computeCharacterBonus(character, action, recentHistory);
 
-    // 3. D20 resolve
-    const d20Result = this.d20.resolve({
-      actionType,
-      difficulty: adventureRow.difficulty as Difficulty,
-      characterBonus,
-    });
+    // 3. D20 resolve — conditional on action type
+    let d20Result: D20Result | null = null;
+    let d20Block: string;
+
+    if (actionType === "narrative") {
+      // No dice roll for purely narrative actions
+      d20Block = this.promptBuilder.buildSimpleInjectionBlock("narrative", action);
+    } else if (actionType === "trivial") {
+      // Roll computed but result not injected into prompt or stored in metadata
+      this.d20.resolve({
+        actionType,
+        difficulty: adventureRow.difficulty as Difficulty,
+        characterBonus,
+      });
+      d20Block = this.promptBuilder.buildSimpleInjectionBlock("trivial", action);
+    } else {
+      d20Result = this.d20.resolve({
+        actionType,
+        difficulty: adventureRow.difficulty as Difficulty,
+        characterBonus,
+      });
+      d20Block = this.promptBuilder.buildD20InjectionBlock(d20Result, action);
+    }
 
     // 4–6. Build prompt context
     const systemPrompt = this.promptBuilder.buildSystemPrompt({
       difficulty: adventureRow.difficulty as Difficulty,
     });
-    const d20Block = this.promptBuilder.buildD20InjectionBlock(d20Result, action);
     const contextWindow = this.promptBuilder.buildContextWindow({
       systemPrompt,
       d20Block,
@@ -437,12 +459,10 @@ export class GameService {
     } catch (error) {
       logger.error("[GameService] LLM stream failed:", error);
       if (shouldStream) {
-        io!
-          .to(room)
-          .emit("game:error", {
-            adventureId,
-            error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
-          });
+        io!.to(room).emit("game:error", {
+          adventureId,
+          error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+        });
       }
       throw error;
     }
@@ -451,22 +471,28 @@ export class GameService {
     const { cleanText, signals } = parseSignals(fullResponse);
 
     // 11. Insert assistant message
+    // For narrative/trivial actions, metadata must remain empty (Story 6.4b AC #7).
+    const assistantMetadata =
+      d20Result === null
+        ? {}
+        : {
+            roll: d20Result.roll,
+            dc: d20Result.finalDC,
+            bonus: d20Result.characterBonus,
+            outcome: d20Result.outcome,
+            ...(signals.milestoneCompleted && { milestoneCompleted: signals.milestoneCompleted }),
+            ...(signals.hpChange !== undefined && { hpChange: signals.hpChange }),
+            ...(signals.isGameOver && { isGameOver: true }),
+            // Persisted for session restore on page reload (used by GET /state)
+            ...(signals.choices.length > 0 && { choices: signals.choices }),
+          };
+
     const assistantMessageId = await insertMessage({
       adventureId,
       milestoneId: activeMilestone?.id ?? null,
       role: "assistant",
       content: cleanText,
-      metadata: {
-        roll: d20Result.roll,
-        dc: d20Result.finalDC,
-        bonus: d20Result.characterBonus,
-        outcome: d20Result.outcome,
-        ...(signals.milestoneCompleted && { milestoneCompleted: signals.milestoneCompleted }),
-        ...(signals.hpChange !== undefined && { hpChange: signals.hpChange }),
-        ...(signals.isGameOver && { isGameOver: true }),
-        // Persisted for session restore on page reload (used by GET /state)
-        ...(signals.choices.length > 0 && { choices: signals.choices }),
-      },
+      metadata: assistantMetadata,
     });
 
     // 12. Apply signals (DB side effects)

@@ -5,7 +5,7 @@
 import type { AdventureDTO } from "./adventure";
 import type { MilestoneDTO } from "./milestone";
 
-export type ActionType = "trivial" | "easy" | "medium" | "hard" | "very_hard";
+export type ActionType = "narrative" | "trivial" | "easy" | "medium" | "hard" | "very_hard";
 
 export type D20Outcome =
   | "critical_success"

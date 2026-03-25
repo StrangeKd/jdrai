@@ -233,6 +233,55 @@ describe("PromptBuilder.buildD20InjectionBlock()", () => {
 });
 
 // ---------------------------------------------------------------------------
+// buildSimpleInjectionBlock (Story 6.4b)
+// ---------------------------------------------------------------------------
+
+describe("PromptBuilder.buildSimpleInjectionBlock()", () => {
+  it("narrative: contains [SYSTÈME — INVISIBLE AU JOUEUR] header", () => {
+    const block = builder.buildSimpleInjectionBlock("narrative", "Je lis la lettre.");
+    expect(block).toContain("[SYSTÈME — INVISIBLE AU JOUEUR]");
+  });
+
+  it("narrative: contains player action text", () => {
+    const action = "Je regarde autour de moi.";
+    const block = builder.buildSimpleInjectionBlock("narrative", action);
+    expect(block).toContain(`Action du joueur : "${action}"`);
+  });
+
+  it("narrative: contains 'action narrative' instruction", () => {
+    const block = builder.buildSimpleInjectionBlock("narrative", "Je lis la lettre.");
+    expect(block).toContain("action narrative");
+    expect(block).toContain("sans obstacle ni jet de résolution");
+  });
+
+  it("narrative: does NOT contain 'Lancer D20'", () => {
+    const block = builder.buildSimpleInjectionBlock("narrative", "Je lis la lettre.");
+    expect(block).not.toContain("Lancer D20");
+  });
+
+  it("trivial: contains [SYSTÈME — INVISIBLE AU JOUEUR] header", () => {
+    const block = builder.buildSimpleInjectionBlock("trivial", "Je marche vers la porte.");
+    expect(block).toContain("[SYSTÈME — INVISIBLE AU JOUEUR]");
+  });
+
+  it("trivial: contains player action text", () => {
+    const action = "Je marche vers la porte.";
+    const block = builder.buildSimpleInjectionBlock("trivial", action);
+    expect(block).toContain(`Action du joueur : "${action}"`);
+  });
+
+  it("trivial: contains 'succès automatique' instruction", () => {
+    const block = builder.buildSimpleInjectionBlock("trivial", "Je marche vers la porte.");
+    expect(block).toContain("succès automatique");
+  });
+
+  it("trivial: does NOT contain 'Lancer D20'", () => {
+    const block = builder.buildSimpleInjectionBlock("trivial", "Je marche vers la porte.");
+    expect(block).not.toContain("Lancer D20");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // buildContextWindow
 // ---------------------------------------------------------------------------
 

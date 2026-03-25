@@ -19,6 +19,7 @@ import {
   adventureCharacters,
   adventures,
   characterClasses,
+  messages,
   milestones,
   races,
   users,
@@ -26,6 +27,7 @@ import {
 
 import type { ParsedSignals } from "./game.service";
 import { GameService } from "./game.service";
+import { LLMService } from "./llm/index";
 
 // ---------------------------------------------------------------------------
 // Shared fixture IDs
@@ -381,5 +383,107 @@ describe("applySignals() — combined signals", () => {
 
     expect(charRow!.currentHp).toBe(18);
     expect(advRow!.status).toBe("completed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// processAction — narrative action metadata (Story 6.4b AC #7)
+// ---------------------------------------------------------------------------
+
+/** Injects a mock LLM service (stream) into a GameService instance. */
+function injectStreamLLM(svc: GameService, chunks: string[]) {
+  async function* mockStream() {
+    for (const chunk of chunks) yield chunk;
+  }
+  const llm = {
+    stream: vi.fn().mockReturnValue(mockStream()),
+    generateResponse: vi.fn(),
+  } as unknown as LLMService;
+  // @ts-expect-error — private field injection for testing
+  svc.llmService = llm;
+}
+
+describe("processAction() — narrative action produces no D20 metadata (AC #7)", () => {
+  it("assistant message metadata has no roll/dc/bonus/outcome for a narrative action", async () => {
+    const svc = new GameService();
+    const llmResponse = "Tu regardes autour de toi et remarques une ancienne porte dissimulée.\n[CHOIX]\n1. Ouvrir la porte\n2. Examiner la porte\n[/CHOIX]";
+    injectStreamLLM(svc, [llmResponse]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "Je regarde autour de moi",
+    });
+
+    const rows = await db
+      .select({ role: messages.role, metadata: messages.metadata })
+      .from(messages)
+      .where(eq(messages.adventureId, adventureId));
+
+    const assistantMsg = rows.find((r) => r.role === "assistant");
+    expect(assistantMsg).toBeDefined();
+
+    const meta = assistantMsg!.metadata as Record<string, unknown> | null ?? {};
+    expect(meta).toEqual({});
+  });
+
+  it("does not call D20Service.resolve() for narrative actions (AC #3)", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Narration sans jet."]);
+
+    const resolveSpy = vi.fn();
+    // @ts-expect-error — private field injection for testing
+    svc.d20 = { resolve: resolveSpy };
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "Je regarde autour de moi",
+    });
+
+    expect(resolveSpy).not.toHaveBeenCalled();
+  });
+
+  it("calls D20Service.resolve() for trivial actions but stores empty metadata (AC #4/#7)", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Tu ouvres la porte sans difficulté."]);
+
+    const resolveSpy = vi.fn().mockReturnValue({
+      roll: 14,
+      actionType: "trivial",
+      difficulty: "normal",
+      baseDC: 5,
+      difficultyModifier: 0,
+      finalDC: 5,
+      characterBonus: 0,
+      totalScore: 14,
+      outcome: "success",
+    });
+    // @ts-expect-error — private field injection for testing
+    svc.d20 = { resolve: resolveSpy };
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "Je marche vers la porte",
+    });
+
+    expect(resolveSpy).toHaveBeenCalledOnce();
+    expect(resolveSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "trivial",
+      }),
+    );
+
+    const rows = await db
+      .select({ role: messages.role, metadata: messages.metadata })
+      .from(messages)
+      .where(eq(messages.adventureId, adventureId));
+
+    const assistantMsg = rows.find((r) => r.role === "assistant");
+    expect(assistantMsg).toBeDefined();
+
+    const meta = assistantMsg!.metadata as Record<string, unknown> | null ?? {};
+    expect(meta).toEqual({});
   });
 });
