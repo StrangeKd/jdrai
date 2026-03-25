@@ -22,6 +22,34 @@ import { connect, disconnect, getSocket } from "@/services/socket.service";
 
 import { useGameChat } from "./useGameChat";
 
+// ---------------------------------------------------------------------------
+// Signal stripping for streaming buffer
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips complete system signals from the streaming buffer and hides any
+ * partial/in-progress signal at the end of the buffer (splits across chunks).
+ *
+ * Complete signals removed: [HP_CHANGE:x], [MILESTONE_COMPLETE:x],
+ *   [ADVENTURE_COMPLETE], [GAME_OVER], [CHOIX]...[/CHOIX]
+ * Partial signal suppressed: trailing `[...` that hasn't closed yet.
+ */
+function stripStreamingSignals(text: string): string {
+  return (
+    text
+      // Remove complete signals
+      .replace(/\[HP_CHANGE:[+-]?\d+\]/g, "")
+      .replace(/\[MILESTONE_COMPLETE:[^\]]+\]/g, "")
+      .replace(/\[ADVENTURE_COMPLETE\]/g, "")
+      .replace(/\[GAME_OVER\]/g, "")
+      .replace(/\[CHOIX\][\s\S]*?\[\/CHOIX\]/g, "")
+      // Hide trailing partial signal (e.g. "[HP_CH" at end of buffer)
+      .replace(/\[[A-Z_][^\]]*$/, "")
+      // Collapse triple+ newlines left by removed signals
+      .replace(/\n{3,}/g, "\n\n")
+  );
+}
+
 export interface GameSessionState {
   /** Full initial state fetched from REST on mount */
   gameState: GameStateDTO | null;
@@ -177,7 +205,7 @@ export function useGameSession(adventureId: string): GameSessionState {
     // game:chunk payload: { adventureId, chunk }
     const onChunk = (data: { adventureId: string; chunk: string }) => {
       if (data.adventureId !== adventureId) return;
-      setStreamingBuffer((prev) => prev + data.chunk);
+      setStreamingBuffer((prev) => stripStreamingSignals(prev + data.chunk));
     };
 
     // game:response-complete payload: { adventureId, messageId, cleanText, choices, stateChanges }
