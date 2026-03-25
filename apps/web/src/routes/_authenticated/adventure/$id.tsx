@@ -1,22 +1,24 @@
 /**
- * Game session route — /adventure/:id (Story 6.4 Task 3).
+ * Game session route — /adventure/:id (Story 6.4 Task 3 / Story 6.5 Task 7).
  *
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
- * Story 6.5 will fill in SessionHeader and CharacterPanel placeholders.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { CharacterPanel } from "@/components/game/CharacterPanel";
 import { FreeInput } from "@/components/game/FreeInput";
 import { NarrationPanel } from "@/components/game/NarrationPanel";
+import { PauseMenu } from "@/components/game/PauseMenu";
+import { SessionHeader } from "@/components/game/SessionHeader";
 import { useGameSession } from "@/hooks/useGameSession";
 
 export const Route = createFileRoute("/_authenticated/adventure/$id")({
   component: GameSessionPage,
 });
 
-function GameSessionPage() {
+export function GameSessionPage() {
   const { id: adventureId } = Route.useParams();
 
   const {
@@ -29,13 +31,37 @@ function GameSessionPage() {
     isStreaming,
     gameError,
     sendAction,
+    // Story 6.5
+    currentHp,
+    maxHp,
+    lastSavedAt,
+    showAutosaveIndicator,
+    isPauseMenuOpen,
+    isAdventureComplete,
+    openPauseMenu,
+    closePauseMenu,
+    manualSave,
   } = useGameSession(adventureId);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const isLocked = isLoading || isStreaming;
+  const character = gameState?.adventure?.character;
   const adventureTitle = gameState?.adventure.title ?? "Aventure";
 
   // ---------------------------------------------------------------------------
-  // Desktop keyboard shortcuts (AC: #10)
+  // Story 7.x stub — redirect when adventure ends
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (isAdventureComplete) {
+      // TODO Story 7.2: navigate({ to: "/adventure/$id/summary", params: { id: adventureId } })
+      console.log("[GameSession] Adventure complete — Story 7.x will handle redirect");
+    }
+  }, [isAdventureComplete, adventureId]);
+
+  // ---------------------------------------------------------------------------
+  // Desktop keyboard shortcuts
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
@@ -60,15 +86,35 @@ function GameSessionPage() {
         }
       }
 
-      // Escape: placeholder for Story 6.5 pause menu
+      // Space: open pause menu when input is not focused
+      if (!isInputFocused && e.key === " ") {
+        e.preventDefault();
+        if (!isPauseMenuOpen) openPauseMenu();
+      }
+
+      // Escape: toggle pause menu (Story 6.5 — replaces Story 6.4 no-op)
       if (e.key === "Escape") {
-        // TODO Story 6.5: setShowPauseMenu(true)
+        if (isPauseMenuOpen) {
+          closePauseMenu();
+        } else {
+          openPauseMenu();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [choices, isLocked, sendAction]);
+  }, [choices, isLocked, sendAction, isPauseMenuOpen, openPauseMenu, closePauseMenu]);
+
+  // ---------------------------------------------------------------------------
+  // Manual save handler (tracks isSaving for PauseMenu loading state)
+  // ---------------------------------------------------------------------------
+
+  const handleManualSave = async () => {
+    setIsSaving(true);
+    await manualSave();
+    setIsSaving(false);
+  };
 
   // ---------------------------------------------------------------------------
   // Render
@@ -76,20 +122,26 @@ function GameSessionPage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-stone-950 text-amber-100 overflow-hidden">
-      {/* SessionHeader placeholder — Story 6.5 will complete this */}
-      <header className="shrink-0 h-12 flex items-center justify-between px-4 border-b border-stone-800 bg-stone-900">
-        <span className="text-sm font-medium text-amber-200 truncate">{adventureTitle}</span>
-        {/* TODO Story 6.5: pause menu button */}
-      </header>
+      {/* SessionHeader — fixed top-0, h-14 (Story 6.5) */}
+      <SessionHeader
+        title={adventureTitle}
+        currentHp={currentHp}
+        maxHp={maxHp}
+        showAutosaveIndicator={showAutosaveIndicator}
+        onPauseMenuOpen={openPauseMenu}
+        {...(character ? { character } : {})}
+      />
 
-      {/* CharacterPanel placeholder — Story 6.5 will implement this */}
-      {/* Height reserved so layout doesn't shift when CharacterPanel is added */}
-      <div className="shrink-0 h-10" aria-hidden="true" />
+      {/* CharacterPanel — mobile only, fixed top-14, h-10 (Story 6.5) */}
+      {character && (
+        <CharacterPanel character={character} currentHp={currentHp} maxHp={maxHp} />
+      )}
 
-      {/* NarrationPanel — fills all remaining space (AC: #2) */}
-      <div className="flex-1 min-h-0 flex justify-center overflow-hidden">
+      {/* NarrationPanel — fills all remaining space.
+          pt-24 on mobile (header 56px + character panel 40px),
+          pt-14 on desktop (header only — CharacterPanel is hidden md:hidden) */}
+      <div className="flex-1 min-h-0 flex justify-center overflow-hidden pt-24 md:pt-14">
         <div className="w-full max-w-[720px]">
-          {/* AC: #9 — desktop: max-width 720px centered */}
           <NarrationPanel
             currentScene={currentScene}
             streamingBuffer={streamingBuffer}
@@ -113,7 +165,7 @@ function GameSessionPage() {
         </div>
       )}
 
-      {/* FreeInput — fixed at bottom of screen (AC: #7) */}
+      {/* FreeInput — fixed at bottom of screen */}
       <div className="shrink-0">
         <FreeInput
           disabled={isLocked}
@@ -125,6 +177,21 @@ function GameSessionPage() {
           }}
         />
       </div>
+
+      {/* PauseMenu overlay — Story 6.5 */}
+      <PauseMenu
+        isOpen={isPauseMenuOpen}
+        onClose={closePauseMenu}
+        onSave={handleManualSave}
+        onHistory={() => {
+          // TODO Story 6.6: open HistoryDrawer
+        }}
+        onQuit={() => {
+          // TODO Story 6.7: confirm and quit adventure
+        }}
+        lastSavedAt={lastSavedAt}
+        isSaving={isSaving}
+      />
     </div>
   );
 }

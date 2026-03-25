@@ -1,14 +1,16 @@
 /**
- * useGameSession — single composable hook for the game session screen (Story 6.4 Task 2).
+ * useGameSession — single composable hook for the game session screen (Story 6.4 Task 2 / Story 6.5 Task 2).
  *
  * Responsibilities:
  *  - Establish and teardown the Socket.io connection (via connect/disconnect)
  *  - Load initial game state via GET /adventures/:id/state
  *  - Handle all socket events: response-start, chunk, response-complete, state-update, error
  *  - Manage game display state: currentScene, streamingBuffer, playerEcho, choices
+ *  - Manage HP state, autosave indicator, pause menu state (Story 6.5)
  *  - Expose sendAction() which submits the player action via useGameChat
+ *  - Expose manualSave(), openPauseMenu(), closePauseMenu() (Story 6.5)
  *
- * Consumed by the /$id game session route (Story 6.4 Task 3).
+ * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7).
  */
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +21,34 @@ import { api } from "@/services/api";
 import { connect, disconnect, getSocket } from "@/services/socket.service";
 
 import { useGameChat } from "./useGameChat";
+
+// ---------------------------------------------------------------------------
+// Signal stripping for streaming buffer
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips complete system signals from the streaming buffer and hides any
+ * partial/in-progress signal at the end of the buffer (splits across chunks).
+ *
+ * Complete signals removed: [HP_CHANGE:x], [MILESTONE_COMPLETE:x],
+ *   [ADVENTURE_COMPLETE], [GAME_OVER], [CHOIX]...[/CHOIX]
+ * Partial signal suppressed: trailing `[...` that hasn't closed yet.
+ */
+function stripStreamingSignals(text: string): string {
+  return (
+    text
+      // Remove complete signals
+      .replace(/\[HP_CHANGE:[+-]?\d+\]/g, "")
+      .replace(/\[MILESTONE_COMPLETE:[^\]]+\]/g, "")
+      .replace(/\[ADVENTURE_COMPLETE\]/g, "")
+      .replace(/\[GAME_OVER\]/g, "")
+      .replace(/\[CHOIX\][\s\S]*?\[\/CHOIX\]/g, "")
+      // Hide trailing partial signal (e.g. "[HP_CH" at end of buffer)
+      .replace(/\[[A-Z_][^\]]*$/, "")
+      // Collapse triple+ newlines left by removed signals
+      .replace(/\n{3,}/g, "\n\n")
+  );
+}
 
 export interface GameSessionState {
   /** Full initial state fetched from REST on mount */
@@ -39,8 +69,28 @@ export interface GameSessionState {
   gameError: string | null;
   /** true while mounted on the game session route (used by Story 6.7 beforeunload guard) */
   isInGameSession: boolean;
+  /** Character current HP — updated via game:state-update hp_change (Story 6.5) */
+  currentHp: number;
+  /** Character max HP — updated via game:state-update hp_change (Story 6.5) */
+  maxHp: number;
+  /** Last save timestamp, initialised from adventure.lastPlayedAt (Story 6.5) */
+  lastSavedAt: Date | null;
+  /** true for 2s after each auto-save or manual save (Story 6.5) */
+  showAutosaveIndicator: boolean;
+  /** true when the pause overlay is open (Story 6.5) */
+  isPauseMenuOpen: boolean;
+  /** true when the adventure has ended (adventure_complete or game_over) — Story 7.x will redirect */
+  isAdventureComplete: boolean;
+  /** true when the adventure ended with game_over (Story 6.5 stub, Story 7.x will use) */
+  isGameOver: boolean;
   /** Submit a player action (free text or choice label) */
   sendAction: (action: string, choiceId?: string) => Promise<void>;
+  /** Open the pause overlay (Story 6.5) */
+  openPauseMenu: () => void;
+  /** Close the pause overlay (Story 6.5) */
+  closePauseMenu: () => void;
+  /** Manually save the adventure via POST /adventures/:id/save (Story 6.5) */
+  manualSave: () => Promise<void>;
 }
 
 export function useGameSession(adventureId: string): GameSessionState {
@@ -52,6 +102,16 @@ export function useGameSession(adventureId: string): GameSessionState {
   const [isStreaming, setIsStreaming] = useState(false);
   const [gameError, setGameError] = useState<string | null>(null);
   const [isInGameSession, setIsInGameSession] = useState(true);
+  // Story 6.5 — HP + autosave + pause menu + adventure completion
+  const [currentHp, setCurrentHp] = useState(0);
+  const [maxHp, setMaxHp] = useState(0);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [showAutosaveIndicator, setShowAutosaveIndicator] = useState(false);
+  const [isPauseMenuOpen, setIsPauseMenuOpen] = useState(false);
+  const [isAdventureComplete, setIsAdventureComplete] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+  // Timer ref for autosave indicator auto-clear (prevents stale setState after unmount)
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevents double-triggering the intro request across re-renders
   const introRequestedRef = useRef(false);
 
@@ -78,6 +138,17 @@ export function useGameSession(adventureId: string): GameSessionState {
     if (lastAssistant) {
       setCurrentScene(lastAssistant.content);
       setChoices(lastAssistant.choices ?? []);
+    }
+  }, [gameState]);
+
+  // Story 6.5 — Initialise HP and lastSavedAt from initial game state load
+  useEffect(() => {
+    if (!gameState?.adventure?.character) return;
+    const char = gameState.adventure.character;
+    setCurrentHp(char.currentHp);
+    setMaxHp(char.maxHp);
+    if (gameState.adventure.lastPlayedAt) {
+      setLastSavedAt(new Date(gameState.adventure.lastPlayedAt));
     }
   }, [gameState]);
 
@@ -108,6 +179,16 @@ export function useGameSession(adventureId: string): GameSessionState {
   }, [gameState, adventureId]);
 
   // ---------------------------------------------------------------------------
+  // Story 6.5 — Autosave indicator helper (clears after 2s, debounced)
+  // ---------------------------------------------------------------------------
+
+  function triggerAutosaveIndicator() {
+    setShowAutosaveIndicator(true);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => setShowAutosaveIndicator(false), 2000);
+  }
+
+  // ---------------------------------------------------------------------------
   // Socket connection lifecycle + game event handlers
   // ---------------------------------------------------------------------------
 
@@ -124,7 +205,7 @@ export function useGameSession(adventureId: string): GameSessionState {
     // game:chunk payload: { adventureId, chunk }
     const onChunk = (data: { adventureId: string; chunk: string }) => {
       if (data.adventureId !== adventureId) return;
-      setStreamingBuffer((prev) => prev + data.chunk);
+      setStreamingBuffer((prev) => stripStreamingSignals(prev + data.chunk));
     };
 
     // game:response-complete payload: { adventureId, messageId, cleanText, choices, stateChanges }
@@ -140,11 +221,26 @@ export function useGameSession(adventureId: string): GameSessionState {
       setIsStreaming(false);
       setIsLoading(false);
       setPlayerEcho(null);
+      setLastSavedAt(new Date());
+      // Story 6.5: trigger autosave indicator after each completed GM response
+      triggerAutosaveIndicator();
     };
 
-    // game:state-update — log only; CharacterPanel (Story 6.5) will consume this
-    const onStateUpdate = (data: unknown) => {
-      console.debug("[useGameSession] game:state-update", data);
+    // game:state-update — Story 6.5: handle hp_change, adventure_complete, game_over
+    const onStateUpdate = (data: {
+      type?: string;
+      currentHp?: number;
+      maxHp?: number;
+    }) => {
+      if (data.type === "hp_change") {
+        if (data.currentHp !== undefined) setCurrentHp(data.currentHp);
+        if (data.maxHp !== undefined) setMaxHp(data.maxHp);
+      } else if (data.type === "adventure_complete") {
+        setIsAdventureComplete(true);
+      } else if (data.type === "game_over") {
+        setIsAdventureComplete(true);
+        setIsGameOver(true);
+      }
     };
 
     const onError = (data: { adventureId?: string; error: string } | string) => {
@@ -167,6 +263,8 @@ export function useGameSession(adventureId: string): GameSessionState {
       sock.off("game:response-complete", onResponseComplete as (...args: unknown[]) => void);
       sock.off("game:state-update", onStateUpdate as (...args: unknown[]) => void);
       sock.off("game:error", onError as (...args: unknown[]) => void);
+      // Clear autosave timer to prevent setState after unmount
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       disconnect();
       setIsInGameSession(false);
     };
@@ -211,6 +309,37 @@ export function useGameSession(adventureId: string): GameSessionState {
     await sendAction(action, choiceId);
   };
 
+  // ---------------------------------------------------------------------------
+  // Story 6.5 — Pause menu actions
+  // ---------------------------------------------------------------------------
+
+  function openPauseMenu() {
+    setIsPauseMenuOpen(true);
+  }
+
+  function closePauseMenu() {
+    setIsPauseMenuOpen(false);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Story 6.5 — Manual save via POST /adventures/:id/save
+  // ---------------------------------------------------------------------------
+
+  async function manualSave(): Promise<void> {
+    try {
+      const result = await api.post<ApiResponse<{ savedAt: string }>>(
+        `/api/v1/adventures/${adventureId}/save`,
+        {},
+      );
+      if (result.data?.savedAt) {
+        setLastSavedAt(new Date(result.data.savedAt));
+      }
+      triggerAutosaveIndicator();
+    } catch {
+      // Silent fail — auto-save already persists data; manual save is non-critical
+    }
+  }
+
   return {
     gameState,
     currentScene,
@@ -221,6 +350,16 @@ export function useGameSession(adventureId: string): GameSessionState {
     isStreaming,
     gameError,
     isInGameSession,
+    currentHp,
+    maxHp,
+    lastSavedAt,
+    showAutosaveIndicator,
+    isPauseMenuOpen,
+    isAdventureComplete,
+    isGameOver,
     sendAction: sendActionWrapped,
+    openPauseMenu,
+    closePauseMenu,
+    manualSave,
   };
 }

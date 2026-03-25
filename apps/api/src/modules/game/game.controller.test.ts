@@ -16,10 +16,38 @@ vi.mock("./game.service", () => ({
     processAction: vi.fn(),
     getState: vi.fn(),
     getMessages: vi.fn(),
+    autoSave: vi.fn(),
   },
 }));
 
-import { getMessagesHandler, getStateHandler, postActionHandler } from "./game.controller";
+// Mock Drizzle db for the save handler
+vi.mock("@/db", () => ({
+  db: {
+    query: {
+      adventures: {
+        findFirst: vi.fn(),
+      },
+    },
+    select: vi.fn(),
+  },
+}));
+
+vi.mock("@/db/schema", () => ({
+  adventures: {},
+  adventureCharacters: {
+    currentHp: "currentHp",
+    adventureId: "adventureId",
+  },
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn(),
+  and: vi.fn(),
+}));
+
+import { db } from "@/db";
+
+import { getMessagesHandler, getStateHandler, postActionHandler, postSaveHandler } from "./game.controller";
 import { gameService } from "./game.service";
 
 // ---------------------------------------------------------------------------
@@ -46,6 +74,7 @@ function makeApp(): Express {
   app.post("/adventures/:id/action", postActionHandler);
   app.get("/adventures/:id/state", getStateHandler);
   app.get("/adventures/:id/messages", getMessagesHandler);
+  app.post("/adventures/:id/save", postSaveHandler);
   app.use(errorHandler);
   return app;
 }
@@ -303,5 +332,83 @@ describe("GET /adventures/:id/messages (AC-6)", () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /adventures/:id/save (Story 6.5 AC-5)
+// ---------------------------------------------------------------------------
+
+const ACTIVE_ADVENTURE = {
+  id: "adv-1",
+  userId: "user-1",
+  status: "active",
+  lastPlayedAt: new Date("2026-03-01T00:00:00.000Z"),
+};
+
+describe("POST /adventures/:id/save (AC-5)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("active adventure + correct owner → 200 with savedAt", async () => {
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(ACTIVE_ADVENTURE as never);
+    const selectFrom = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValueOnce([{ currentHp: 20 }]),
+      }),
+    });
+    type SelectQueryBuilderMock = { from: typeof selectFrom };
+    const selectQueryBuilder: SelectQueryBuilderMock = { from: selectFrom };
+    vi.mocked(db.select).mockReturnValue(selectQueryBuilder as never);
+    vi.mocked(gameService.autoSave).mockResolvedValueOnce(undefined);
+
+    const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.savedAt).toBeDefined();
+    // savedAt must be a valid ISO timestamp
+    expect(() => new Date(res.body.data.savedAt as string)).not.toThrow();
+    expect(gameService.autoSave).toHaveBeenCalledOnce();
+    expect(gameService.autoSave).toHaveBeenCalledWith(
+      "adv-1",
+      expect.objectContaining({
+        currentHp: 20,
+      }),
+    );
+  });
+
+  it("adventure not found → 404 NOT_FOUND", async () => {
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(undefined as never);
+
+    const res = await request(makeApp()).post("/adventures/unknown/save").send({});
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("wrong owner → 403 FORBIDDEN", async () => {
+    const wrongOwnerAdventure: typeof ACTIVE_ADVENTURE = {
+      ...ACTIVE_ADVENTURE,
+      userId: "another-user",
+    };
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(wrongOwnerAdventure as never);
+
+    const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("adventure not active → 400 ADVENTURE_NOT_ACTIVE", async () => {
+    const completedAdventure: typeof ACTIVE_ADVENTURE = {
+      ...ACTIVE_ADVENTURE,
+      status: "completed",
+    };
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(completedAdventure as never);
+
+    const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("ADVENTURE_NOT_ACTIVE");
   });
 });
