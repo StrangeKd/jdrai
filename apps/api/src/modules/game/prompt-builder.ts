@@ -58,9 +58,12 @@ const NARRATIVE_INSTRUCTIONS: Record<D20Outcome, string> = {
   partial_success:
     "Narrer un succès avec une complication narrative. Ne pas mentionner le dé ni le score.",
   failure:
-    "Narrer un échec qui ouvre une nouvelle voie (fail forward selon la difficulté). Ne pas mentionner le dé ni le score.",
+    "Narrer un échec qui ouvre une nouvelle voie (fail forward selon la difficulté). Ne pas mentionner le dé ni le score. " +
+    "Si l'action impliquait un risque physique réel et que la narration montre une blessure, émettre [HP_CHANGE:-x] après la narration.",
   critical_failure:
-    "Narrer un échec avec conséquences notables. Ne pas mentionner le dé ni le score.",
+    "Narrer un échec avec conséquences notables. Ne pas mentionner le dé ni le score. " +
+    "Si l'action impliquait un risque physique réel (combat, chute, danger), émettre [HP_CHANGE:-x] après la narration " +
+    "(x entre 4 et 12 selon la gravité du dommage décrit).",
 };
 
 const ACTION_TYPE_LABELS: Record<ActionType, string> = {
@@ -329,6 +332,17 @@ export class PromptBuilder {
       "",
       "Incorrect :",
       "  \"...tu vaincs l'ennemi [HP_CHANGE:-10] et sors victorieux.\"",
+      "",
+      "Règle HP_CHANGE :",
+      "Émets [HP_CHANGE:-x] quand le personnage subit un dommage physique réel",
+      "(chute, blessure de combat, piège, brûlure, poison...) — uniquement si la narration le justifie.",
+      "x est un entier positif représentant les PV perdus.",
+      "Barème indicatif (adapte selon le contexte narratif) :",
+      "  Échec critique avec dommage physique grave  → [HP_CHANGE:-8] à [HP_CHANGE:-12]",
+      "  Échec critique avec dommage physique modéré → [HP_CHANGE:-4] à [HP_CHANGE:-7]",
+      "  Échec simple avec dommage physique          → [HP_CHANGE:-2] à [HP_CHANGE:-4]",
+      "Ne pas émettre HP_CHANGE pour les échecs purement narratifs (humiliation, perte d'objet, détour forcé...).",
+      "Ne jamais émettre [HP_CHANGE:0] ni une valeur positive.",
     ].join("\n");
   }
 
