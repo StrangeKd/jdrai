@@ -328,7 +328,8 @@ describe("useGameSession", () => {
   });
 
   // Story 6.6: game:request-intro replaced by sendAction("Commencer l'aventure")
-  it("sets isFirstLaunch=true and calls sendMessage when adventure has no messages", async () => {
+  // isFirstLaunch is now initialized from options.isNew (not derived from message count)
+  it("calls sendMessage when adventure has no messages (auto-start trigger)", async () => {
     mockUseQuery.mockReturnValue({
       data: {
         ...gameStateResponse,
@@ -343,10 +344,14 @@ describe("useGameSession", () => {
       },
     });
 
-    const { result } = renderHook(() => useGameSession("adv-1"));
+    renderHook(() => useGameSession("adv-1"));
 
-    expect(result.current.isFirstLaunch).toBe(true);
     expect(mockSendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("initializes isFirstLaunch=true when options.isNew=true is passed", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
+    expect(result.current.isFirstLaunch).toBe(true);
   });
 
   it("does not set isFirstLaunch=true when messages already exist", () => {

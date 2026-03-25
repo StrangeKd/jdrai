@@ -4,7 +4,7 @@
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { CharacterPanel } from "@/components/game/CharacterPanel";
@@ -23,6 +23,9 @@ export const Route = createFileRoute("/_authenticated/adventure/$id")({
 
 export function GameSessionPage() {
   const { id: adventureId } = Route.useParams();
+  const isNewAdventure = useRouterState({
+    select: (s) => !!(s.location.state as Record<string, unknown>)?.isNew,
+  });
 
   const {
     gameState,
@@ -51,7 +54,7 @@ export function GameSessionPage() {
     isFirstLaunch,
     openHistoryDrawer,
     closeHistoryDrawer,
-  } = useGameSession(adventureId);
+  } = useGameSession(adventureId, { isNew: isNewAdventure });
 
   const [isSaving, setIsSaving] = useState(false);
 

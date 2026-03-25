@@ -37,7 +37,7 @@ export function useCreateAdventure() {
     mutationFn: (input: AdventureCreateInput) => createAdventure(input),
     onSuccess: async (adventure) => {
       await queryClient.invalidateQueries({ queryKey: ["adventures"] });
-      await navigate({ to: "/adventure/$id", params: { id: adventure.id } });
+      await navigate({ to: "/adventure/$id", params: { id: adventure.id }, state: { isNew: true } });
     },
   });
 }

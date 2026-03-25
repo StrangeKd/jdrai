@@ -11,6 +11,8 @@ vi.mock("@tanstack/react-router", () => ({
       ...(opts as object),
       useParams: () => ({ id: "adv-1" }),
     }),
+  useRouterState: ({ select }: { select: (s: { location: { state: unknown } }) => unknown }) =>
+    select({ location: { state: {} } }),
 }));
 
 vi.mock("@/components/game/SessionHeader", () => ({

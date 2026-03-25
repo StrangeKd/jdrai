@@ -107,7 +107,7 @@ export interface GameSessionState {
   closeHistoryDrawer: () => void;
 }
 
-export function useGameSession(adventureId: string): GameSessionState {
+export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
   const [currentScene, setCurrentScene] = useState("");
   const [streamingBuffer, setStreamingBuffer] = useState("");
   const [playerEcho, setPlayerEcho] = useState<string | null>(null);
@@ -128,11 +128,16 @@ export function useGameSession(adventureId: string): GameSessionState {
   const [showMilestoneOverlay, setShowMilestoneOverlay] = useState(false);
   const [milestoneOverlayName, setMilestoneOverlayName] = useState<string | null>(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(false);
+  // Initialized from options.isNew so the overlay is visible before gameState loads
+  const [isFirstLaunch, setIsFirstLaunch] = useState(options?.isNew ?? false);
   // Timer ref for autosave indicator auto-clear (prevents stale setState after unmount)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timer ref for milestone overlay auto-dismiss
   const milestoneOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timer ref for intro delayed hide (enforces 2s minimum display)
+  const introHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Minimum timestamp until which the intro must stay visible (ensures readability)
+  const introMinDisplayUntilRef = useRef<number>(options?.isNew ? Date.now() + 2000 : 0);
   // Prevents double-triggering the intro request across re-renders (renamed from introRequestedRef)
   const hasAutoStarted = useRef(false);
 
@@ -173,15 +178,13 @@ export function useGameSession(adventureId: string): GameSessionState {
     }
   }, [gameState]);
 
-  // Story 6.6 — Detect first launch and set isFirstLaunch state.
-  // Auto-triggers sendAction on new adventures (no messages yet).
+  // Story 6.6 — Auto-trigger first GM narration on new adventures (no messages yet).
+  // isFirstLaunch is already set from options.isNew — no need to re-derive it here.
   useEffect(() => {
     if (!gameState) return;
     if (hasAutoStarted.current) return;
 
     const isNew = (gameState.messages ?? []).length === 0;
-    setIsFirstLaunch(isNew);
-
     if (isNew) {
       hasAutoStarted.current = true;
       // Trigger first GM narration through the standard action flow.
@@ -212,8 +215,6 @@ export function useGameSession(adventureId: string): GameSessionState {
       setIsLoading(false);
       setIsStreaming(true);
       setStreamingBuffer("");
-      // Story 6.6: dismiss IntroSession when first GM response begins streaming
-      setIsFirstLaunch(false);
     };
 
     // game:chunk payload: { adventureId, chunk }
@@ -238,6 +239,14 @@ export function useGameSession(adventureId: string): GameSessionState {
       setLastSavedAt(new Date());
       // Story 6.5: trigger autosave indicator after each completed GM response
       triggerAutosaveIndicator();
+      // Story 6.6: dismiss IntroSession after first narration completes.
+      // Enforces a 2s minimum display so the player has time to read the intro text.
+      const remaining = introMinDisplayUntilRef.current - Date.now();
+      if (remaining > 0) {
+        introHideTimerRef.current = setTimeout(() => setIsFirstLaunch(false), remaining);
+      } else {
+        setIsFirstLaunch(false);
+      }
     };
 
     // game:state-update — Story 6.5: handle hp_change, adventure_complete, game_over
@@ -294,6 +303,7 @@ export function useGameSession(adventureId: string): GameSessionState {
       // Clear timers to prevent setState after unmount
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       if (milestoneOverlayTimerRef.current) clearTimeout(milestoneOverlayTimerRef.current);
+      if (introHideTimerRef.current) clearTimeout(introHideTimerRef.current);
       disconnect();
       setIsInGameSession(false);
     };
