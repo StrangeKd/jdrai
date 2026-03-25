@@ -5,8 +5,8 @@
  * GET  /api/v1/adventures/:id/messages
  * POST /api/v1/adventures/:id/save   (Story 6.5)
  */
-import type { NextFunction, Request, Response } from "express";
 import { eq } from "drizzle-orm";
+import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
 import { db } from "@/db";

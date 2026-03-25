@@ -45,9 +45,10 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
 }));
 
+import { db } from "@/db";
+
 import { getMessagesHandler, getStateHandler, postActionHandler, postSaveHandler } from "./game.controller";
 import { gameService } from "./game.service";
-import { db } from "@/db";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -355,7 +356,9 @@ describe("POST /adventures/:id/save (AC-5)", () => {
         limit: vi.fn().mockResolvedValueOnce([{ currentHp: 20 }]),
       }),
     });
-    vi.mocked(db.select).mockReturnValue({ from: selectFrom } as never);
+    type SelectQueryBuilderMock = { from: typeof selectFrom };
+    const selectQueryBuilder: SelectQueryBuilderMock = { from: selectFrom };
+    vi.mocked(db.select).mockReturnValue(selectQueryBuilder as never);
     vi.mocked(gameService.autoSave).mockResolvedValueOnce(undefined);
 
     const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
@@ -384,10 +387,11 @@ describe("POST /adventures/:id/save (AC-5)", () => {
   });
 
   it("wrong owner → 403 FORBIDDEN", async () => {
-    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce({
+    const wrongOwnerAdventure: typeof ACTIVE_ADVENTURE = {
       ...ACTIVE_ADVENTURE,
       userId: "another-user",
-    } as never);
+    };
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(wrongOwnerAdventure as never);
 
     const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
 
@@ -396,10 +400,11 @@ describe("POST /adventures/:id/save (AC-5)", () => {
   });
 
   it("adventure not active → 400 ADVENTURE_NOT_ACTIVE", async () => {
-    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce({
+    const completedAdventure: typeof ACTIVE_ADVENTURE = {
       ...ACTIVE_ADVENTURE,
       status: "completed",
-    } as never);
+    };
+    vi.mocked(db.query.adventures.findFirst).mockResolvedValueOnce(completedAdventure as never);
 
     const res = await request(makeApp()).post("/adventures/adv-1/save").send({});
 
