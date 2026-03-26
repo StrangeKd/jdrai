@@ -164,7 +164,7 @@ export async function updateAdventureState(
     .where(eq(adventures.id, adventureId));
 }
 
-/** Marks an adventure as completed (or game_over). */
+/** Marks an adventure as completed (or game_over). Sets isGameOver column + JSONB for backwards compat. */
 export async function completeAdventure(
   adventureId: string,
   isGameOver: boolean,
@@ -174,10 +174,22 @@ export async function completeAdventure(
     .set({
       status: "completed",
       completedAt: new Date(),
+      isGameOver,
       updatedAt: new Date(),
       state: sql`jsonb_set(${adventures.state}, '{completion}', ${JSON.stringify({
         isGameOver,
       })}::jsonb, true)`,
     })
+    .where(eq(adventures.id, adventureId));
+}
+
+/** Updates the narrativeSummary column after async LLM generation. */
+export async function updateNarrativeSummary(
+  adventureId: string,
+  summary: string,
+): Promise<void> {
+  await db
+    .update(adventures)
+    .set({ narrativeSummary: summary, updatedAt: new Date() })
     .where(eq(adventures.id, adventureId));
 }

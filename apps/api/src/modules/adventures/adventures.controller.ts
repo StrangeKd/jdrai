@@ -5,6 +5,7 @@ import { adventureCreateSchema, adventureUpdateSchema } from "@jdrai/shared";
 import {
   createAdventureForUser,
   getAdventureById,
+  getAdventureMilestonesForUser,
   getAdventuresForUser,
   getTemplates,
   updateAdventureForUser,
@@ -60,6 +61,19 @@ export async function updateAdventureHandler(
     const input = adventureUpdateSchema.parse(req.body);
     const adventure = await updateAdventureForUser(req.user!.id, req.params["id"]!, input.status);
     res.json({ success: true, data: adventure });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdventureMilestonesHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const milestones = await getAdventureMilestonesForUser(req.user!.id, req.params["id"]!);
+    res.json({ success: true, data: milestones });
   } catch (error) {
     next(error);
   }

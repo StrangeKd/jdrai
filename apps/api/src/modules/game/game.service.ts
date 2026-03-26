@@ -29,6 +29,7 @@ import {
   transitionMilestone,
   updateAdventureState,
   updateCharacterHp,
+  updateNarrativeSummary,
   type GameStateSnapshot,
 } from "./game.repository";
 import { LLMService, createLLMService } from "./llm/index";
@@ -128,9 +129,11 @@ function buildAdventureDTO(
     lastPlayedAt: (adventureRow.lastPlayedAt ?? adventureRow.createdAt).toISOString(),
     currentMilestone: currentMilestoneName,
     character: characterDTO,
+    isGameOver: adventureRow.isGameOver ?? false,
   };
 
   if (adventureRow.tone) dto.tone = adventureRow.tone as AdventureDTO["tone"];
+  if (adventureRow.narrativeSummary) dto.narrativeSummary = adventureRow.narrativeSummary;
 
   return dto;
 }
@@ -580,12 +583,63 @@ export class GameService {
 
     // 3. Adventure completion — AFTER other signals
     if (signals.adventureComplete || signals.isGameOver) {
-      await completeAdventure(adventureId, signals.isGameOver);
+      await this.handleAdventureEnd(adventureId, signals.isGameOver);
       io?.to(room).emit("game:state-update", {
         adventureId,
         type: signals.isGameOver ? "game_over" : "adventure_complete",
       });
     }
+  }
+
+  /**
+   * Handles adventure end: marks as completed in DB and fires async narrative summary generation.
+   * The summary generation is fire-and-forget — the websocket event is emitted immediately.
+   */
+  private async handleAdventureEnd(adventureId: string, isGameOver: boolean): Promise<void> {
+    await completeAdventure(adventureId, isGameOver);
+
+    // Non-blocking: narrative summary generated async after status is updated
+    this.generateNarrativeSummary(adventureId, isGameOver).catch((err: unknown) => {
+      logger.error({ err, adventureId }, "Narrative summary generation failed — non-fatal");
+    });
+  }
+
+  /**
+   * Generates a 2–4 sentence narrative summary via a non-streaming LLM call.
+   * Tone is triumphal for success, solemn-epic for game over (GDD §6.3 — never humiliating).
+   */
+  private async generateNarrativeSummary(adventureId: string, isGameOver: boolean): Promise<void> {
+    // Load character + milestones for prompt context
+    const [characterRow] = await db
+      .select()
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    const allMilestones = await getMilestones(adventureId);
+
+    const characterName = characterRow?.name ?? "Aventurier";
+    const completedMilestoneNames = allMilestones
+      .filter((m) => m.status === "completed")
+      .map((m) => m.name)
+      .join(", ");
+
+    const tone = isGameOver ? "solennel et épique" : "triomphant et immersif";
+    const perspective = isGameOver ? "votre héritage" : "votre aventure accomplie";
+
+    const prompt = `Tu es Le Chroniqueur. Résume ${perspective} en 2-4 phrases, sur un ton ${tone}.
+Le personnage : ${characterName} (Aventurier, Humain).
+Milestones accomplis : ${completedMilestoneNames || "aucun"}.
+Règles : jamais humiliant, toujours épique, en français, à la 2ème personne du singulier (tutoiement), jamais de mécaniques de jeu explicites.`;
+
+    const llm = await this.getLLMService();
+    const summary = await llm.generate({
+      systemPrompt: prompt,
+      messages: [],
+      maxAttempts: 2,
+    });
+
+    await updateNarrativeSummary(adventureId, summary);
   }
 
   /** Updates Adventure.state JSONB snapshot after each turn. */

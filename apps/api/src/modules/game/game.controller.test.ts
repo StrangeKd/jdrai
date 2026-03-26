@@ -220,6 +220,7 @@ const MOCK_GAME_STATE: GameStateDTO = {
     startedAt: "2026-03-01T00:00:00.000Z",
     lastPlayedAt: "2026-03-01T00:00:00.000Z",
     currentMilestone: "Prologue",
+    isGameOver: false,
     character: {
       id: "char-1",
       name: "Héros",
