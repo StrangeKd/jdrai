@@ -59,21 +59,6 @@ export function registerGameSocket(io: Server): void {
       }
     });
 
-    // Generate intro message when a fresh adventure has no messages yet
-    socket.on("game:request-intro", async ({ adventureId }: { adventureId: string }) => {
-      try {
-        const userId = socket.data.userId as string | undefined;
-        if (!userId) return;
-        await gameService.generateIntroduction(adventureId, userId, io);
-      } catch (err) {
-        logger.error("[Socket] game:request-intro error:", err);
-        socket.emit("game:error", {
-          adventureId,
-          error: "Impossible de démarrer l'aventure. Veuillez réessayer.",
-        });
-      }
-    });
-
     // Story 6.8 placeholder — resync after reconnection
     socket.on("game:resync", async ({ adventureId }: { adventureId: string }) => {
       try {

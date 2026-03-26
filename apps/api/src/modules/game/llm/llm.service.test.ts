@@ -195,7 +195,7 @@ describe("LLMService.stream()", () => {
     expect(chunks).toEqual(["chunk1 from primary", "chunk2 from primary"]);
   });
 
-  it("throws AppError LLM_ERROR when streaming provider throws", async () => {
+  it("throws AppError LLM_ERROR when streaming provider throws (no fallback)", async () => {
     const brokenProvider: ILLMProvider = {
       name: "broken",
       generateResponse: vi.fn(),
@@ -210,12 +210,94 @@ describe("LLMService.stream()", () => {
       { ...DEFAULT_CONFIG, fallbackOrder: [] },
     );
 
-    // Must get the iterator to call .next()
     const gen = service.stream(params)[Symbol.asyncIterator]();
     await expect(gen.next()).rejects.toMatchObject({
       code: "LLM_ERROR",
       statusCode: 503,
     });
+  });
+
+  it("falls back to secondary provider when primary stream throws", async () => {
+    const brokenPrimary: ILLMProvider = {
+      name: "primary",
+      generateResponse: vi.fn(),
+      async *streamResponse() {
+        throw new Error("primary stream error");
+        yield ""; // unreachable
+      },
+    };
+    const fallback = makeMockProvider("fallback");
+
+    const service = new LLMService(
+      new Map([["primary", brokenPrimary], ["fallback", fallback]]),
+      { ...DEFAULT_CONFIG, fallbackOrder: ["fallback"] },
+    );
+
+    const chunks: string[] = [];
+    for await (const chunk of service.stream(params)) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual(["chunk1 from fallback", "chunk2 from fallback"]);
+  });
+
+  it("throws LLM_ERROR when all stream providers fail", async () => {
+    const makebroken = (name: string): ILLMProvider => ({
+      name,
+      generateResponse: vi.fn(),
+      async *streamResponse() {
+        throw new Error("down");
+        yield ""; // unreachable
+      },
+    });
+
+    const service = new LLMService(
+      new Map([["primary", makebroken("primary")], ["fallback", makebroken("fallback")]]),
+      { ...DEFAULT_CONFIG, fallbackOrder: ["fallback"] },
+    );
+
+    const gen = service.stream(params)[Symbol.asyncIterator]();
+    await expect(gen.next()).rejects.toMatchObject({ code: "LLM_ERROR", statusCode: 503 });
+  });
+
+  it("throws LLM_TIMEOUT when stream exceeds configured timeout", async () => {
+    const slowProvider: ILLMProvider = {
+      name: "slow",
+      generateResponse: vi.fn(),
+      async *streamResponse() {
+        await new Promise(() => {}); // hangs indefinitely
+        yield ""; // unreachable
+      },
+    };
+
+    const service = new LLMService(
+      new Map([["slow", slowProvider]]),
+      { primaryKey: "slow", fallbackOrder: [], timeoutMs: 10 },
+    );
+
+    const gen = service.stream(params)[Symbol.asyncIterator]();
+    await expect(gen.next()).rejects.toMatchObject({ code: "LLM_TIMEOUT", statusCode: 408 });
+  });
+
+  it("does not try fallback on LLM_TIMEOUT — re-throws immediately", async () => {
+    const slowProvider: ILLMProvider = {
+      name: "primary",
+      generateResponse: vi.fn(),
+      async *streamResponse() {
+        await new Promise(() => {}); // hangs indefinitely
+        yield ""; // unreachable
+      },
+    };
+    const fallback = makeMockProvider("fallback");
+
+    const service = new LLMService(
+      new Map([["primary", slowProvider], ["fallback", fallback]]),
+      { primaryKey: "primary", fallbackOrder: ["fallback"], timeoutMs: 10 },
+    );
+
+    const gen = service.stream(params)[Symbol.asyncIterator]();
+    // Must throw LLM_TIMEOUT, not LLM_ERROR — proves fallback was not attempted
+    await expect(gen.next()).rejects.toMatchObject({ code: "LLM_TIMEOUT", statusCode: 408 });
   });
 });
 

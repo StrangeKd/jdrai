@@ -111,17 +111,62 @@ export class LLMService {
 
   /**
    * Stream an LLM response as an async iterable.
-   * Uses params.modelKey if provided, otherwise falls back to the primary key.
-   * No mid-stream fallback is attempted.
+   * Tries each provider in the fallback chain — mirrors generate() routing logic.
+   * On LLM_TIMEOUT, re-throws immediately without attempting fallbacks.
    */
   async *stream(params: StreamParams): AsyncIterable<string> {
-    const key = params.modelKey ?? this.primaryKey;
-    const provider = this.getProvider(key);
+    const chain = params.modelKey
+      ? [params.modelKey, ...this.fallbackOrder]
+      : [this.primaryKey, ...this.fallbackOrder];
+
+    for (const key of chain) {
+      const provider = this.getProvider(key);
+      try {
+        yield* this.streamWithTimeout(provider, params);
+        return;
+      } catch (error) {
+        logger.error(`[LLMService] Streaming provider "${key}" failed:`, error);
+        // Timeout → no point trying fallbacks (same policy as generate())
+        if (error instanceof AppError && error.code === "LLM_TIMEOUT") throw error;
+        // Other errors → try next provider in chain
+      }
+    }
+
+    throw new AppError(503, "LLM_ERROR", "All LLM providers failed for streaming");
+  }
+
+  /**
+   * Wraps a provider's streamResponse with a single timeout covering the entire stream.
+   * Races each chunk against a timer — throws LLM_TIMEOUT if any wait exceeds timeoutMs.
+   */
+  private async *streamWithTimeout(
+    provider: ILLMProvider,
+    params: StreamParams,
+  ): AsyncIterable<string> {
+    const gen = provider.streamResponse(params)[Symbol.asyncIterator]();
+
+    let clearStreamTimeout: () => void = () => {};
+    const streamTimeout = new Promise<never>((_, reject) => {
+      const id = setTimeout(
+        () =>
+          reject(
+            new AppError(408, "LLM_TIMEOUT", `LLM stream timed out after ${this.timeoutMs}ms`),
+          ),
+        this.timeoutMs,
+      );
+      clearStreamTimeout = () => clearTimeout(id);
+    });
+
     try {
-      yield* provider.streamResponse(params);
-    } catch (error) {
-      logger.error(`[LLMService] Streaming provider "${key}" failed:`, error);
-      throw new AppError(503, "LLM_ERROR", "LLM streaming failed");
+      while (true) {
+        const result = await Promise.race([gen.next(), streamTimeout]);
+        if (result.done) break;
+        yield result.value;
+      }
+    } finally {
+      clearStreamTimeout();
+      // Fire-and-forget: do not await — gen may be stuck on an unresolvable await (e.g. hung provider)
+      void gen.return?.();
     }
   }
 

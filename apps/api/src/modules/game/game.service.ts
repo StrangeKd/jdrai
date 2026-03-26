@@ -24,7 +24,6 @@ import { AppError } from "@/utils/errors";
 import { D20Service, type ActionType, type D20Result } from "./d20.service";
 import {
   completeAdventure,
-  getActiveMilestone,
   getMilestones,
   insertMessage,
   transitionMilestone,
@@ -511,12 +510,10 @@ export class GameService {
       .where(eq(adventureCharacters.adventureId, adventureId))
       .limit(1);
 
-    const updatedActiveMilestone = await getActiveMilestone(adventureId);
-
     await this.autoSave(adventureId, {
       lastPlayerAction: action,
       currentHp: updatedCharacter?.currentHp ?? character.currentHp,
-      activeMilestoneId: updatedActiveMilestone?.id ?? null,
+      activeMilestoneId: activeMilestone?.id ?? null,
       worldState,
       updatedAt: new Date().toISOString(),
     });
@@ -716,139 +713,6 @@ export class GameService {
   }
 
   /**
-   * Generates the adventure introduction (first GM message) without requiring a player action.
-   * Called via socket event game:request-intro when the player opens a fresh adventure.
-   * Only the assistant message is inserted — no user message, no D20 roll.
-   * Idempotent: silently returns if messages already exist.
-   */
-  async generateIntroduction(
-    adventureId: string,
-    userId: string,
-    io: import("socket.io").Server,
-  ): Promise<void> {
-    // 1. Load adventure — auth guards
-    const [adventureRow] = await db
-      .select()
-      .from(adventures)
-      .where(eq(adventures.id, adventureId))
-      .limit(1);
-
-    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
-    if (adventureRow.status !== "active") return;
-
-    // 2. Idempotency: skip if messages already exist
-    const [existingMessage] = await db
-      .select({ id: messages.id })
-      .from(messages)
-      .where(eq(messages.adventureId, adventureId))
-      .limit(1);
-
-    if (existingMessage) return;
-
-    // 3. Load character + milestones
-    const [characterRow] = await db
-      .select()
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
-
-    if (!characterRow) throw new AppError(404, "NOT_FOUND", "Character not found");
-
-    const character: AdventureCharacterDTO = {
-      id: characterRow.id,
-      name: characterRow.name,
-      className: "Aventurier",
-      raceName: "Humain",
-      stats: characterRow.stats as AdventureCharacterDTO["stats"],
-      currentHp: characterRow.currentHp,
-      maxHp: characterRow.maxHp,
-    };
-
-    const allMilestones = await getMilestones(adventureId);
-    const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
-
-    // 4. Build intro context window (no D20, no player action history)
-    const systemPrompt = this.promptBuilder.buildSystemPrompt({
-      difficulty: adventureRow.difficulty as Difficulty,
-    });
-
-    const introDirective =
-      "[SYSTÈME — INTRODUCTION]\n" +
-      "C'est le tout début de l'aventure. Aucune action du joueur n'a encore eu lieu.\n" +
-      "Présente la scène d'ouverture de manière immersive : ambiance, lieu, situation initiale.\n" +
-      "Conclus en proposant 2 à 3 premières actions suggérées au format [CHOIX]...[/CHOIX].";
-
-    const contextWindow = this.promptBuilder.buildContextWindow({
-      systemPrompt,
-      d20Block: introDirective,
-      playerAction: "",
-      context: {
-        character,
-        milestones: allMilestones,
-        currentMilestone: activeMilestone,
-        recentHistory: [],
-        worldState: {},
-      },
-    });
-
-    const combinedSystemPrompt = contextWindow
-      .filter((m) => m.role === "system")
-      .map((m) => m.content)
-      .join("\n\n");
-    const conversationMessages = contextWindow.filter((m) => m.role !== "system");
-
-    // 5. Emit response-start
-    const room = `adventure:${adventureId}`;
-    io.to(room).emit("game:response-start", { adventureId });
-
-    // 6. Stream LLM response, emit chunks
-    const llm = await this.getLLMService();
-    let fullResponse = "";
-    try {
-      for await (const chunk of llm.stream({
-        systemPrompt: combinedSystemPrompt,
-        messages: conversationMessages,
-      })) {
-        io.to(room).emit("game:chunk", { adventureId, chunk });
-        fullResponse += chunk;
-      }
-    } catch (error) {
-      logger.error("[GameService] generateIntroduction LLM stream failed:", error);
-      io.to(room).emit("game:error", {
-        adventureId,
-        error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
-      });
-      throw error;
-    }
-
-    // 7. Parse signals + insert assistant message only
-    const { cleanText, signals } = parseSignals(fullResponse);
-
-    const assistantMessageId = await insertMessage({
-      adventureId,
-      milestoneId: activeMilestone?.id ?? null,
-      role: "assistant",
-      content: cleanText,
-      metadata: {
-        ...(signals.choices.length > 0 && { choices: signals.choices }),
-      },
-    });
-
-    // 8. Emit response-complete
-    io.to(room).emit("game:response-complete", {
-      adventureId,
-      messageId: assistantMessageId,
-      cleanText,
-      choices: signals.choices,
-      stateChanges: {
-        adventureComplete: false,
-        isGameOver: false,
-      },
-    });
-  }
-
-  /**
    * Returns messages for GET /api/adventures/:id/messages (AC #6).
    * Optionally filtered by milestoneId; limit 100, ordered createdAt ASC.
    */
@@ -857,23 +721,15 @@ export class GameService {
     userId: string,
     milestoneId?: string,
   ): Promise<{ messages: GameMessageDTO[]; total: number }> {
-    // Auth check
+    // Single query — applicative 404/403 check (mirrors processAction pattern)
     const [adventureRow] = await db
-      .select({ id: adventures.id })
+      .select({ id: adventures.id, userId: adventures.userId })
       .from(adventures)
       .where(eq(adventures.id, adventureId))
       .limit(1);
 
     if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-
-    // Re-query with userId for 403 check
-    const [owned] = await db
-      .select({ id: adventures.id })
-      .from(adventures)
-      .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
-      .limit(1);
-
-    if (!owned) throw new AppError(403, "FORBIDDEN", "Not your adventure");
+    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
 
     const rows = await db
       .select()

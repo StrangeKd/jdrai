@@ -487,3 +487,133 @@ describe("processAction() — narrative action produces no D20 metadata (AC #7)"
     expect(meta).toEqual({});
   });
 });
+
+// ---------------------------------------------------------------------------
+// processAction() — full turn + LLM signals (Story 6.3a Task 5)
+// ---------------------------------------------------------------------------
+
+describe("processAction() — full turn + signals", () => {
+  it("returns messageId and inserts assistant message in DB for a valid action", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Vous avancez dans le couloir sombre."]);
+
+    const result = await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'avance prudemment dans le couloir",
+    });
+
+    expect(result.messageId).toBeDefined();
+
+    const rows = await db
+      .select({ id: messages.id, role: messages.role })
+      .from(messages)
+      .where(eq(messages.adventureId, adventureId));
+
+    const assistantMsg = rows.find((r) => r.role === "assistant");
+    expect(assistantMsg).toBeDefined();
+    expect(assistantMsg!.id).toBe(result.messageId);
+  });
+
+  it("[HP_CHANGE:-5] → currentHp decremented in DB", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Vous recevez un coup. [HP_CHANGE:-5] Votre santé diminue."]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'attaque le garde",
+    });
+
+    const [char] = await db
+      .select({ currentHp: adventureCharacters.currentHp })
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    expect(char!.currentHp).toBe(15); // 20 - 5
+  });
+
+  it("[HP_CHANGE] clamps HP at 0 when damage is fatal", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Coup fatal. [HP_CHANGE:-999]"]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'affronte l'ennemi",
+    });
+
+    const [char] = await db
+      .select({ currentHp: adventureCharacters.currentHp })
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    expect(char!.currentHp).toBe(0);
+  });
+
+  it("[MILESTONE_COMPLETE] → active milestone set to completed, next set to active", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Le prologue s'achève. [MILESTONE_COMPLETE:Prologue]"]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "Je termine ma quête initiale",
+    });
+
+    const [m1] = await db
+      .select({ status: milestones.status })
+      .from(milestones)
+      .where(eq(milestones.id, milestone1Id))
+      .limit(1);
+
+    const [m2] = await db
+      .select({ status: milestones.status })
+      .from(milestones)
+      .where(eq(milestones.id, milestone2Id))
+      .limit(1);
+
+    expect(m1!.status).toBe("completed");
+    expect(m2!.status).toBe("active");
+  });
+
+  it("[GAME_OVER] → adventure.status = 'completed' in DB", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Vous êtes vaincu. Votre aventure s'arrête ici. [GAME_OVER]"]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'affronte le boss final",
+    });
+
+    const [adv] = await db
+      .select({ status: adventures.status })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    expect(adv!.status).toBe("completed");
+  });
+
+  it("[ADVENTURE_COMPLETE] → adventure.status = 'completed' in DB", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Vous triomphez ! L'aventure se conclut en gloire. [ADVENTURE_COMPLETE]"]);
+
+    await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "Je bats le boss final",
+    });
+
+    const [adv] = await db
+      .select({ status: adventures.status })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    expect(adv!.status).toBe("completed");
+  });
+});

@@ -196,6 +196,71 @@ Décider avant ou pendant la Story d'implémentation E7 (tutoriel) :
 
 ---
 
+## [TD-007] `useGameSession` — God Hook, décomposition requise avant P2
+
+**Statut:** ⏳ Planifié — Story 7.4 (post-Epic 7, pre-Epic 8)
+**Sévérité:** Moyenne — pas de crash, mais complexité structurelle croissante
+
+### Contexte
+
+`useGameSession` (`apps/web/src/hooks/useGameSession.ts`) a été étendu dans **5 stories consécutives** (6.4 → 6.8) sans refactoring intermédiaire. Il gère actuellement au moins 8 domaines distincts :
+
+| Domaine | State / Logique concernée |
+|---|---|
+| Streaming LLM | `streamingBuffer`, `isStreaming`, `isLoading`, `playerEcho` |
+| État narratif | `currentScene`, `choices`, `currentScene` |
+| HP / Personnage | `currentHp`, `maxHp` |
+| Autosave | `lastSavedAt`, `showAutosaveIndicator`, `manualSave()` |
+| UI de session | `isPauseMenuOpen`, `isHistoryDrawerOpen`, `isFirstLaunch` |
+| Milestone | `showMilestoneOverlay`, `milestoneOverlayName` |
+| Exit / Navigation | `isExitModalOpen`, `isInGameSession`, `isConfirmingExit`, `confirmExit()` |
+| Résilience réseau | `isRateLimited`, `rateLimitCountdown`, `isDisconnected`, `connectionFailed`, `hasLLMError`, `retryLastAction()` |
+
+**Surface de test actuelle :** 3 fichiers de tests distincts (`useGameSession.test.ts`, `useGameSession.resilience.test.ts`, `hooks/__tests__/useGameSession.test.ts`) — signe que le hook est déjà difficile à couvrir en un seul endroit.
+
+**Risque P2 :** Les Events, l'inventaire, et le companion vont ajouter de nouveaux domaines. Sans décomposition, la dette devient structurelle.
+
+### Action requise
+
+Décomposer `useGameSession` en hooks composés avant le début de l'Epic 8. L'architecture exacte est à valider avec Winston (Architect) lors de la Story 7.4, mais les axes probables sont :
+
+- `useGameStreaming` — état LLM temps réel (streaming, loading, playerEcho, choices)
+- `useGameResilience` — rate limit, déconnexion, erreurs LLM
+- `useGameUI` — pause menu, history drawer, exit modal, autosave indicator, milestone overlay
+- `useGameSession` (coordinateur) — compose les hooks ci-dessus, expose `sendAction()`, gère l'état narratif global
+
+### Limitation documentée à adresser
+
+**[TD-007-A]** Retry sur erreur LLM (`retryLastAction()`) crée un message utilisateur en doublon en DB — `idempotencyKey` sur `POST /action` à ajouter en même temps que le refactor (ou en story séparée P2).
+
+### Story de résolution
+
+→ **Story 7.4** : `_bmad-output/implementation-artifacts/7-4-refactor-usegamesession-decomposition.story.md`
+
+---
+
+## [TD-008] LLMService — `stream()` fallback + timeout
+
+**Statut:** ✅ Résolu (2026-03-26)
+**Sévérité:** Haute en production — traitée avant P2
+
+### Contexte
+
+`LLMService.stream()` utilisait uniquement le provider primaire sans fallback ni timeout.
+Contrairement à `generate()` qui bénéficiait du fallback multi-provider et de `withTimeout`,
+un timeout bloquait le tour indéfiniment côté joueur.
+
+### Résolution appliquée
+
+`apps/api/src/modules/game/llm/index.ts` — méthode `stream()` et helper privé `streamWithTimeout()` (2026-03-26) :
+
+- **Fallback chain** : même chaîne de providers que `generate()` — sur erreur d'un provider, bascule au suivant
+- **Timeout** : `streamWithTimeout()` race chaque `gen.next()` contre un timer couvrant l'ensemble du stream
+- **LLM_TIMEOUT** : re-throw immédiat sans tenter de fallback (cohérent avec `generate()`)
+- **Cleanup** : `gen.return()` en fire-and-forget dans `finally` (évite le blocage si le générateur est suspendu sur une promesse non résoluble)
+
+---
+
 ## Processus de mise à jour
 
 Ce document doit être mis à jour :
