@@ -152,6 +152,11 @@ export async function updateAdventureStatus(
     .where(eq(adventures.id, id))
     .returning();
 
+  // Defensive guard for rare concurrent delete between SELECT and UPDATE.
+  if (!row) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found");
+  }
+
   return row!;
 }
 

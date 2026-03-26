@@ -14,6 +14,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   LLM_ERROR: "Le MJ rencontre des difficultés…",
   LLM_TIMEOUT: "Le MJ met trop de temps à répondre…",
   ADVENTURE_NOT_ACTIVE: "Cette aventure est déjà terminée.",
+  INVALID_TRANSITION: "Transition de statut invalide.",
 };
 
 const ERROR_CODES = new Set<ErrorCode>(Object.keys(ERROR_MESSAGES) as ErrorCode[]);

@@ -397,6 +397,8 @@ function injectStreamLLM(svc: GameService, chunks: string[]) {
   }
   const llm = {
     stream: vi.fn().mockReturnValue(mockStream()),
+    // processAction can trigger async summary generation on completion signals.
+    generate: vi.fn().mockResolvedValue("Résumé narratif de test."),
     generateResponse: vi.fn(),
   } as unknown as LLMService;
   // @ts-expect-error — private field injection for testing

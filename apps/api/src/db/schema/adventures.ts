@@ -1,4 +1,4 @@
-import { boolean, type AnyPgColumn, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // Import enums already defined in Epic 1 — do NOT redefine
 import { adventureTemplates, difficultyEnum, estimatedDurationEnum } from "./adventure-templates";

@@ -216,6 +216,13 @@ describe("GET /adventures (AC-4)", () => {
     await request(makeApp()).get("/adventures?status=completed");
     expect(getAdventuresForUser).toHaveBeenCalledWith(MOCK_USER_ID, "completed");
   });
+
+  it("6.5c — ?status=abandoned passes filter to service (Story 7.1 AC #5)", async () => {
+    vi.mocked(getAdventuresForUser).mockResolvedValueOnce([]);
+
+    await request(makeApp()).get("/adventures?status=abandoned");
+    expect(getAdventuresForUser).toHaveBeenCalledWith(MOCK_USER_ID, "abandoned");
+  });
 });
 
 describe("GET /adventures/:id (AC-5)", () => {
