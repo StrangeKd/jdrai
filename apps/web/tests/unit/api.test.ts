@@ -52,6 +52,35 @@ describe("api service", () => {
     }
   });
 
+  it("parses Retry-After HTTP-date format", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-26T10:00:00.000Z"));
+    const retryAt = new Date("2026-03-26T10:00:12.000Z").toUTCString();
+
+    mockFetch.mockResolvedValueOnce(makeResponse(429, {}, { "retry-after": retryAt }));
+
+    try {
+      await api.get("/test");
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(RateLimitError);
+      expect((err as RateLimitError).retryAfter).toBe(12);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to default Retry-After=5 for invalid header value", async () => {
+    mockFetch.mockResolvedValueOnce(makeResponse(429, {}, { "retry-after": "not-a-valid-header" }));
+    try {
+      await api.get("/test");
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(RateLimitError);
+      expect((err as RateLimitError).retryAfter).toBe(5);
+    }
+  });
+
   it("429 emits rate-limited event on rateLimitEmitter", async () => {
     const listener = vi.fn();
     rateLimitEmitter.on("rate-limited", listener);

@@ -1,15 +1,24 @@
 /**
- * socket.service.ts — Socket.io client singleton for game sessions (Story 6.4 Task 1).
+ * socket.service.ts — Socket.io client singleton for game sessions (Story 6.4 Task 1 / Story 6.8 Task 2).
  *
  * Connects to the backend with Better Auth session cookies (withCredentials: true).
  * Joins the adventure room on connect so the client receives all game:* events.
+ *
+ * Story 6.8 additions:
+ *  - reconnectionAttempts: 3 (gives up after 3 failed attempts)
+ *  - Emits connectionStatusEmitter events on disconnect / reconnect / reconnect_failed
+ *  - Re-emits game:join + game:resync on reconnection to reload state
+ *  - Exposes manualReconnect() to restart connection after reconnect_failed
  *
  * Usage:
  *   connect(adventureId)  — call on game session mount
  *   disconnect()           — call on game session unmount
  *   getSocket()            — access socket instance (e.g. to register event listeners)
+ *   manualReconnect()      — restart connection attempts after reconnect_failed
  */
 import { io, type Socket } from "socket.io-client";
+
+import { connectionStatusEmitter } from "@/lib/emitters";
 
 // Use VITE_API_URL when defined (explicit cross-origin setup).
 // Falls back to empty string → socket.io uses current window origin (same-origin / reverse proxy in prod).
@@ -33,10 +42,34 @@ export function connect(adventureId: string): Socket {
   _socket = io(API_BASE, {
     withCredentials: true, // Send Better Auth session cookie
     transports: ["websocket"],
+    reconnectionAttempts: 3, // Story 6.8: give up after 3 failed reconnection attempts
   });
 
   _socket.on("connect", () => {
-    _socket!.emit("game:join", { adventureId });
+    if (_currentAdventureId) {
+      _socket!.emit("game:join", { adventureId: _currentAdventureId });
+    }
+  });
+
+  // Story 6.8 — disconnection: notify UI to show connection lost banner
+  _socket.on("disconnect", (reason: string) => {
+    connectionStatusEmitter.emit("disconnected", { reason });
+  });
+
+  // Story 6.8 — reconnection events are emitted by the underlying Manager (socket.io)
+  _socket.io.on("reconnect", () => {
+    connectionStatusEmitter.emit("reconnected");
+    if (_currentAdventureId) {
+      // Room memberships are lost on disconnect — must re-join
+      _socket!.emit("game:join", { adventureId: _currentAdventureId });
+      // Request a fresh game:state-snapshot from the server
+      _socket!.emit("game:resync", { adventureId: _currentAdventureId });
+    }
+  });
+
+  // Story 6.8 — all 3 reconnection attempts exhausted: notify UI for permanent failure
+  _socket.io.on("reconnect_failed", () => {
+    connectionStatusEmitter.emit("reconnect-failed");
   });
 
   return _socket;
@@ -55,6 +88,15 @@ export function disconnect(): void {
 /** Returns the current socket instance, or null if not yet connected. */
 export function getSocket(): Socket | null {
   return _socket;
+}
+
+/**
+ * Story 6.8 — Manually restart Socket.io connection attempts after reconnect_failed.
+ * Calling socket.connect() resets the internal attempt counter so Socket.io will
+ * try up to reconnectionAttempts times again before firing reconnect_failed.
+ */
+export function manualReconnect(): void {
+  _socket?.connect();
 }
 
 // ---------------------------------------------------------------------------
