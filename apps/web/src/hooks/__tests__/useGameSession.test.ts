@@ -22,6 +22,7 @@ vi.mock("@/services/socket.service", () => ({
   connect: (...args: unknown[]) => mockConnect(...args),
   disconnect: (...args: unknown[]) => mockDisconnect(...args),
   getSocket: (...args: unknown[]) => mockGetSocket(...args),
+  manualReconnect: vi.fn(),
 }));
 
 const mockSendMessage = vi.fn();
@@ -46,12 +47,22 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
-vi.mock("@/services/api", () => ({
-  api: {
-    get: vi.fn(),
-    post: vi.fn(),
-  },
-}));
+vi.mock("@/services/api", () => {
+  // Minimal no-op EventEmitter compatible with useGameSession's .on()/.off() calls
+  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+  return {
+    api: {
+      get: vi.fn(),
+      post: vi.fn(),
+    },
+    rateLimitEmitter: noopEmitter,
+  };
+});
+
+vi.mock("@/lib/emitters", () => {
+  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+  return { connectionStatusEmitter: noopEmitter };
+});
 
 // ---------------------------------------------------------------------------
 // Import after mocks

@@ -63,6 +63,15 @@ export function GameSessionPage() {
     closeExitModal,
     isConfirmingExit,
     confirmExit,
+    // Story 6.8 — Resilience
+    isRateLimited,
+    rateLimitCountdown,
+    isDisconnected,
+    connectionFailed,
+    manualReconnect,
+    hasLLMError,
+    retryLastAction,
+    isLocked,
   } = useGameSession(adventureId, { isNew: isNewAdventure });
 
   // Story 6.7 — Router blocker: intercepts in-app navigation and browser back button
@@ -92,7 +101,7 @@ export function GameSessionPage() {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const isLocked = isLoading || isStreaming;
+  // isLocked is now computed inside useGameSession (Story 6.8 composite flag)
   const character = gameState?.adventure?.character;
   const adventureTitle = gameState?.adventure.title ?? "Aventure";
   const milestones = gameState?.milestones ?? [];
@@ -210,6 +219,13 @@ export function GameSessionPage() {
             isStreaming={isStreaming}
             isLocked={isLocked}
             onChoiceSelect={(choice) => void sendAction(choice.label, choice.id)}
+            isDisconnected={isDisconnected}
+            connectionFailed={connectionFailed}
+            hasLLMError={hasLLMError}
+            isRateLimited={isRateLimited}
+            rateLimitCountdown={rateLimitCountdown}
+            onReconnectRetry={manualReconnect}
+            onLLMRetry={retryLastAction}
           />
         </div>
       </div>
@@ -230,6 +246,9 @@ export function GameSessionPage() {
           disabled={isLocked}
           isStreaming={isStreaming}
           isLoading={isLoading}
+          isRateLimited={isRateLimited}
+          rateLimitCountdown={rateLimitCountdown}
+          isDisconnected={isDisconnected}
           onSubmit={(text) => void sendAction(text)}
           onHistoryClick={openHistoryDrawer}
         />

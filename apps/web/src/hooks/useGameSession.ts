@@ -8,11 +8,13 @@
  *  - Manage game display state: currentScene, streamingBuffer, playerEcho, choices
  *  - Manage HP state, autosave indicator, pause menu state (Story 6.5)
  *  - Manage milestone overlay, history drawer, session intro state (Story 6.6)
+ *  - Manage rate-limit countdown, connection loss, LLM error states (Story 6.8)
  *  - Expose sendAction() which submits the player action via useGameChat
  *  - Expose manualSave(), openPauseMenu(), closePauseMenu() (Story 6.5)
  *  - Expose openHistoryDrawer(), closeHistoryDrawer() (Story 6.6)
+ *  - Expose manualReconnect(), retryLastAction() (Story 6.8)
  *
- * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7 / Story 6.6 Task 7).
+ * Consumed by the /$id game session route (Story 6.4 Task 3 / Story 6.5 Task 7 / Story 6.6 Task 7 / Story 6.8 Task 7).
  */
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,8 +22,9 @@ import { useEffect, useRef, useState } from "react";
 
 import type { ApiResponse, GameStateDTO, SuggestedAction } from "@jdrai/shared";
 
-import { api } from "@/services/api";
-import { connect, disconnect, getSocket } from "@/services/socket.service";
+import { connectionStatusEmitter } from "@/lib/emitters";
+import { api, rateLimitEmitter } from "@/services/api";
+import { connect, disconnect, getSocket, manualReconnect as socketManualReconnect } from "@/services/socket.service";
 
 import { useGameChat } from "./useGameChat";
 
@@ -122,6 +125,27 @@ export interface GameSessionState {
    * Story 6.7
    */
   confirmExit: (onNavigate?: () => void) => Promise<void>;
+  // Story 6.8 — Resilience states
+  /** true while the server is rate-limiting requests (HTTP 429) */
+  isRateLimited: boolean;
+  /** Countdown in seconds until rate-limit lifts (0 when not rate-limited) */
+  rateLimitCountdown: number;
+  /** true while the Socket.io connection is lost and auto-reconnection is in progress */
+  isDisconnected: boolean;
+  /** true when all 3 reconnection attempts have been exhausted (permanent failure state) */
+  connectionFailed: boolean;
+  /** Manually restart Socket.io connection attempts after permanent failure */
+  manualReconnect: () => void;
+  /** true when the LLM backend returned an error (all 3 internal retries exhausted) */
+  hasLLMError: boolean;
+  /** Re-sends the last player action — resets hasLLMError and calls sendAction again */
+  retryLastAction: () => void;
+  /**
+   * Composite lock flag: true when player input must be disabled.
+   * = isLoading || isStreaming || isRateLimited || isDisconnected
+   * Note: hasLLMError is NOT included — FreeInput is re-enabled on LLM error.
+   */
+  isLocked: boolean;
 }
 
 export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
@@ -144,6 +168,14 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   // Story 6.7 — Exit confirmation modal + beforeunload guard
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isConfirmingExit, setIsConfirmingExit] = useState(false);
+  // Story 6.8 — Rate limit state
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  // Story 6.8 — Connection loss state
+  const [isDisconnected, setIsDisconnected] = useState(false);
+  const [connectionFailed, setConnectionFailed] = useState(false);
+  // Story 6.8 — LLM error state
+  const [hasLLMError, setHasLLMError] = useState(false);
   // Story 6.6 — Milestone overlay + history drawer + session intro
   const [showMilestoneOverlay, setShowMilestoneOverlay] = useState(false);
   const [milestoneOverlayName, setMilestoneOverlayName] = useState<string | null>(null);
@@ -160,6 +192,10 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   const introMinDisplayUntilRef = useRef<number>(options?.isNew ? Date.now() + 2000 : 0);
   // Prevents double-triggering the intro request across re-renders (renamed from introRequestedRef)
   const hasAutoStarted = useRef(false);
+  // Story 6.8 — Rate-limit countdown interval ref (cleared on unmount to prevent stale setState)
+  const rateLimitIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Story 6.8 — Stores the last player action for LLM error retry
+  const lastActionRef = useRef<{ action: string; choiceId?: string } | null>(null);
 
   // TanStack Router navigation
   const navigate = useNavigate();
@@ -213,6 +249,59 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isInGameSession]);
+
+  // Story 6.8 — Rate-limit emitter subscription
+  // Named handlers stored in refs so they can be properly unsubscribed (EventEmitter3 pattern)
+  useEffect(() => {
+    const onRateLimited = ({ retryAfter }: { retryAfter: number }) => {
+      setIsRateLimited(true);
+      setRateLimitCountdown(retryAfter);
+
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+
+      rateLimitIntervalRef.current = setInterval(() => {
+        setRateLimitCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(rateLimitIntervalRef.current!);
+            rateLimitIntervalRef.current = null;
+            setIsRateLimited(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    rateLimitEmitter.on("rate-limited", onRateLimited);
+    return () => {
+      rateLimitEmitter.off("rate-limited", onRateLimited);
+      if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
+    };
+  }, []);
+
+  // Story 6.8 — Connection status emitter subscription
+  useEffect(() => {
+    const onDisconnected = () => {
+      setIsDisconnected(true);
+      setConnectionFailed(false);
+    };
+    const onReconnected = () => {
+      setIsDisconnected(false);
+      setConnectionFailed(false);
+    };
+    const onReconnectFailed = () => {
+      setConnectionFailed(true);
+    };
+
+    connectionStatusEmitter.on("disconnected", onDisconnected);
+    connectionStatusEmitter.on("reconnected", onReconnected);
+    connectionStatusEmitter.on("reconnect-failed", onReconnectFailed);
+    return () => {
+      connectionStatusEmitter.off("disconnected", onDisconnected);
+      connectionStatusEmitter.off("reconnected", onReconnected);
+      connectionStatusEmitter.off("reconnect-failed", onReconnectFailed);
+    };
+  }, []);
 
   // Story 6.6 — Auto-trigger first GM narration on new adventures (no messages yet).
   // isFirstLaunch is already set from options.isNew — no need to re-derive it here.
@@ -316,10 +405,32 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
       }
     };
 
+    // Story 6.8 — game:error now fully handled: sets hasLLMError (LLMService already retried x3)
     const onError = (data: { adventureId?: string; error: string } | string) => {
       if (typeof data !== "string" && data.adventureId && data.adventureId !== adventureId) return;
       const message = typeof data === "string" ? data : (data.error ?? "Une erreur est survenue.");
       setGameError(message);
+      setHasLLMError(true);
+      setIsLoading(false);
+      setIsStreaming(false);
+    };
+
+    // Story 6.8 — game:state-snapshot: reload state after reconnection
+    const onStateSnapshot = (snapshot: GameStateDTO) => {
+      const lastMsg = [...(snapshot.messages ?? [])].reverse().find((m) => m.role === "assistant");
+      if (lastMsg) {
+        setCurrentScene(lastMsg.content);
+        setChoices(lastMsg.choices ?? []);
+      }
+      if (snapshot.adventure?.character) {
+        setCurrentHp(snapshot.adventure.character.currentHp);
+        setMaxHp(snapshot.adventure.character.maxHp);
+      }
+      if (snapshot.adventure?.lastPlayedAt) {
+        setLastSavedAt(new Date(snapshot.adventure.lastPlayedAt));
+      }
+      // Clear any error states that may have occurred during disconnection
+      setHasLLMError(false);
       setIsLoading(false);
       setIsStreaming(false);
     };
@@ -329,6 +440,7 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     sock.on("game:response-complete", onResponseComplete as (...args: unknown[]) => void);
     sock.on("game:state-update", onStateUpdate as (...args: unknown[]) => void);
     sock.on("game:error", onError as (...args: unknown[]) => void);
+    sock.on("game:state-snapshot", onStateSnapshot as (...args: unknown[]) => void);
 
     return () => {
       sock.off("game:response-start", onResponseStart as (...args: unknown[]) => void);
@@ -336,6 +448,7 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
       sock.off("game:response-complete", onResponseComplete as (...args: unknown[]) => void);
       sock.off("game:state-update", onStateUpdate as (...args: unknown[]) => void);
       sock.off("game:error", onError as (...args: unknown[]) => void);
+      sock.off("game:state-snapshot", onStateSnapshot as (...args: unknown[]) => void);
       // Clear timers to prevent setState after unmount
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       if (milestoneOverlayTimerRef.current) clearTimeout(milestoneOverlayTimerRef.current);
@@ -352,6 +465,10 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   async function sendAction(action: string, choiceId?: string): Promise<void> {
     // Guard against double-submit
     if (isLoading || isStreaming) return;
+
+    // Story 6.8 — store last action for LLM error retry; reset LLM error state on new action
+    lastActionRef.current = choiceId !== undefined ? { action, choiceId } : { action };
+    setHasLLMError(false);
 
     setPlayerEcho(action);
     setChoices([]);
@@ -383,6 +500,27 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     }
     await sendAction(action, choiceId);
   };
+
+  // ---------------------------------------------------------------------------
+  // Story 6.8 — Resilience actions
+  // ---------------------------------------------------------------------------
+
+  function handleManualReconnect(): void {
+    setConnectionFailed(false);
+    setIsDisconnected(true); // Shows "reconnecting" banner again while new attempts run
+    socketManualReconnect();
+  }
+
+  function retryLastAction(): void {
+    if (!lastActionRef.current) return;
+    setHasLLMError(false);
+    const { action, choiceId } = lastActionRef.current;
+    void sendActionWrapped(action, choiceId);
+  }
+
+  // Composite lock flag: player input is locked when loading, streaming, rate-limited or disconnected.
+  // hasLLMError is intentionally excluded: FreeInput is re-enabled on LLM error (player can reformulate).
+  const isLocked = isLoading || isStreaming || isRateLimited || isDisconnected;
 
   // ---------------------------------------------------------------------------
   // Story 6.5 — Pause menu actions
@@ -501,5 +639,14 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     closeExitModal,
     isConfirmingExit,
     confirmExit,
+    // Story 6.8 — Resilience
+    isRateLimited,
+    rateLimitCountdown,
+    isDisconnected,
+    connectionFailed,
+    manualReconnect: handleManualReconnect,
+    hasLLMError,
+    retryLastAction,
+    isLocked,
   };
 }

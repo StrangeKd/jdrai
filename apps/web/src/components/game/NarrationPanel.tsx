@@ -1,7 +1,8 @@
 /**
- * NarrationPanel — scrollable parchment-styled narration area (Story 6.4 Task 4).
+ * NarrationPanel — scrollable parchment-styled narration area (Story 6.4 Task 4 / Story 6.8 Task 7).
  *
  * Shows the current scene text, streaming text, loading state, player echo, and choices.
+ * Story 6.8: adds ConnectionLostBanner, LLMErrorMessage, RateLimitMessage.
  * Auto-scrolls to bottom during streaming (AC: #2, #3, #4).
  */
 import { useEffect, useRef } from "react";
@@ -9,7 +10,10 @@ import { useEffect, useRef } from "react";
 import type { SuggestedAction } from "@jdrai/shared";
 
 import { ChoiceList } from "./ChoiceList";
+import { ConnectionLostBanner } from "./ConnectionLostBanner";
+import { LLMErrorMessage } from "./LLMErrorMessage";
 import { LoadingNarration } from "./LoadingNarration";
+import { RateLimitMessage } from "./RateLimitMessage";
 import { StreamingText } from "./StreamingText";
 
 interface NarrationPanelProps {
@@ -21,6 +25,14 @@ interface NarrationPanelProps {
   isStreaming: boolean;
   isLocked: boolean;
   onChoiceSelect: (choice: SuggestedAction) => void;
+  // Story 6.8 — Resilience props
+  isDisconnected: boolean;
+  connectionFailed: boolean;
+  hasLLMError: boolean;
+  isRateLimited: boolean;
+  rateLimitCountdown: number;
+  onReconnectRetry: () => void;
+  onLLMRetry: () => void;
 }
 
 export function NarrationPanel({
@@ -32,6 +44,13 @@ export function NarrationPanel({
   isStreaming,
   isLocked,
   onChoiceSelect,
+  isDisconnected,
+  connectionFailed,
+  hasLLMError,
+  isRateLimited,
+  rateLimitCountdown,
+  onReconnectRetry,
+  onLLMRetry,
 }: NarrationPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -46,43 +65,48 @@ export function NarrationPanel({
     <div className="h-full overflow-y-auto">
       {/* Parchment container */}
       <div className="min-h-full mx-auto px-6 py-8 bg-amber-50/5 border-x border-amber-200/10">
-        {/* Player echo — visible during loading & streaming (AC: #4, WF-E10-04) */}
+        {/* 1. Connection lost banner — non-blocking, top of narration area (Story 6.8 AC: #3, #8) */}
+        <ConnectionLostBanner
+          visible={isDisconnected || connectionFailed}
+          failed={connectionFailed}
+          onRetry={onReconnectRetry}
+        />
+
+        {/* 2. Player echo — visible during loading & streaming (AC: #4, WF-E10-04) */}
         {playerEcho && (
           <div className="mb-6 pl-3 border-l-2 border-amber-400/40">
             <span className="text-sm italic text-amber-300/70">▸ {playerEcho}</span>
           </div>
         )}
 
-        {/* Loading state — before streaming starts (AC: #5) */}
-        {isLoading && <LoadingNarration />}
-
-        {/* Streaming text — during active stream (AC: #3) */}
-        {isStreaming && (
+        {/* 3. Main content — mutually exclusive states (Story 6.8 adds LLM error) */}
+        {hasLLMError ? (
+          <LLMErrorMessage visible onRetry={onLLMRetry} />
+        ) : isLoading ? (
+          <LoadingNarration />
+        ) : isStreaming ? (
           <p className="font-serif text-amber-100 leading-relaxed text-base">
             <StreamingText text={streamingBuffer} active={isStreaming} />
           </p>
-        )}
-
-        {/* Current scene — shown when not loading/streaming (AC: #2) */}
-        {!isLoading && !isStreaming && currentScene && (
+        ) : currentScene ? (
           <p className="font-serif text-amber-100 leading-relaxed text-base whitespace-pre-wrap">
             {currentScene}
           </p>
-        )}
-
-        {/* Empty state when no scene loaded yet */}
-        {!isLoading && !isStreaming && !currentScene && (
+        ) : (
           <p className="text-amber-300/40 italic text-center py-8">
             Connexion au Chroniqueur…
           </p>
         )}
 
-        {/* ChoiceList — inline, after narration, only when streaming is complete (AC: #6) */}
-        {!isStreaming && choices.length > 0 && (
+        {/* 4. ChoiceList — after narration, hidden during streaming or LLM error (AC: #6) */}
+        {!isStreaming && !hasLLMError && choices.length > 0 && (
           <div className="mt-6">
             <ChoiceList choices={choices} disabled={isLocked} onSelect={onChoiceSelect} />
           </div>
         )}
+
+        {/* 5. Rate limit message — below choices (Story 6.8 AC: #1) */}
+        <RateLimitMessage visible={isRateLimited} countdown={rateLimitCountdown} />
 
         {/* Scroll anchor */}
         <div ref={bottomRef} />

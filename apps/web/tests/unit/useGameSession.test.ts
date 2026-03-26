@@ -81,14 +81,25 @@ vi.mock("@/services/socket.service", () => ({
   connect: () => socket,
   disconnect: vi.fn(),
   getSocket: () => socket,
+  manualReconnect: vi.fn(),
 }));
 
-vi.mock("@/services/api", () => ({
-  api: {
-    post: apiPostMock,
-    get: apiGetMock,
-  },
-}));
+vi.mock("@/services/api", () => {
+  // Minimal no-op EventEmitter so useGameSession's rate-limit subscription doesn't crash
+  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+  return {
+    api: {
+      post: apiPostMock,
+      get: apiGetMock,
+    },
+    rateLimitEmitter: noopEmitter,
+  };
+});
+
+vi.mock("@/lib/emitters", () => {
+  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+  return { connectionStatusEmitter: noopEmitter };
+});
 
 vi.mock("@/hooks/useGameChat", () => ({
   useGameChat: () => ({ sendMessage: vi.fn() }),
