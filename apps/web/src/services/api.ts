@@ -79,6 +79,15 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json() as Promise<T>;
 }
 
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__triggerRateLimit = (
+    retryAfter = 15,
+  ) => {
+    rateLimitEmitter.emit("rate-limited", { retryAfter });
+    console.log(`[DEV] Triggered rate-limit — retryAfter=${retryAfter}s`);
+  };
+}
+
 export const api = {
   get: <T>(endpoint: string) => fetchApi<T>(endpoint),
   post: <T>(endpoint: string, data: unknown) =>

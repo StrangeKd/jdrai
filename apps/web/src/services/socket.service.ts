@@ -26,6 +26,9 @@ const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 let _socket: Socket | null = null;
 let _currentAdventureId: string | null = null;
+// Story 6.8 — tracks whether we went through a disconnect so the `connect` handler
+// can distinguish an initial connection from a manual re-connect.
+let _wasDisconnected = false;
 
 /**
  * Connects to the Socket.io server and joins the adventure room.
@@ -46,13 +49,22 @@ export function connect(adventureId: string): Socket {
   });
 
   _socket.on("connect", () => {
-    if (_currentAdventureId) {
+    if (_wasDisconnected) {
+      // Manual re-connect after reconnect_failed succeeded — notify UI and resync state.
+      _wasDisconnected = false;
+      connectionStatusEmitter.emit("reconnected");
+      if (_currentAdventureId) {
+        _socket!.emit("game:join", { adventureId: _currentAdventureId });
+        _socket!.emit("game:resync", { adventureId: _currentAdventureId });
+      }
+    } else if (_currentAdventureId) {
       _socket!.emit("game:join", { adventureId: _currentAdventureId });
     }
   });
 
   // Story 6.8 — disconnection: notify UI to show connection lost banner
   _socket.on("disconnect", (reason: string) => {
+    _wasDisconnected = true;
     connectionStatusEmitter.emit("disconnected", { reason });
   });
 
@@ -83,6 +95,7 @@ export function disconnect(): void {
   _socket?.disconnect();
   _socket = null;
   _currentAdventureId = null;
+  _wasDisconnected = false;
 }
 
 /** Returns the current socket instance, or null if not yet connected. */
