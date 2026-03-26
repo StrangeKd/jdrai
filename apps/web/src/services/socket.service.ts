@@ -46,7 +46,9 @@ export function connect(adventureId: string): Socket {
   });
 
   _socket.on("connect", () => {
-    _socket!.emit("game:join", { adventureId });
+    if (_currentAdventureId) {
+      _socket!.emit("game:join", { adventureId: _currentAdventureId });
+    }
   });
 
   // Story 6.8 — disconnection: notify UI to show connection lost banner
@@ -54,8 +56,8 @@ export function connect(adventureId: string): Socket {
     connectionStatusEmitter.emit("disconnected", { reason });
   });
 
-  // Story 6.8 — reconnection: re-join room and request state resync
-  _socket.on("reconnect", () => {
+  // Story 6.8 — reconnection events are emitted by the underlying Manager (socket.io)
+  _socket.io.on("reconnect", () => {
     connectionStatusEmitter.emit("reconnected");
     if (_currentAdventureId) {
       // Room memberships are lost on disconnect — must re-join
@@ -66,7 +68,7 @@ export function connect(adventureId: string): Socket {
   });
 
   // Story 6.8 — all 3 reconnection attempts exhausted: notify UI for permanent failure
-  _socket.on("reconnect_failed", () => {
+  _socket.io.on("reconnect_failed", () => {
     connectionStatusEmitter.emit("reconnect-failed");
   });
 

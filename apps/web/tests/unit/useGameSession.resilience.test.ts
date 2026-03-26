@@ -281,6 +281,7 @@ describe("useGameSession — Story 6.8 resilience", () => {
     });
 
     expect(result.current.hasLLMError).toBe(true);
+    expect(result.current.gameError).toBe("Le MJ rencontre des difficultés…");
     expect(result.current.isLoading).toBe(false);
     expect(result.current.isStreaming).toBe(false);
   });

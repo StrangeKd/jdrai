@@ -16,6 +16,12 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   ADVENTURE_NOT_ACTIVE: "Cette aventure est déjà terminée.",
 };
 
+const ERROR_CODES = new Set<ErrorCode>(Object.keys(ERROR_MESSAGES) as ErrorCode[]);
+
+export function isErrorCode(value: string): value is ErrorCode {
+  return ERROR_CODES.has(value as ErrorCode);
+}
+
 export function getErrorMessage(code: ErrorCode): string {
   return ERROR_MESSAGES[code] ?? ERROR_MESSAGES.INTERNAL_ERROR;
 }

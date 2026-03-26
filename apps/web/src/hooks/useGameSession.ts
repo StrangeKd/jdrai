@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ApiResponse, GameStateDTO, SuggestedAction } from "@jdrai/shared";
 
 import { connectionStatusEmitter } from "@/lib/emitters";
+import { getErrorMessage, isErrorCode } from "@/lib/error-messages";
 import { api, rateLimitEmitter } from "@/services/api";
 import { connect, disconnect, getSocket, manualReconnect as socketManualReconnect } from "@/services/socket.service";
 
@@ -408,7 +409,8 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     // Story 6.8 — game:error now fully handled: sets hasLLMError (LLMService already retried x3)
     const onError = (data: { adventureId?: string; error: string } | string) => {
       if (typeof data !== "string" && data.adventureId && data.adventureId !== adventureId) return;
-      const message = typeof data === "string" ? data : (data.error ?? "Une erreur est survenue.");
+      const rawError = typeof data === "string" ? data : (data.error ?? "INTERNAL_ERROR");
+      const message = isErrorCode(rawError) ? getErrorMessage(rawError) : rawError;
       setGameError(message);
       setHasLLMError(true);
       setIsLoading(false);

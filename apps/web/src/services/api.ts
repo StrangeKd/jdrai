@@ -8,6 +8,24 @@ function buildUrl(endpoint: string) {
   return `${API_BASE}${endpoint}`;
 }
 
+function parseRetryAfterHeader(headerValue: string | null): number {
+  const FALLBACK_SECONDS = 5;
+  if (!headerValue) return FALLBACK_SECONDS;
+
+  // RFC 7231 allows either delta-seconds or an HTTP-date value.
+  const parsedSeconds = Number.parseInt(headerValue, 10);
+  if (Number.isFinite(parsedSeconds) && parsedSeconds >= 0) {
+    return parsedSeconds;
+  }
+
+  const retryAtMs = Date.parse(headerValue);
+  if (Number.isNaN(retryAtMs)) {
+    return FALLBACK_SECONDS;
+  }
+
+  return Math.max(0, Math.ceil((retryAtMs - Date.now()) / 1000));
+}
+
 // Emitter for rate-limiting events — consumed by game UI (Story 6.8)
 export const rateLimitEmitter = new EventEmitter<{
   "rate-limited": [{ retryAfter: number }];
@@ -42,7 +60,7 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   });
 
   if (response.status === 429) {
-    const retryAfter = parseInt(response.headers.get("Retry-After") ?? "5", 10);
+    const retryAfter = parseRetryAfterHeader(response.headers.get("Retry-After"));
     rateLimitEmitter.emit("rate-limited", { retryAfter });
     throw new RateLimitError(retryAfter);
   }
