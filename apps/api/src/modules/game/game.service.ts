@@ -149,6 +149,8 @@ export interface ProcessActionParams {
   choiceId?: string | undefined;
   socketId?: string | undefined;
   io?: import("socket.io").Server | undefined;
+  /** DEV only — bypasses LLM and returns hardcoded text to save tokens during manual testing. */
+  mockLlm?: boolean | undefined;
 }
 
 export interface ProcessActionResult {
@@ -445,28 +447,48 @@ export class GameService {
       io!.to(room).emit("game:response-start", { adventureId });
     }
 
-    // 9. Stream LLM response, emit chunks
-    const llm = await this.getLLMService();
+    // 9. Stream LLM response (or hardcoded mock in dev), emit chunks
     let fullResponse = "";
-    try {
-      for await (const chunk of llm.stream({
-        systemPrompt: combinedSystemPrompt,
-        messages: conversationMessages,
-      })) {
+
+    const isMockMode = process.env["NODE_ENV"] !== "production" && params.mockLlm === true;
+
+    if (isMockMode) {
+      // DEV mock — stream hardcoded text in small chunks, no LLM call.
+      const mockText =
+        "[MODE MOCK] Le Chroniqueur fictif répond à votre action. " +
+        "Ceci est une réponse simulée pour économiser des tokens LLM.\n\n" +
+        "Vous avancez courageusement. L'aventure se poursuit...\n\n" +
+        "Que souhaitez-vous faire ensuite ?";
+      const chunkSize = 20;
+      for (let i = 0; i < mockText.length; i += chunkSize) {
+        const chunk = mockText.slice(i, i + chunkSize);
         if (shouldStream) {
           io!.to(room).emit("game:chunk", { adventureId, chunk });
         }
         fullResponse += chunk;
       }
-    } catch (error) {
-      logger.error("[GameService] LLM stream failed:", error);
-      if (shouldStream) {
-        io!.to(room).emit("game:error", {
-          adventureId,
-          error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
-        });
+    } else {
+      const llm = await this.getLLMService();
+      try {
+        for await (const chunk of llm.stream({
+          systemPrompt: combinedSystemPrompt,
+          messages: conversationMessages,
+        })) {
+          if (shouldStream) {
+            io!.to(room).emit("game:chunk", { adventureId, chunk });
+          }
+          fullResponse += chunk;
+        }
+      } catch (error) {
+        logger.error("[GameService] LLM stream failed:", error);
+        if (shouldStream) {
+          io!.to(room).emit("game:error", {
+            adventureId,
+            error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+          });
+        }
+        throw error;
       }
-      throw error;
     }
 
     // 10. Parse signals
@@ -634,8 +656,8 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
 
     const llm = await this.getLLMService();
     const summary = await llm.generate({
-      systemPrompt: prompt,
-      messages: [],
+      systemPrompt: "",
+      messages: [{ role: "user", content: prompt }],
       maxAttempts: 2,
     });
 

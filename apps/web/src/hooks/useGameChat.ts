@@ -187,10 +187,13 @@ export function createSocketAdapter(adventureId: string) {
       resetIdleTimeout();
 
       // Submit player action — server will respond via socket events
+      const isMockLlm =
+        import.meta.env.DEV && localStorage.getItem("dev:mockLlm") === "true";
       await withTimeout(
         api.post(`/api/v1/adventures/${adventureId}/action`, {
           action: actionContent,
           ...(choiceId ? { choiceId } : {}),
+          ...(isMockLlm ? { mockLlm: true } : {}),
         }),
         ACTION_REQUEST_TIMEOUT_MS,
       );

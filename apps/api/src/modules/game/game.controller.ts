@@ -23,6 +23,8 @@ const PlayerActionSchema = z.object({
   action: z.string().min(1).max(2000),
   choiceId: z.string().min(1).optional(),
   socketId: z.string().optional(),
+  /** DEV only — bypasses LLM when true. Ignored in production. */
+  mockLlm: z.boolean().optional(),
 });
 
 const MessagesQuerySchema = z.object({
@@ -49,7 +51,7 @@ export async function postActionHandler(
       throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid body");
     }
 
-    const { action, choiceId, socketId } = parsed.data;
+    const { action, choiceId, socketId, mockLlm } = parsed.data;
     const adventureId = req.params["id"]!;
     const userId = req.user!.id;
 
@@ -63,6 +65,7 @@ export async function postActionHandler(
       choiceId,
       socketId,
       io,
+      mockLlm,
     });
 
     res.json({

@@ -106,7 +106,45 @@ export function NewAdventurePage() {
   );
   const [abandonTarget, setAbandonTarget] = useState<AdventureDTO | null>(null);
 
+  // DEV only — mock LLM toggle (persisted in localStorage, read by useGameChat on action send)
+  const [devMockLlm, setDevMockLlm] = useState<boolean>(
+    () => import.meta.env.DEV && localStorage.getItem("dev:mockLlm") === "true",
+  );
+
+  function toggleDevMockLlm(enabled: boolean) {
+    localStorage.setItem("dev:mockLlm", String(enabled));
+    setDevMockLlm(enabled);
+  }
+
   const isAtLimit = !activeLoading && !activeError && activeAdventures.length >= 5;
+
+  // ---------------------------------------------------------------------------
+  // DEV mock LLM toggle — rendered on all config/confirmation/random steps
+  // ---------------------------------------------------------------------------
+
+  const DevMockToggle = import.meta.env.DEV ? (
+    <div className="flex items-center gap-2 rounded border border-yellow-600/40 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-400">
+      <span className="font-mono font-semibold">DEV</span>
+      <span className="flex-1">Mock LLM (pas de tokens)</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={devMockLlm}
+        onClick={() => toggleDevMockLlm(!devMockLlm)}
+        className={[
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+          devMockLlm ? "bg-yellow-500" : "bg-stone-600",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+            devMockLlm ? "translate-x-4" : "translate-x-0",
+          ].join(" ")}
+        />
+      </button>
+    </div>
+  ) : null;
 
   // ---------------------------------------------------------------------------
   // Loading screen (full-screen overlay, no container wrapper)
@@ -178,6 +216,7 @@ export function NewAdventurePage() {
   if (step === "random-choice") {
     return (
       <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        {DevMockToggle}
         <RandomChoiceView
           onReveal={() => {
             const random = generateRandomConfig();
@@ -213,6 +252,7 @@ export function NewAdventurePage() {
   if (step === "random-revealed") {
     return (
       <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        {DevMockToggle}
         <RandomRevealedView
           difficulty={config.difficulty}
           estimatedDuration={config.duration}
@@ -237,6 +277,7 @@ export function NewAdventurePage() {
   if (step === "confirmation") {
     return (
       <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+        {DevMockToggle}
         <AdventureConfirmationView
           duration={config.duration}
           difficulty={config.difficulty}
