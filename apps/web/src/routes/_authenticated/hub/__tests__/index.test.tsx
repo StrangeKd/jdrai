@@ -127,6 +127,7 @@ const defaultMocks = () => {
   mockUseAbandonedAdventures.mockReturnValue({
     data: [],
     isLoading: false,
+    isError: false,
     refetch: vi.fn(),
   });
 };
@@ -187,6 +188,21 @@ describe("HubPage (Story 4.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: /réessayer/i }));
     expect(refetchCompleted).toHaveBeenCalledOnce();
   });
+
+  it("shows a history error state when abandoned adventures query fails", () => {
+    const refetchAbandoned = vi.fn();
+    mockUseAbandonedAdventures.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchAbandoned,
+    });
+
+    render(<HubPage />);
+    expect(screen.getByText(/impossible de charger votre historique/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /réessayer/i }));
+    expect(refetchAbandoned).toHaveBeenCalledOnce();
+  });
 });
 
 describe("HubPage — Historique merged (Story 7.3 AC-3, AC-4)", () => {
@@ -214,6 +230,7 @@ describe("HubPage — Historique merged (Story 7.3 AC-3, AC-4)", () => {
     mockUseAbandonedAdventures.mockReturnValue({
       data: [makeAdventure(2, "2025-01-01T09:00:00Z", "abandoned")],
       isLoading: false,
+      isError: false,
       refetch: vi.fn(),
     });
 
@@ -226,6 +243,7 @@ describe("HubPage — Historique merged (Story 7.3 AC-3, AC-4)", () => {
     mockUseAbandonedAdventures.mockReturnValue({
       data: [makeAdventure(3, "2025-01-01T08:00:00Z", "abandoned")],
       isLoading: false,
+      isError: false,
       refetch: vi.fn(),
     });
 
@@ -243,6 +261,7 @@ describe("HubPage — Historique merged (Story 7.3 AC-3, AC-4)", () => {
     mockUseAbandonedAdventures.mockReturnValue({
       data: [makeAdventure(2, "2025-01-01T10:00:00Z", "abandoned")],
       isLoading: false,
+      isError: false,
       refetch: vi.fn(),
     });
 

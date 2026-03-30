@@ -1,7 +1,7 @@
 import type { AdventureDTO } from "@jdrai/shared";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/utils";
 
 interface AdventureCardProps {

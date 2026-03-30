@@ -79,6 +79,7 @@ export function HubPage() {
   const {
     data: abandonedAdventures = [],
     isLoading: abandonedLoading,
+    isError: abandonedError,
     refetch: refetchAbandoned,
   } = useAbandonedAdventures();
 
@@ -100,6 +101,7 @@ export function HubPage() {
 
   const canShowHubContent = !isPrimaryLoading && !(userError && !user) && !activeError;
   const isHistoryLoading = completedLoading || abandonedLoading;
+  const hasHistoryError = completedError || abandonedError;
   const retryAll = () => {
     void refetchUser();
     void refetchActive();
@@ -185,13 +187,13 @@ export function HubPage() {
       </section>
 
       {/* History — shown if completed or abandoned adventures exist */}
-      {canShowHubContent && completedError && (
+      {canShowHubContent && hasHistoryError && (
         <section>
           <ErrorState message="Impossible de charger votre historique..." onRetry={retryAll} />
         </section>
       )}
 
-      {canShowHubContent && !completedError && historyAdventures.length > 0 && (
+      {canShowHubContent && !hasHistoryError && historyAdventures.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200/60">

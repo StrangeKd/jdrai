@@ -4,8 +4,8 @@
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
  */
-import { createFileRoute, useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 // Extend TanStack Router's HistoryState to allow passing fromGameSession flag on navigation to E11

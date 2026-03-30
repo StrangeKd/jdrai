@@ -1,7 +1,7 @@
-import type { AdventureDTO } from "@jdrai/shared";
-
-import { MoreVertical } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { MoreVertical } from "lucide-react";
+
+import type { AdventureDTO } from "@jdrai/shared";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

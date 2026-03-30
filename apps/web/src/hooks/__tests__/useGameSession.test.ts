@@ -413,6 +413,7 @@ describe("useGameSession", () => {
     });
     const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
     expect(result.current.isFirstLaunch).toBe(false);
+    expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
   it("isResume=false + messages.length=0 → isFirstLaunch=true for new adventure (AC-6)", () => {

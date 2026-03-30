@@ -330,14 +330,14 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean;
     if (!gameState) return;
     if (hasAutoStarted.current) return;
 
-    const isNew = (gameState.messages ?? []).length === 0;
-    if (isNew) {
+    const shouldAutoStart = !options?.isResume && (gameState.messages ?? []).length === 0;
+    if (shouldAutoStart) {
       hasAutoStarted.current = true;
       // Trigger first GM narration through the standard action flow.
       // isLoading and isStreaming are both false at this point (initial load).
       void sendAction("Commencer l'aventure");
     }
-  }, [gameState]);
+  }, [gameState, options?.isResume]);
 
   // ---------------------------------------------------------------------------
   // Story 6.5 — Autosave indicator helper (clears after 2s, debounced)
