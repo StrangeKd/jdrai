@@ -34,6 +34,10 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+
 vi.mock("@/components/game/SessionHeader", () => ({
   SessionHeader: ({ onPauseMenuOpen }: { onPauseMenuOpen: () => void }) => (
     <button type="button" onClick={onPauseMenuOpen}>

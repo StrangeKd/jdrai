@@ -155,7 +155,7 @@ export interface GameSessionState {
   exitGameSession: () => void;
 }
 
-export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
+export function useGameSession(adventureId: string, options?: { isNew?: boolean; isResume?: boolean }): GameSessionState {
   const [currentScene, setCurrentScene] = useState("");
   const [streamingBuffer, setStreamingBuffer] = useState("");
   const [playerEcho, setPlayerEcho] = useState<string | null>(null);
@@ -187,16 +187,22 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
   const [showMilestoneOverlay, setShowMilestoneOverlay] = useState(false);
   const [milestoneOverlayName, setMilestoneOverlayName] = useState<string | null>(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  // Initialized from options.isNew so the overlay is visible before gameState loads
-  const [isFirstLaunch, setIsFirstLaunch] = useState(options?.isNew ?? false);
+  // Initialized from options.isNew — but forced to false when isResume=true (early guard,
+  // prevents intro on edge case where messages.length === 0 on a resumed adventure).
+  const [isFirstLaunch, setIsFirstLaunch] = useState(
+    options?.isResume ? false : (options?.isNew ?? false),
+  );
   // Timer ref for autosave indicator auto-clear (prevents stale setState after unmount)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timer ref for milestone overlay auto-dismiss
   const milestoneOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timer ref for intro delayed hide (enforces 2s minimum display)
   const introHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Minimum timestamp until which the intro must stay visible (ensures readability)
-  const introMinDisplayUntilRef = useRef<number>(options?.isNew ? Date.now() + 2000 : 0);
+  // Minimum timestamp until which the intro must stay visible (ensures readability).
+  // isResume overrides isNew: no intro on resume.
+  const introMinDisplayUntilRef = useRef<number>(
+    options?.isNew && !options?.isResume ? Date.now() + 2000 : 0,
+  );
   // Prevents double-triggering the intro request across re-renders (renamed from introRequestedRef)
   const hasAutoStarted = useRef(false);
   // Story 6.8 — Rate-limit countdown interval ref (cleared on unmount to prevent stale setState)

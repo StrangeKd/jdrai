@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import type { UserDTO } from "@jdrai/shared";
+import type { AdventureDTO, UserDTO } from "@jdrai/shared";
 
+import { AbandonModal } from "@/components/adventure/AbandonModal";
 import { ActionCard, ActionCardSkeleton } from "@/components/hub/ActionCard";
 import { AdventureCard } from "@/components/hub/AdventureCard";
 import {
@@ -14,7 +15,7 @@ import { EmailVerificationBanner } from "@/components/hub/EmailVerificationBanne
 import { EmptyState } from "@/components/hub/EmptyState";
 import { MetaCharacterBanner } from "@/components/hub/MetaCharacterBanner";
 import { Button } from "@/components/ui/button";
-import { useActiveAdventures, useCompletedAdventures } from "@/hooks/useAdventures";
+import { useAbandonedAdventures, useActiveAdventures, useCompletedAdventures } from "@/hooks/useAdventures";
 import { useCurrentUser } from "@/hooks/useUser";
 
 export const Route = createFileRoute("/_authenticated/hub/")({
@@ -45,6 +46,9 @@ function ErrorState({ onRetry, message }: { onRetry: () => void; message: string
 export function HubPage() {
   const navigate = useNavigate();
 
+  // Story 7.3 — abandon modal state (controlled at Hub level to avoid re-mount issues)
+  const [abandonTarget, setAbandonTarget] = useState<AdventureDTO | null>(null);
+
   // AC-6: reconnection toast — shown once per session after login redirect
   useEffect(() => {
     const justLoggedIn = sessionStorage.getItem("just-logged-in");
@@ -72,6 +76,19 @@ export function HubPage() {
     isError: completedError,
     refetch: refetchCompleted,
   } = useCompletedAdventures();
+  const {
+    data: abandonedAdventures = [],
+    isLoading: abandonedLoading,
+    refetch: refetchAbandoned,
+  } = useAbandonedAdventures();
+
+  // Merge completed + abandoned adventures sorted by lastPlayedAt DESC
+  const historyAdventures = useMemo(() => {
+    const all = [...completedAdventures, ...abandonedAdventures];
+    return all.sort(
+      (a, b) => new Date(b.lastPlayedAt).getTime() - new Date(a.lastPlayedAt).getTime(),
+    );
+  }, [completedAdventures, abandonedAdventures]);
 
   const isPrimaryLoading = userLoading || activeLoading;
   const hasActiveAdventures = activeAdventures.length > 0;
@@ -82,10 +99,12 @@ export function HubPage() {
   const visibleActiveAdventures = sortedActiveAdventures.slice(0, 5);
 
   const canShowHubContent = !isPrimaryLoading && !(userError && !user) && !activeError;
+  const isHistoryLoading = completedLoading || abandonedLoading;
   const retryAll = () => {
     void refetchUser();
     void refetchActive();
     void refetchCompleted();
+    void refetchAbandoned();
   };
 
   return (
@@ -113,9 +132,7 @@ export function HubPage() {
               <AdventureCardActive
                 key={adventure.id}
                 adventure={adventure}
-                onResume={() =>
-                  void navigate({ to: "/adventure/$id", params: { id: adventure.id } })
-                }
+                onAbandon={setAbandonTarget}
               />
             ))}
           </div>
@@ -167,18 +184,18 @@ export function HubPage() {
         )}
       </section>
 
-      {/* History — only shown if completed adventures exist */}
+      {/* History — shown if completed or abandoned adventures exist */}
       {canShowHubContent && completedError && (
         <section>
           <ErrorState message="Impossible de charger votre historique..." onRetry={retryAll} />
         </section>
       )}
 
-      {canShowHubContent && !completedError && completedAdventures.length > 0 && (
+      {canShowHubContent && !completedError && historyAdventures.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200/60">
-              Aventures terminées
+              Historique
             </h2>
             {/* P2: "Tout >" will navigate to a dedicated list page */}
             <button
@@ -190,7 +207,7 @@ export function HubPage() {
           </div>
           {/* Mobile: horizontal scroll carousel | Desktop: 4-col grid */}
           <div className="flex gap-3 overflow-x-auto snap-x pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
-            {completedAdventures.slice(0, 5).map((adventure) => (
+            {historyAdventures.slice(0, 5).map((adventure) => (
               <AdventureCard
                 key={adventure.id}
                 adventure={adventure}
@@ -206,10 +223,17 @@ export function HubPage() {
         </section>
       )}
 
-      {/* Non-blocking: completed adventures still loading while rest of hub is usable */}
-      {canShowHubContent && completedLoading && (
+      {/* Non-blocking: history still loading while rest of hub is usable */}
+      {canShowHubContent && isHistoryLoading && (
         <div className="text-xs text-stone-500">Chargement de l'historique...</div>
       )}
+
+      {/* Abandon modal — rendered at Hub level to prevent re-mount issues */}
+      <AbandonModal
+        adventure={abandonTarget}
+        onClose={() => setAbandonTarget(null)}
+        onSuccess={() => setAbandonTarget(null)}
+      />
     </div>
   );
 }

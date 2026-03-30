@@ -5,6 +5,7 @@
  * Uses useGameSession for all game state (socket + REST).
  */
 import { createFileRoute, useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 // Extend TanStack Router's HistoryState to allow passing fromGameSession flag on navigation to E11
@@ -31,8 +32,12 @@ export const Route = createFileRoute("/_authenticated/adventure/$id")({
 
 export function GameSessionPage() {
   const { id: adventureId } = Route.useParams();
+  const queryClient = useQueryClient();
   const isNewAdventure = useRouterState({
     select: (s) => !!s.location.state.isNew,
+  });
+  const isResume = useRouterState({
+    select: (s) => !!s.location.state.isResume,
   });
 
   const {
@@ -82,7 +87,7 @@ export function GameSessionPage() {
     isLocked,
     // Story 7.2
     exitGameSession,
-  } = useGameSession(adventureId, { isNew: isNewAdventure });
+  } = useGameSession(adventureId, { isNew: isNewAdventure, isResume });
 
   const navigate = useNavigate();
 
@@ -117,6 +122,18 @@ export function GameSessionPage() {
   const character = gameState?.adventure?.character;
   const adventureTitle = gameState?.adventure.title ?? "Aventure";
   const milestones = gameState?.milestones ?? [];
+
+  // ---------------------------------------------------------------------------
+  // Story 7.3 — On unmount, invalidate Hub active adventures query so the Hub
+  // shows up-to-date state when the player returns (adventure may have ended or
+  // been abandoned since last Hub render).
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    return () => {
+      void queryClient.invalidateQueries({ queryKey: ["adventures", "active"] });
+    };
+  }, [queryClient]);
 
   // ---------------------------------------------------------------------------
   // Story 7.2 — Redirect to E11 (summary) when adventure ends
