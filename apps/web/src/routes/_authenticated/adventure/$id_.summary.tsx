@@ -27,7 +27,7 @@ import type { SummaryState } from "@/components/summary/types";
 import { Button } from "@/components/ui/button";
 import { getAdventureById, getMilestones } from "@/services/adventure.service";
 
-export const Route = createFileRoute("/_authenticated/adventure/$id/summary")({
+export const Route = createFileRoute("/_authenticated/adventure/$id_/summary")({
   component: AdventureSummaryPage,
 });
 
@@ -100,7 +100,9 @@ export function AdventureSummaryPage() {
   }
 
   const screenState = deriveScreenState(adventure);
-  const showCelebration = fromGameSession && screenState === "success";
+  // Guard: wait for adventure data before enabling celebration to avoid a false positive
+  // while adventure is loading (deriveScreenState returns "success" by default for undefined).
+  const showCelebration = fromGameSession && !adventureLoading && screenState === "success";
 
   // Determine the text to pass to SummaryCard:
   //  null      → polling in progress (skeleton)

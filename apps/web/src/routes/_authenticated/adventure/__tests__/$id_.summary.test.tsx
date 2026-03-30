@@ -54,7 +54,7 @@ vi.mock("@/services/adventure.service", () => ({
 }));
 
 // Import after mocks
-import { AdventureSummaryPage } from "../$id.summary";
+import { AdventureSummaryPage } from "../$id_.summary";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -204,6 +204,18 @@ describe("AdventureSummaryPage", () => {
     const gameOverAdventure: AdventureDTO = { ...baseAdventure, isGameOver: true };
     const confettiMock = await import("canvas-confetti");
     setupQueryMocks(gameOverAdventure);
+    render(<AdventureSummaryPage />);
+
+    await waitFor(() => {
+      expect(confettiMock.default).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does NOT play animation while adventure is still loading even with fromGameSession=true (AC #9)", async () => {
+    mockRouterState.fromGameSession = true;
+    const confettiMock = await import("canvas-confetti");
+    // adventure=undefined + isLoading=true simulates the initial fetch (data not yet arrived)
+    setupQueryMocks(undefined, { isLoading: true });
     render(<AdventureSummaryPage />);
 
     await waitFor(() => {
