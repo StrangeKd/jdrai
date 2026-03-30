@@ -23,6 +23,7 @@ export interface AdventureCharacterDTO {
 export interface AdventureDTO {
   id: string;
   title: string;
+  templateId?: string | undefined;
   status: AdventureStatus;
   difficulty: Difficulty;
   tone?: Tone | undefined; // P2 — nullable in P1

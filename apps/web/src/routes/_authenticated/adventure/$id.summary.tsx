@@ -13,7 +13,7 @@
  * difficulty/estimatedDuration — new.tsx search schema would need extending (P2).
  */
 import { useQuery } from "@tanstack/react-query";
-import { Link, createFileRoute, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import type { AdventureDTO, MilestoneDTO } from "@jdrai/shared";
@@ -69,8 +69,15 @@ export function AdventureSummaryPage() {
     // In TanStack Query v5, refetchInterval receives the Query object; data is at query.state.data
     refetchInterval: (query) => {
       const data = query.state.data as AdventureDTO | undefined;
-      // Summary ready (or adventure not completed) — stop polling
-      if (!data || data.narrativeSummary !== undefined) return false;
+      // Poll only for completed adventures that still lack narrativeSummary.
+      // Abandoned adventures do not require LLM summary generation.
+      if (
+        !data
+        || data.status !== "completed"
+        || data.narrativeSummary !== undefined
+      ) {
+        return false;
+      }
       summaryPollAttempts.current += 1;
       if (summaryPollAttempts.current >= 15) {
         setSummaryError(true);
@@ -174,6 +181,12 @@ export function AdventureSummaryPage() {
         {adventure && (
           <Link
             to="/adventure/new"
+            search={{
+              mode: "custom",
+              difficulty: adventure.difficulty,
+              estimatedDuration: adventure.estimatedDuration,
+              ...(adventure.templateId ? { templateId: adventure.templateId } : {}),
+            }}
             className="text-sm text-muted-foreground hover:underline"
           >
             {screenState === "success" ? "Rejouer ce scénario" : "Retenter ce scénario"}

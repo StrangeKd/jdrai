@@ -63,6 +63,7 @@ function mapRowToDTO(row: AdventureRow): AdventureDTO {
   };
 
   // Omit optional fields when null/undefined to satisfy exactOptionalPropertyTypes
+  if (adventure.templateId) dto.templateId = adventure.templateId;
   if (adventure.tone) dto.tone = adventure.tone as AdventureDTO["tone"];
   if (adventure.narrativeSummary) dto.narrativeSummary = adventure.narrativeSummary;
 

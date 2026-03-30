@@ -3,7 +3,7 @@
  *
  * Covers AC #1, #3, #4, #5, #6, #7, #8, #9
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdventureDTO, MilestoneDTO } from "@jdrai/shared";
@@ -37,7 +37,7 @@ vi.mock("@tanstack/react-router", () => ({
 // ---------------------------------------------------------------------------
 const mockUseQuery = vi.fn();
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (opts: { queryKey: unknown[] }) => mockUseQuery(opts.queryKey),
+  useQuery: (opts: { queryKey: unknown[]; refetchInterval?: unknown }) => mockUseQuery(opts),
 }));
 
 // ---------------------------------------------------------------------------
@@ -91,7 +91,8 @@ function setupQueryMocks(
   adventureOpts: { isLoading?: boolean; isError?: boolean } = {},
   milestones: MilestoneDTO[] = completedMilestones,
 ) {
-  mockUseQuery.mockImplementation((queryKey: unknown[]) => {
+  mockUseQuery.mockImplementation((opts: { queryKey: unknown[]; refetchInterval?: unknown }) => {
+    const queryKey = opts.queryKey;
     if (Array.isArray(queryKey) && queryKey[0] === "adventure") {
       return {
         data: adventure,
@@ -215,5 +216,51 @@ describe("AdventureSummaryPage", () => {
     render(<AdventureSummaryPage />);
 
     expect(screen.getByLabelText("Chargement")).toBeInTheDocument();
+  });
+
+  it("stops summary polling after 15 attempts when summary remains undefined (AC #12)", () => {
+    const { narrativeSummary: _omit, ...withoutSummary } = baseAdventure;
+    setupQueryMocks(withoutSummary as AdventureDTO);
+    render(<AdventureSummaryPage />);
+
+    const adventureQueryCall = mockUseQuery.mock.calls.find(
+      (call) => Array.isArray(call[0]?.queryKey) && call[0].queryKey[0] === "adventure",
+    );
+    const refetchInterval = adventureQueryCall?.[0]?.refetchInterval as
+      | ((query: { state: { data: AdventureDTO | undefined } }) => number | false)
+      | undefined;
+
+    expect(typeof refetchInterval).toBe("function");
+
+    const query = { state: { data: withoutSummary as AdventureDTO } };
+
+    for (let i = 0; i < 14; i += 1) {
+      expect(refetchInterval?.(query)).toBe(2000);
+    }
+
+    let finalResult: number | false = 2000;
+    act(() => {
+      finalResult = refetchInterval?.(query) ?? false;
+    });
+    expect(finalResult).toBe(false);
+  });
+
+  it("does not poll summary for abandoned adventures (AC #12)", () => {
+    const { narrativeSummary: _omit, ...withoutSummary } = baseAdventure;
+    const abandonedAdventure: AdventureDTO = {
+      ...withoutSummary,
+      status: "abandoned",
+    };
+    setupQueryMocks(abandonedAdventure);
+    render(<AdventureSummaryPage />);
+
+    const adventureQueryCall = mockUseQuery.mock.calls.find(
+      (call) => Array.isArray(call[0]?.queryKey) && call[0].queryKey[0] === "adventure",
+    );
+    const refetchInterval = adventureQueryCall?.[0]?.refetchInterval as
+      | ((query: { state: { data: AdventureDTO | undefined } }) => number | false)
+      | undefined;
+
+    expect(refetchInterval?.({ state: { data: abandonedAdventure } })).toBe(false);
   });
 });
