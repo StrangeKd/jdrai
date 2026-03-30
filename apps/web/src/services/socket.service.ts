@@ -136,4 +136,76 @@ if (import.meta.env.DEV) {
     sock.listeners(event).forEach((fn) => (fn as (p: unknown) => void)(payload));
     console.log(`[DEV] Triggered "${event}"`, payload);
   };
+
+  // ---------------------------------------------------------------------------
+  // DEV test plan helpers — Story 7.1
+  // Usage: const ops = __devAdventureOps("<adventure-uuid>")
+  //   ops.abandon()                  — PATCH status=abandoned             (test plan #1)
+  //   ops.complete()                 — PATCH status=completed             (test plan #2)
+  //   ops.completeTwice()            — complete then complete again → 400  (test plan #3)
+  //   ops.getMilestones()            — GET /milestones ordered sortOrder   (test plan #4)
+  //   ops.triggerAdventureComplete() — signal ADVENTURE_COMPLETE           (test plan #5)
+  //   ops.triggerGameOver()          — signal GAME_OVER                    (test plan #6)
+  //   ops.triggerLlmFail()           — completed + narrativeSummary=null   (test plan #7)
+  // ---------------------------------------------------------------------------
+  (window as unknown as Record<string, unknown>).__devAdventureOps = (adventureId: string) => {
+    const base = API_BASE;
+
+    const patch = async (status: "abandoned" | "completed") => {
+      const r = await fetch(`${base}/api/v1/adventures/${adventureId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      const json: unknown = await r.json();
+      console.log(`[DEV] PATCH status=${status} → HTTP ${r.status}`, json);
+      return json;
+    };
+
+    const triggerSignal = async (signal: "ADVENTURE_COMPLETE" | "GAME_OVER" | "LLM_FAIL") => {
+      const r = await fetch(`${base}/api/dev/adventures/${adventureId}/trigger-signal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ signal }),
+      });
+      const json: unknown = await r.json();
+      console.log(`[DEV] trigger signal=${signal} → HTTP ${r.status}`, json);
+      return json;
+    };
+
+    return {
+      /** Test plan #1 — PATCH abandoned → 200 + status=abandoned */
+      abandon: () => patch("abandoned"),
+      /** Test plan #2 — PATCH completed → 200 + completedAt set */
+      complete: () => patch("completed"),
+      /** Test plan #3 — PATCH completed twice → second call should return 400 INVALID_TRANSITION */
+      completeTwice: async () => {
+        console.log("[DEV] Step 1: complete adventure…");
+        await patch("completed");
+        console.log("[DEV] Step 2: complete again — expect 400 INVALID_TRANSITION");
+        return patch("completed");
+      },
+      /** Test plan #4 — GET milestones → list ordered by sortOrder ASC */
+      getMilestones: async () => {
+        const r = await fetch(`${base}/api/v1/adventures/${adventureId}/milestones`, {
+          credentials: "include",
+        });
+        const json: unknown = await r.json();
+        console.log(`[DEV] GET milestones → HTTP ${r.status}`, json);
+        return json;
+      },
+      /** Test plan #5 — [ADVENTURE_COMPLETE] → isGameOver=false in DB + async summary */
+      triggerAdventureComplete: () => triggerSignal("ADVENTURE_COMPLETE"),
+      /** Test plan #6 — [GAME_OVER] → isGameOver=true in DB + solemn summary */
+      triggerGameOver: () => triggerSignal("GAME_OVER"),
+      /** Test plan #7 — LLM summary failure → completed + narrativeSummary=null + no crash */
+      triggerLlmFail: () => triggerSignal("LLM_FAIL"),
+    };
+  };
+
+  console.info(
+    "[DEV] __devAdventureOps(adventureId) available — story 7.1 test plan helpers. See socket.service.ts for docs.",
+  );
 }
