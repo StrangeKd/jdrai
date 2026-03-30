@@ -210,7 +210,15 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
 
   const { data: gameStateResponse } = useQuery<ApiResponse<GameStateDTO>>({
     queryKey: ["adventure", adventureId, "state"],
-    queryFn: () => api.get<ApiResponse<GameStateDTO>>(`/api/v1/adventures/${adventureId}/state`),
+    queryFn: () => {
+      const mockParam =
+        import.meta.env.DEV && localStorage.getItem("dev:mockLlm") === "true"
+          ? "?mockLlm=true"
+          : "";
+      return api.get<ApiResponse<GameStateDTO>>(
+        `/api/v1/adventures/${adventureId}/state${mockParam}`,
+      );
+    },
     staleTime: 0,               // Always refetch on mount — ensures fresh state after navigation
     refetchOnWindowFocus: false, // Real-time updates come via Socket.io, not polling
   });
@@ -388,9 +396,11 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
         if (data.maxHp !== undefined) setMaxHp(data.maxHp);
       } else if (data.type === "adventure_complete") {
         setIsAdventureComplete(true);
+        setChoices([]);
       } else if (data.type === "game_over") {
         setIsAdventureComplete(true);
         setIsGameOver(true);
+        setChoices([]);
       } else if (data.type === "milestone_complete") {
         // Only show overlay when there is a next milestone.
         // nextMilestone=null means the last milestone completed → adventure ending.
@@ -520,9 +530,10 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     void sendActionWrapped(action, choiceId);
   }
 
-  // Composite lock flag: player input is locked when loading, streaming, rate-limited or disconnected.
-  // hasLLMError is intentionally excluded: FreeInput is re-enabled on LLM error (player can reformulate).
-  const isLocked = isLoading || isStreaming || isRateLimited || isDisconnected;
+  // Composite lock flag: player input is locked when loading, streaming, rate-limited, disconnected,
+  // or when the adventure has ended. hasLLMError is intentionally excluded: FreeInput is re-enabled
+  // on LLM error (player can reformulate).
+  const isLocked = isLoading || isStreaming || isRateLimited || isDisconnected || isAdventureComplete;
 
   // ---------------------------------------------------------------------------
   // Story 6.5 — Pause menu actions

@@ -69,6 +69,7 @@ function makeAdventure(overrides: Partial<AdventureDTO> = {}): AdventureDTO {
       maxHp: 20,
     },
     ...overrides,
+    isGameOver: overrides.isGameOver ?? false,
   };
 }
 

@@ -24,6 +24,7 @@ const MOCK_ADVENTURE: AdventureDTO = {
   id: "adv-1",
   title: "La Forêt Maudite",
   status: "active",
+  isGameOver: false,
   difficulty: "normal",
   estimatedDuration: "medium",
   startedAt: "2026-02-26T00:00:00Z",

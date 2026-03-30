@@ -21,6 +21,7 @@ import {
   createAdventureCharacter,
   findAdventureById,
   findAdventuresByUser,
+  getAdventureMilestones,
   updateAdventureStatus,
 } from "./adventures.repository";
 
@@ -58,10 +59,12 @@ function mapRowToDTO(row: AdventureRow): AdventureDTO {
     lastPlayedAt: toISOString(adventure.lastPlayedAt ?? adventure.createdAt),
     currentMilestone: currentMilestoneName ?? null,
     character: characterDTO,
+    isGameOver: adventure.isGameOver ?? false,
   };
 
   // Omit optional fields when null/undefined to satisfy exactOptionalPropertyTypes
   if (adventure.tone) dto.tone = adventure.tone as AdventureDTO["tone"];
+  if (adventure.narrativeSummary) dto.narrativeSummary = adventure.narrativeSummary;
 
   return dto;
 }
@@ -227,16 +230,21 @@ export async function getTemplates(): Promise<AdventureTemplateDTO[]> {
 export async function updateAdventureForUser(
   userId: string,
   adventureId: string,
-  status: "abandoned",
+  status: "completed" | "abandoned",
 ): Promise<AdventureDTO> {
-  const row = await updateAdventureStatus(adventureId, userId, status);
-  if (!row) {
-    throw new AppError(404, "NOT_FOUND", "Adventure not found");
-  }
+  // Repository validates ownership + transition — throws 404/400 on failure
+  await updateAdventureStatus(adventureId, userId, status);
   // Re-fetch full row with joins to return a proper DTO
   const fullRow = await findAdventureById(adventureId, userId);
   if (!fullRow) {
     throw new AppError(404, "NOT_FOUND", "Adventure not found after update");
   }
   return mapRowToDTO(fullRow);
+}
+
+export async function getAdventureMilestonesForUser(
+  userId: string,
+  adventureId: string,
+) {
+  return getAdventureMilestones(adventureId, userId);
 }

@@ -1,4 +1,6 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
+
+import type { MilestoneDTO } from "@jdrai/shared";
 
 import { db } from "@/db";
 import {
@@ -9,6 +11,7 @@ import {
   milestones,
   races,
 } from "@/db/schema";
+import { AppError } from "@/utils/errors";
 
 type AdventureStatus = (typeof adventureStatusEnum.enumValues)[number];
 
@@ -105,22 +108,109 @@ export async function findAdventureById(
   return rows[0] ?? null;
 }
 
+// Allowed status transitions — only "active" adventures can be transitioned
+const VALID_TRANSITIONS: Record<string, Array<"completed" | "abandoned">> = {
+  active: ["completed", "abandoned"],
+  completed: [],
+  abandoned: [],
+};
+
 /**
- * Update an adventure's status (e.g., mark as abandoned).
- * Verifies ownership via userId.
- * Returns the updated row or null if not found / not owned.
+ * Updates an adventure's status with transition validation.
+ * Throws 404 NOT_FOUND if not found or not owned by userId.
+ * Throws 400 INVALID_TRANSITION if the current status doesn't allow the requested transition.
+ * Sets completedAt when status becomes "completed".
  */
 export async function updateAdventureStatus(
   id: string,
   userId: string,
   status: "abandoned" | "completed",
-): Promise<typeof adventures.$inferSelect | null> {
+): Promise<typeof adventures.$inferSelect> {
+  // Fetch current adventure to validate ownership + transition
+  const [current] = await db
+    .select({ id: adventures.id, userId: adventures.userId, status: adventures.status })
+    .from(adventures)
+    .where(and(eq(adventures.id, id), eq(adventures.userId, userId)))
+    .limit(1);
+
+  if (!current) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found");
+  }
+
+  const allowedTargets = VALID_TRANSITIONS[current.status] ?? [];
+  if (!allowedTargets.includes(status)) {
+    throw new AppError(400, "INVALID_TRANSITION", `Cannot transition from "${current.status}" to "${status}"`);
+  }
+
   const [row] = await db
     .update(adventures)
-    .set({ status, updatedAt: new Date() })
-    .where(and(eq(adventures.id, id), eq(adventures.userId, userId)))
+    .set({
+      status,
+      updatedAt: new Date(),
+      ...(status === "completed" ? { completedAt: new Date() } : {}),
+    })
+    .where(eq(adventures.id, id))
     .returning();
-  return row ?? null;
+
+  // Defensive guard for rare concurrent delete between SELECT and UPDATE.
+  if (!row) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found");
+  }
+
+  return row!;
+}
+
+/**
+ * Returns all milestones for an adventure ordered by sortOrder ASC.
+ * Verifies ownership — throws 404 if adventure not found or not owned.
+ */
+export async function getAdventureMilestones(
+  adventureId: string,
+  userId: string,
+): Promise<MilestoneDTO[]> {
+  const [adventureRow] = await db
+    .select({ id: adventures.id })
+    .from(adventures)
+    .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
+    .limit(1);
+
+  if (!adventureRow) {
+    throw new AppError(404, "NOT_FOUND", "Adventure not found");
+  }
+
+  const rows = await db
+    .select()
+    .from(milestones)
+    .where(eq(milestones.adventureId, adventureId))
+    .orderBy(asc(milestones.sortOrder));
+
+  return rows.map((r) => {
+    const dto: MilestoneDTO = {
+      id: r.id,
+      name: r.name,
+      sortOrder: r.sortOrder,
+      status: r.status,
+    };
+    if (r.description) dto.description = r.description;
+    if (r.startedAt) dto.startedAt = r.startedAt.toISOString();
+    if (r.completedAt) dto.completedAt = r.completedAt.toISOString();
+    return dto;
+  });
+}
+
+/**
+ * Updates the narrative summary and isGameOver flag on an adventure.
+ * Internal — called by GameService after async LLM generation.
+ */
+export async function updateNarrativeSummary(
+  adventureId: string,
+  summary: string,
+  isGameOver: boolean,
+): Promise<void> {
+  await db
+    .update(adventures)
+    .set({ narrativeSummary: summary, isGameOver, updatedAt: new Date() })
+    .where(eq(adventures.id, adventureId));
 }
 
 export function buildFindAdventureByIdQuery(id: string, userId: string) {

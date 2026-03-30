@@ -18,11 +18,13 @@ vi.mock("./adventures.service", () => ({
   getAdventureById: vi.fn(),
   getTemplates: vi.fn(),
   updateAdventureForUser: vi.fn(),
+  getAdventureMilestonesForUser: vi.fn(),
 }));
 
 import {
   createAdventureHandler,
   getAdventureHandler,
+  getAdventureMilestonesHandler,
   listAdventuresHandler,
   listTemplatesHandler,
   updateAdventureHandler,
@@ -30,6 +32,7 @@ import {
 import {
   createAdventureForUser,
   getAdventureById,
+  getAdventureMilestonesForUser,
   getAdventuresForUser,
   getTemplates,
   updateAdventureForUser,
@@ -70,6 +73,7 @@ const MOCK_ADVENTURE: AdventureDTO = {
   startedAt: "2026-02-26T00:00:00.000Z",
   lastPlayedAt: "2026-02-26T00:00:00.000Z",
   character: MOCK_CHARACTER,
+  isGameOver: false,
 };
 
 const MOCK_TEMPLATE: AdventureTemplateDTO = {
@@ -97,6 +101,7 @@ function makeApp(userId: string = MOCK_USER_ID): Express {
 
   app.post("/adventures", createAdventureHandler);
   app.get("/adventures", listAdventuresHandler);
+  app.get("/adventures/:id/milestones", getAdventureMilestonesHandler);
   app.get("/adventures/:id", getAdventureHandler);
   app.patch("/adventures/:id", updateAdventureHandler);
   app.get("/templates", listTemplatesHandler);
@@ -211,6 +216,13 @@ describe("GET /adventures (AC-4)", () => {
     await request(makeApp()).get("/adventures?status=completed");
     expect(getAdventuresForUser).toHaveBeenCalledWith(MOCK_USER_ID, "completed");
   });
+
+  it("6.5c — ?status=abandoned passes filter to service (Story 7.1 AC #5)", async () => {
+    vi.mocked(getAdventuresForUser).mockResolvedValueOnce([]);
+
+    await request(makeApp()).get("/adventures?status=abandoned");
+    expect(getAdventuresForUser).toHaveBeenCalledWith(MOCK_USER_ID, "abandoned");
+  });
 });
 
 describe("GET /adventures/:id (AC-5)", () => {
@@ -288,6 +300,118 @@ describe("PATCH /adventures/:id (AC-5 Story 5.2)", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 7.1 — PATCH /adventures/:id — transition validation (AC #1)
+// ---------------------------------------------------------------------------
+
+import type { MilestoneDTO } from "@jdrai/shared";
+
+describe("PATCH /adventures/:id (Story 7.1 AC #1)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("{ status: 'abandoned' } → 200 with updated DTO (AC #1)", async () => {
+    const abandoned: AdventureDTO = { ...MOCK_ADVENTURE, status: "abandoned" };
+    vi.mocked(updateAdventureForUser).mockResolvedValueOnce(abandoned);
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-1")
+      .send({ status: "abandoned" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe("abandoned");
+    expect(updateAdventureForUser).toHaveBeenCalledWith(MOCK_USER_ID, "adv-1", "abandoned");
+  });
+
+  it("{ status: 'completed' } → 200 with completedAt set (AC #1)", async () => {
+    const completed: AdventureDTO = { ...MOCK_ADVENTURE, status: "completed" };
+    vi.mocked(updateAdventureForUser).mockResolvedValueOnce(completed);
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-1")
+      .send({ status: "completed" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe("completed");
+    expect(updateAdventureForUser).toHaveBeenCalledWith(MOCK_USER_ID, "adv-1", "completed");
+  });
+
+  it("already-completed adventure → 400 INVALID_TRANSITION (AC #1)", async () => {
+    vi.mocked(updateAdventureForUser).mockRejectedValueOnce(
+      new AppError(400, "INVALID_TRANSITION", 'Cannot transition from "completed" to "abandoned"'),
+    );
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-completed")
+      .send({ status: "abandoned" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_TRANSITION");
+  });
+
+  it("another user's adventure → 404 NOT_FOUND (AC #1)", async () => {
+    vi.mocked(updateAdventureForUser).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
+
+    const res = await request(makeApp())
+      .patch("/adventures/adv-other")
+      .send({ status: "abandoned" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("invalid body → 400 VALIDATION_ERROR (AC #1)", async () => {
+    const res = await request(makeApp())
+      .patch("/adventures/adv-1")
+      .send({ status: "active" }); // "active" not a valid target
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(updateAdventureForUser).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 7.1 — GET /adventures/:id/milestones (AC #4)
+// ---------------------------------------------------------------------------
+
+describe("GET /adventures/:id/milestones (Story 7.1 AC #4)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const MOCK_MILESTONES: MilestoneDTO[] = [
+    { id: "m-1", name: "Prologue", sortOrder: 0, status: "completed" },
+    { id: "m-2", name: "Acte I", sortOrder: 1, status: "active" },
+    { id: "m-3", name: "Épilogue", sortOrder: 2, status: "pending" },
+  ];
+
+  it("returns MilestoneDTO[] ordered by sortOrder (AC #4)", async () => {
+    vi.mocked(getAdventureMilestonesForUser).mockResolvedValueOnce(MOCK_MILESTONES);
+
+    const res = await request(makeApp()).get("/adventures/adv-1/milestones");
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(3);
+    expect(res.body.data[0].sortOrder).toBe(0);
+    expect(res.body.data[1].sortOrder).toBe(1);
+    expect(getAdventureMilestonesForUser).toHaveBeenCalledWith(MOCK_USER_ID, "adv-1");
+  });
+
+  it("another user's adventure → 404 NOT_FOUND (AC #4)", async () => {
+    vi.mocked(getAdventureMilestonesForUser).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
+
+    const res = await request(makeApp()).get("/adventures/adv-other/milestones");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
   });
 });
 

@@ -1,4 +1,4 @@
-import { type AnyPgColumn, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // Import enums already defined in Epic 1 — do NOT redefine
 import { adventureTemplates, difficultyEnum, estimatedDurationEnum } from "./adventure-templates";
@@ -24,6 +24,8 @@ export const adventures = pgTable("adventures", {
   startedAt: timestamp("started_at").defaultNow(),
   lastPlayedAt: timestamp("last_played_at").defaultNow(),
   completedAt: timestamp("completed_at"),
+  narrativeSummary: text("narrative_summary"),
+  isGameOver: boolean("is_game_over").default(false).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

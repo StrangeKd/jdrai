@@ -106,6 +106,7 @@ const gameStateResponse: ApiResponse<GameStateDTO> = {
       id: "adv-1",
       title: "La Forêt Maudite",
       status: "active",
+      isGameOver: false,
       difficulty: "normal",
       estimatedDuration: "medium",
       startedAt: new Date().toISOString(),

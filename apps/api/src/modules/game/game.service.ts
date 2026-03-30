@@ -29,6 +29,7 @@ import {
   transitionMilestone,
   updateAdventureState,
   updateCharacterHp,
+  updateNarrativeSummary,
   type GameStateSnapshot,
 } from "./game.repository";
 import { LLMService, createLLMService } from "./llm/index";
@@ -128,9 +129,11 @@ function buildAdventureDTO(
     lastPlayedAt: (adventureRow.lastPlayedAt ?? adventureRow.createdAt).toISOString(),
     currentMilestone: currentMilestoneName,
     character: characterDTO,
+    isGameOver: adventureRow.isGameOver ?? false,
   };
 
   if (adventureRow.tone) dto.tone = adventureRow.tone as AdventureDTO["tone"];
+  if (adventureRow.narrativeSummary) dto.narrativeSummary = adventureRow.narrativeSummary;
 
   return dto;
 }
@@ -146,6 +149,8 @@ export interface ProcessActionParams {
   choiceId?: string | undefined;
   socketId?: string | undefined;
   io?: import("socket.io").Server | undefined;
+  /** DEV only — bypasses LLM and returns hardcoded text to save tokens during manual testing. */
+  mockLlm?: boolean | undefined;
 }
 
 export interface ProcessActionResult {
@@ -442,28 +447,48 @@ export class GameService {
       io!.to(room).emit("game:response-start", { adventureId });
     }
 
-    // 9. Stream LLM response, emit chunks
-    const llm = await this.getLLMService();
+    // 9. Stream LLM response (or hardcoded mock in dev), emit chunks
     let fullResponse = "";
-    try {
-      for await (const chunk of llm.stream({
-        systemPrompt: combinedSystemPrompt,
-        messages: conversationMessages,
-      })) {
+
+    const isMockMode = process.env["NODE_ENV"] !== "production" && params.mockLlm === true;
+
+    if (isMockMode) {
+      // DEV mock — stream hardcoded text in small chunks, no LLM call.
+      const mockText =
+        "[MODE MOCK] Le Chroniqueur fictif répond à votre action. " +
+        "Ceci est une réponse simulée pour économiser des tokens LLM.\n\n" +
+        "Vous avancez courageusement. L'aventure se poursuit...\n\n" +
+        "Que souhaitez-vous faire ensuite ?";
+      const chunkSize = 20;
+      for (let i = 0; i < mockText.length; i += chunkSize) {
+        const chunk = mockText.slice(i, i + chunkSize);
         if (shouldStream) {
           io!.to(room).emit("game:chunk", { adventureId, chunk });
         }
         fullResponse += chunk;
       }
-    } catch (error) {
-      logger.error("[GameService] LLM stream failed:", error);
-      if (shouldStream) {
-        io!.to(room).emit("game:error", {
-          adventureId,
-          error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
-        });
+    } else {
+      const llm = await this.getLLMService();
+      try {
+        for await (const chunk of llm.stream({
+          systemPrompt: combinedSystemPrompt,
+          messages: conversationMessages,
+        })) {
+          if (shouldStream) {
+            io!.to(room).emit("game:chunk", { adventureId, chunk });
+          }
+          fullResponse += chunk;
+        }
+      } catch (error) {
+        logger.error("[GameService] LLM stream failed:", error);
+        if (shouldStream) {
+          io!.to(room).emit("game:error", {
+            adventureId,
+            error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+          });
+        }
+        throw error;
       }
-      throw error;
     }
 
     // 10. Parse signals
@@ -580,12 +605,63 @@ export class GameService {
 
     // 3. Adventure completion — AFTER other signals
     if (signals.adventureComplete || signals.isGameOver) {
-      await completeAdventure(adventureId, signals.isGameOver);
+      await this.handleAdventureEnd(adventureId, signals.isGameOver);
       io?.to(room).emit("game:state-update", {
         adventureId,
         type: signals.isGameOver ? "game_over" : "adventure_complete",
       });
     }
+  }
+
+  /**
+   * Handles adventure end: marks as completed in DB and fires async narrative summary generation.
+   * The summary generation is fire-and-forget — the websocket event is emitted immediately.
+   */
+  private async handleAdventureEnd(adventureId: string, isGameOver: boolean): Promise<void> {
+    await completeAdventure(adventureId, isGameOver);
+
+    // Non-blocking: narrative summary generated async after status is updated
+    this.generateNarrativeSummary(adventureId, isGameOver).catch((err: unknown) => {
+      logger.error({ err, adventureId }, "Narrative summary generation failed — non-fatal");
+    });
+  }
+
+  /**
+   * Generates a 2–4 sentence narrative summary via a non-streaming LLM call.
+   * Tone is triumphal for success, solemn-epic for game over (GDD §6.3 — never humiliating).
+   */
+  private async generateNarrativeSummary(adventureId: string, isGameOver: boolean): Promise<void> {
+    // Load character + milestones for prompt context
+    const [characterRow] = await db
+      .select()
+      .from(adventureCharacters)
+      .where(eq(adventureCharacters.adventureId, adventureId))
+      .limit(1);
+
+    const allMilestones = await getMilestones(adventureId);
+
+    const characterName = characterRow?.name ?? "Aventurier";
+    const completedMilestoneNames = allMilestones
+      .filter((m) => m.status === "completed")
+      .map((m) => m.name)
+      .join(", ");
+
+    const tone = isGameOver ? "solennel et épique" : "triomphant et immersif";
+    const perspective = isGameOver ? "votre héritage" : "votre aventure accomplie";
+
+    const prompt = `Tu es Le Chroniqueur. Résume ${perspective} en 2-4 phrases, sur un ton ${tone}.
+Le personnage : ${characterName} (Aventurier, Humain).
+Milestones accomplis : ${completedMilestoneNames || "aucun"}.
+Règles : jamais humiliant, toujours épique, en français, à la 2ème personne du singulier (tutoiement), jamais de mécaniques de jeu explicites.`;
+
+    const llm = await this.getLLMService();
+    const summary = await llm.generate({
+      systemPrompt: "",
+      messages: [{ role: "user", content: prompt }],
+      maxAttempts: 2,
+    });
+
+    await updateNarrativeSummary(adventureId, summary);
   }
 
   /** Updates Adventure.state JSONB snapshot after each turn. */
@@ -597,24 +673,28 @@ export class GameService {
    * Initializes milestones for an adventure via a one-shot LLM call (AC #1-4).
    * Falls back to 3 generic milestones if LLM fails — never blocks the player.
    */
-  async initializeMilestones(adventure: AdventureDTO): Promise<MilestoneDTO[]> {
-    const prompt = buildMilestoneInitPrompt(adventure);
-
+  async initializeMilestones(adventure: AdventureDTO, mockLlm = false): Promise<MilestoneDTO[]> {
     let milestoneData: Array<{ name: string; description: string }>;
 
-    try {
-      const llm = await this.getLLMService();
-      const response = await llm.generateResponse({
-        systemPrompt: "",
-        messages: [{ role: "user", content: prompt }],
-        maxAttempts: 2,
-      });
-      const parsed: unknown = JSON.parse(response);
-      const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
-      milestoneData = validated;
-    } catch (error) {
-      logger.error("[GameService] initializeMilestones LLM/parse failed, using fallback:", error);
+    if (process.env["NODE_ENV"] !== "production" && mockLlm) {
+      // DEV mock — use fallback milestones directly, no LLM call.
       milestoneData = FALLBACK_MILESTONES;
+    } else {
+      const prompt = buildMilestoneInitPrompt(adventure);
+      try {
+        const llm = await this.getLLMService();
+        const response = await llm.generateResponse({
+          systemPrompt: "",
+          messages: [{ role: "user", content: prompt }],
+          maxAttempts: 2,
+        });
+        const parsed: unknown = JSON.parse(response);
+        const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
+        milestoneData = validated;
+      } catch (error) {
+        logger.error("[GameService] initializeMilestones LLM/parse failed, using fallback:", error);
+        milestoneData = FALLBACK_MILESTONES;
+      }
     }
 
     const rows = await db
@@ -646,7 +726,7 @@ export class GameService {
    * Returns the full game state for GET /api/adventures/:id/state (AC #5).
    * Triggers initializeMilestones() if no milestones exist yet.
    */
-  async getState(adventureId: string, userId: string): Promise<GameStateDTO> {
+  async getState(adventureId: string, userId: string, mockLlm = false): Promise<GameStateDTO> {
     // 1. Load adventure — 404/403 guards
     const [adventureRow] = await db
       .select()
@@ -678,7 +758,7 @@ export class GameService {
 
     if (allMilestones.length === 0) {
       const adventureDTO = buildAdventureDTO(adventureRow, characterRow);
-      allMilestones = await this.initializeMilestones(adventureDTO);
+      allMilestones = await this.initializeMilestones(adventureDTO, mockLlm);
     }
 
     // 5. Build response DTOs

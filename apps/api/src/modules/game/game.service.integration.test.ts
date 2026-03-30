@@ -397,6 +397,8 @@ function injectStreamLLM(svc: GameService, chunks: string[]) {
   }
   const llm = {
     stream: vi.fn().mockReturnValue(mockStream()),
+    // processAction can trigger async summary generation on completion signals.
+    generate: vi.fn().mockResolvedValue("Résumé narratif de test."),
     generateResponse: vi.fn(),
   } as unknown as LLMService;
   // @ts-expect-error — private field injection for testing
@@ -615,5 +617,106 @@ describe("processAction() — full turn + signals", () => {
       .limit(1);
 
     expect(adv!.status).toBe("completed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 7.1 — applySignals + handleAdventureEnd + generateNarrativeSummary
+// ---------------------------------------------------------------------------
+
+/** Injects a full LLM mock (stream + generate) into a GameService instance. */
+function injectFullLLM(svc: GameService, streamChunks: string[], generateResult: string | Error) {
+  async function* mockStream() {
+    for (const chunk of streamChunks) yield chunk;
+  }
+  const generateFn =
+    generateResult instanceof Error
+      ? vi.fn().mockRejectedValue(generateResult)
+      : vi.fn().mockResolvedValue(generateResult);
+
+  const llm = {
+    stream: vi.fn().mockReturnValue(mockStream()),
+    generate: generateFn,
+    generateResponse: generateFn,
+  } as unknown as LLMService;
+  // @ts-expect-error — private field injection for testing
+  svc.llmService = llm;
+}
+
+describe("applySignals() — Story 7.1 (isGameOver column + narrative summary)", () => {
+  it("[ADVENTURE_COMPLETE] → isGameOver=false in DB column + narrativeSummary generated (AC #2, #3)", async () => {
+    const svc = new GameService();
+    injectFullLLM(svc, [], "Tu as triomphé dans une aventure épique.");
+
+    const signals: ParsedSignals = {
+      adventureComplete: true,
+      isGameOver: false,
+      choices: [],
+    };
+
+    await svc.applySignals(signals, adventureId);
+
+    // Allow fire-and-forget summary generation to complete
+    await new Promise((r) => setTimeout(r, 100));
+
+    const [row] = await db
+      .select({ status: adventures.status, isGameOver: adventures.isGameOver, narrativeSummary: adventures.narrativeSummary })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    expect(row!.status).toBe("completed");
+    expect(row!.isGameOver).toBe(false);
+    expect(row!.narrativeSummary).toBe("Tu as triomphé dans une aventure épique.");
+  });
+
+  it("[GAME_OVER] → isGameOver=true in DB column + narrativeSummary generated with solemn tone (AC #2, #3)", async () => {
+    const svc = new GameService();
+    injectFullLLM(svc, [], "Ton héritage demeure gravé dans les annales du monde.");
+
+    const signals: ParsedSignals = {
+      adventureComplete: false,
+      isGameOver: true,
+      choices: [],
+    };
+
+    await svc.applySignals(signals, adventureId);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const [row] = await db
+      .select({ status: adventures.status, isGameOver: adventures.isGameOver, narrativeSummary: adventures.narrativeSummary })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    expect(row!.status).toBe("completed");
+    expect(row!.isGameOver).toBe(true);
+    expect(row!.narrativeSummary).toBe("Ton héritage demeure gravé dans les annales du monde.");
+  });
+
+  it("LLM summary generation fails → adventure still completed, narrativeSummary=null, no crash (AC #2)", async () => {
+    const svc = new GameService();
+    injectFullLLM(svc, [], new Error("LLM unavailable"));
+
+    const signals: ParsedSignals = {
+      adventureComplete: true,
+      isGameOver: false,
+      choices: [],
+    };
+
+    // Should not throw — error is swallowed in fire-and-forget
+    await expect(svc.applySignals(signals, adventureId)).resolves.not.toThrow();
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const [row] = await db
+      .select({ status: adventures.status, narrativeSummary: adventures.narrativeSummary })
+      .from(adventures)
+      .where(eq(adventures.id, adventureId))
+      .limit(1);
+
+    expect(row!.status).toBe("completed");
+    expect(row!.narrativeSummary).toBeNull();
   });
 });

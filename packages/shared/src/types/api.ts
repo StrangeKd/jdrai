@@ -10,7 +10,8 @@ export type ErrorCode =
   | "INTERNAL_ERROR"
   | "LLM_ERROR"
   | "LLM_TIMEOUT"
-  | "ADVENTURE_NOT_ACTIVE";
+  | "ADVENTURE_NOT_ACTIVE"
+  | "INVALID_TRANSITION";
 
 export interface ApiError {
   success: false;

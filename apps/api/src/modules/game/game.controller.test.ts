@@ -220,6 +220,7 @@ const MOCK_GAME_STATE: GameStateDTO = {
     startedAt: "2026-03-01T00:00:00.000Z",
     lastPlayedAt: "2026-03-01T00:00:00.000Z",
     currentMilestone: "Prologue",
+    isGameOver: false,
     character: {
       id: "char-1",
       name: "Héros",
@@ -247,7 +248,7 @@ describe("GET /adventures/:id/state (AC-5)", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.isStreaming).toBe(false);
     expect(res.body.data.milestones).toHaveLength(1);
-    expect(gameService.getState).toHaveBeenCalledWith("adv-1", "user-1");
+    expect(gameService.getState).toHaveBeenCalledWith("adv-1", "user-1", false);
   });
 
   it("adventure not found → 404 NOT_FOUND", async () => {

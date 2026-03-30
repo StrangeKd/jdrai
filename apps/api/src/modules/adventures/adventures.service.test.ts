@@ -81,6 +81,8 @@ const MOCK_ADVENTURE_ROW = {
   startedAt: new Date("2026-02-26"),
   lastPlayedAt: new Date("2026-02-26"),
   completedAt: null,
+  narrativeSummary: null,
+  isGameOver: false,
   createdAt: new Date("2026-02-26"),
   updatedAt: new Date("2026-02-26"),
   templateId: null,
@@ -351,7 +353,9 @@ describe("updateAdventureForUser (Story 5.2 AC-6)", () => {
   });
 
   it("throws 404 NOT_FOUND when adventure does not exist or belongs to another user", async () => {
-    vi.mocked(updateAdventureStatus).mockResolvedValueOnce(null);
+    vi.mocked(updateAdventureStatus).mockRejectedValueOnce(
+      new AppError(404, "NOT_FOUND", "Adventure not found"),
+    );
 
     await expect(updateAdventureForUser(USER_ID, "adv-other", "abandoned")).rejects.toThrow(
       expect.objectContaining({ statusCode: 404, code: "NOT_FOUND" }),

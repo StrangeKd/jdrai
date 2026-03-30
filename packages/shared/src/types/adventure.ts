@@ -32,6 +32,10 @@ export interface AdventureDTO {
   startedAt: string;
   lastPlayedAt: string;
   character: AdventureCharacterDTO;
+  /** LLM-generated summary (2–4 sentences). Null while generating; populated async after completion. */
+  narrativeSummary?: string | undefined;
+  /** True when the adventure ended via [GAME_OVER] (E11-WF-02). False = success (E11-WF-01). */
+  isGameOver: boolean;
 }
 
 export interface AdventureCharacterCreateInput {
@@ -49,6 +53,10 @@ export interface AdventureCreateInput {
   tone?: Tone | undefined;
   estimatedDuration: EstimatedDuration;
   character?: AdventureCharacterCreateInput | undefined; // Optional — server auto-creates in P1
+}
+
+export interface AdventureUpdateInput {
+  status: "completed" | "abandoned";
 }
 
 // NEW — returned by GET /api/v1/templates
