@@ -92,7 +92,8 @@ export async function getStateHandler(
   try {
     const adventureId = req.params["id"]!;
     const userId = req.user!.id;
-    const state = await gameService.getState(adventureId, userId);
+    const mockLlm = req.query["mockLlm"] === "true";
+    const state = await gameService.getState(adventureId, userId, mockLlm);
     res.json({ success: true, data: state });
   } catch (error) {
     next(error);

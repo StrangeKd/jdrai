@@ -673,24 +673,28 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
    * Initializes milestones for an adventure via a one-shot LLM call (AC #1-4).
    * Falls back to 3 generic milestones if LLM fails — never blocks the player.
    */
-  async initializeMilestones(adventure: AdventureDTO): Promise<MilestoneDTO[]> {
-    const prompt = buildMilestoneInitPrompt(adventure);
-
+  async initializeMilestones(adventure: AdventureDTO, mockLlm = false): Promise<MilestoneDTO[]> {
     let milestoneData: Array<{ name: string; description: string }>;
 
-    try {
-      const llm = await this.getLLMService();
-      const response = await llm.generateResponse({
-        systemPrompt: "",
-        messages: [{ role: "user", content: prompt }],
-        maxAttempts: 2,
-      });
-      const parsed: unknown = JSON.parse(response);
-      const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
-      milestoneData = validated;
-    } catch (error) {
-      logger.error("[GameService] initializeMilestones LLM/parse failed, using fallback:", error);
+    if (process.env["NODE_ENV"] !== "production" && mockLlm) {
+      // DEV mock — use fallback milestones directly, no LLM call.
       milestoneData = FALLBACK_MILESTONES;
+    } else {
+      const prompt = buildMilestoneInitPrompt(adventure);
+      try {
+        const llm = await this.getLLMService();
+        const response = await llm.generateResponse({
+          systemPrompt: "",
+          messages: [{ role: "user", content: prompt }],
+          maxAttempts: 2,
+        });
+        const parsed: unknown = JSON.parse(response);
+        const { milestones: validated } = MilestoneInitResponseSchema.parse(parsed);
+        milestoneData = validated;
+      } catch (error) {
+        logger.error("[GameService] initializeMilestones LLM/parse failed, using fallback:", error);
+        milestoneData = FALLBACK_MILESTONES;
+      }
     }
 
     const rows = await db
@@ -722,7 +726,7 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
    * Returns the full game state for GET /api/adventures/:id/state (AC #5).
    * Triggers initializeMilestones() if no milestones exist yet.
    */
-  async getState(adventureId: string, userId: string): Promise<GameStateDTO> {
+  async getState(adventureId: string, userId: string, mockLlm = false): Promise<GameStateDTO> {
     // 1. Load adventure — 404/403 guards
     const [adventureRow] = await db
       .select()
@@ -754,7 +758,7 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
 
     if (allMilestones.length === 0) {
       const adventureDTO = buildAdventureDTO(adventureRow, characterRow);
-      allMilestones = await this.initializeMilestones(adventureDTO);
+      allMilestones = await this.initializeMilestones(adventureDTO, mockLlm);
     }
 
     // 5. Build response DTOs
