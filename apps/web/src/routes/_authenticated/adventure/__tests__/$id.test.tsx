@@ -8,9 +8,13 @@ const closeExitModalMock = vi.hoisted(() => vi.fn());
 const openExitModalMock = vi.hoisted(() => vi.fn());
 const blockerProceedMock = vi.hoisted(() => vi.fn());
 const blockerResetMock = vi.hoisted(() => vi.fn());
+const navigateMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const exitGameSessionMock = vi.hoisted(() => vi.fn());
 const testState = vi.hoisted(() => ({
   blockerStatus: "idle" as "idle" | "blocked",
   isExitModalOpen: false,
+  isAdventureComplete: false,
+  isGameOver: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -22,6 +26,7 @@ vi.mock("@tanstack/react-router", () => ({
     }),
   useRouterState: ({ select }: { select: (s: { location: { state: unknown } }) => unknown }) =>
     select({ location: { state: {} } }),
+  useNavigate: () => navigateMock,
   useBlocker: () => ({
     status: testState.blockerStatus,
     proceed: blockerProceedMock,
@@ -148,7 +153,8 @@ vi.mock("@/hooks/useGameSession", async () => {
         lastSavedAt: null,
         showAutosaveIndicator: false,
         isPauseMenuOpen,
-        isAdventureComplete: false,
+        isAdventureComplete: testState.isAdventureComplete,
+        isGameOver: testState.isGameOver,
         openPauseMenu: () => setIsPauseMenuOpen(true),
         closePauseMenu: () => setIsPauseMenuOpen(false),
         manualSave: manualSaveMock,
@@ -167,6 +173,17 @@ vi.mock("@/hooks/useGameSession", async () => {
         closeExitModal: closeExitModalMock,
         isConfirmingExit: false,
         confirmExit: confirmExitMock,
+        // Story 6.8 — Resilience
+        isRateLimited: false,
+        rateLimitCountdown: 0,
+        isDisconnected: false,
+        connectionFailed: false,
+        manualReconnect: vi.fn(),
+        hasLLMError: false,
+        retryLastAction: vi.fn(),
+        isLocked: false,
+        // Story 7.2
+        exitGameSession: exitGameSessionMock,
       };
     },
   };
@@ -183,8 +200,12 @@ describe("GameSessionPage pause menu wiring", () => {
     openExitModalMock.mockClear();
     blockerProceedMock.mockClear();
     blockerResetMock.mockClear();
+    navigateMock.mockClear();
+    exitGameSessionMock.mockClear();
     testState.blockerStatus = "idle";
     testState.isExitModalOpen = false;
+    testState.isAdventureComplete = false;
+    testState.isGameOver = false;
   });
 
   afterEach(() => {
@@ -244,5 +265,48 @@ describe("GameSessionPage pause menu wiring", () => {
     fireEvent.click(screen.getByRole("button", { name: "cancel-exit" }));
     expect(blockerResetMock).toHaveBeenCalledTimes(1);
     expect(closeExitModalMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GameSessionPage — Story 7.2 navigation to E11", () => {
+  beforeEach(() => {
+    navigateMock.mockClear();
+    exitGameSessionMock.mockClear();
+    testState.isAdventureComplete = false;
+    testState.isGameOver = false;
+  });
+
+  afterEach(cleanup);
+
+  it("calls exitGameSession then navigate to /summary when isAdventureComplete=true (AC #2)", async () => {
+    testState.isAdventureComplete = true;
+    render(<GameSessionPage />);
+
+    await waitFor(() => {
+      expect(exitGameSessionMock).toHaveBeenCalledTimes(1);
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "/adventure/$id/summary",
+          params: { id: "adv-1" },
+          state: { fromGameSession: true },
+        }),
+      );
+    });
+  });
+
+  it("calls exitGameSession then navigate to /summary when isGameOver=true (AC #2)", async () => {
+    testState.isGameOver = true;
+    render(<GameSessionPage />);
+
+    await waitFor(() => {
+      expect(exitGameSessionMock).toHaveBeenCalledTimes(1);
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "/adventure/$id/summary",
+          params: { id: "adv-1" },
+          state: { fromGameSession: true },
+        }),
+      );
+    });
   });
 });

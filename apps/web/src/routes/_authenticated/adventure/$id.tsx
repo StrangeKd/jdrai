@@ -4,8 +4,15 @@
  * Full-screen immersive mode: navigation chrome is hidden by AppLayout.shouldHideNav().
  * Uses useGameSession for all game state (socket + REST).
  */
-import { createFileRoute, useBlocker, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+
+// Extend TanStack Router's HistoryState to allow passing fromGameSession flag on navigation to E11
+declare module "@tanstack/react-router" {
+  interface HistoryState {
+    fromGameSession?: boolean;
+  }
+}
 
 import { CharacterPanel } from "@/components/game/CharacterPanel";
 import { ExitConfirmModal } from "@/components/game/ExitConfirmModal";
@@ -56,6 +63,7 @@ export function GameSessionPage() {
     openHistoryDrawer,
     closeHistoryDrawer,
     dismissIntro,
+    isGameOver,
     // Story 6.7
     isInGameSession,
     isExitModalOpen,
@@ -72,7 +80,11 @@ export function GameSessionPage() {
     hasLLMError,
     retryLastAction,
     isLocked,
+    // Story 7.2
+    exitGameSession,
   } = useGameSession(adventureId, { isNew: isNewAdventure });
+
+  const navigate = useNavigate();
 
   // Story 6.7 — Router blocker: intercepts in-app navigation and browser back button
   // while isInGameSession=true (adventure not yet complete).
@@ -107,15 +119,20 @@ export function GameSessionPage() {
   const milestones = gameState?.milestones ?? [];
 
   // ---------------------------------------------------------------------------
-  // Story 7.x stub — redirect when adventure ends
+  // Story 7.2 — Redirect to E11 (summary) when adventure ends
+  // Must clear isInGameSession BEFORE navigate to bypass the beforeNavigate guard.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (isAdventureComplete) {
-      // TODO Story 7.2: navigate({ to: "/adventure/$id/summary", params: { id: adventureId } })
-      console.log("[GameSession] Adventure complete — Story 7.x will handle redirect");
+    if (isAdventureComplete || isGameOver) {
+      exitGameSession();
+      void navigate({
+        to: "/adventure/$id/summary",
+        params: { id: adventureId },
+        state: { fromGameSession: true },
+      });
     }
-  }, [isAdventureComplete, adventureId]);
+  }, [isAdventureComplete, isGameOver, adventureId, exitGameSession, navigate]);
 
   // ---------------------------------------------------------------------------
   // Desktop keyboard shortcuts

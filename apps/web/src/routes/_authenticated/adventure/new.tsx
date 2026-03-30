@@ -24,6 +24,9 @@ import { useCurrentUser } from "@/hooks/useUser";
 
 const searchSchema = z.object({
   mode: z.enum(["custom", "templates", "random"]).default("custom").catch("custom"),
+  difficulty: z.enum(["easy", "normal", "hard", "nightmare"]).optional(),
+  estimatedDuration: z.enum(["short", "medium", "long"]).optional(),
+  templateId: z.string().min(1).optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/adventure/new")({
@@ -78,7 +81,7 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 // ---------------------------------------------------------------------------
 
 export function NewAdventurePage() {
-  const { mode } = Route.useSearch();
+  const { mode, difficulty, estimatedDuration, templateId } = Route.useSearch();
   const navigate = useNavigate();
 
   const { data: user } = useCurrentUser();
@@ -100,7 +103,14 @@ export function NewAdventurePage() {
   // Initial step depends on mode:
   // - random → "random-choice" (skip config entirely per story Dev Notes)
   // - custom/templates → "config"
-  const [config, setConfig] = useState<AdventureConfig>(DEFAULT_CONFIG);
+  const initialConfig: AdventureConfig = {
+    ...DEFAULT_CONFIG,
+    ...(difficulty ? { difficulty } : {}),
+    ...(estimatedDuration ? { duration: estimatedDuration } : {}),
+    ...(templateId ? { templateId } : {}),
+  };
+
+  const [config, setConfig] = useState<AdventureConfig>(initialConfig);
   const [step, setStep] = useState<AdventureStep>(() =>
     mode === "random" ? "random-choice" : "config",
   );
