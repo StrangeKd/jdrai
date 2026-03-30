@@ -147,6 +147,12 @@ export interface GameSessionState {
    * Note: hasLLMError is NOT included — FreeInput is re-enabled on LLM error.
    */
   isLocked: boolean;
+  /**
+   * Clears the isInGameSession flag without navigating.
+   * Must be called BEFORE programmatic navigation on adventure completion to bypass
+   * the TanStack Router beforeNavigate guard (Story 7.2).
+   */
+  exitGameSession: () => void;
 }
 
 export function useGameSession(adventureId: string, options?: { isNew?: boolean }): GameSessionState {
@@ -661,5 +667,7 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean 
     hasLLMError,
     retryLastAction,
     isLocked,
+    // Story 7.2 — Exit guard bypass for programmatic navigation on adventure completion
+    exitGameSession: () => setIsInGameSession(false),
   };
 }

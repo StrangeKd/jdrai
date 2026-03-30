@@ -3,9 +3,15 @@ import type {
   AdventureDTO,
   AdventureTemplateDTO,
   GameMessageDTO,
+  MilestoneDTO,
 } from "@jdrai/shared";
 
 import { api } from "@/services/api";
+
+export async function getAdventureById(id: string): Promise<AdventureDTO> {
+  const response = await api.get<{ success: true; data: AdventureDTO }>(`/api/v1/adventures/${id}`);
+  return response.data;
+}
 
 export async function getAdventures(status?: "active" | "completed" | "abandoned") {
   const endpoint = status ? `/api/v1/adventures?status=${status}` : "/api/v1/adventures";
@@ -27,6 +33,14 @@ export async function abandonAdventure(adventureId: string) {
   const response = await api.patch<{ success: true; data: AdventureDTO }>(
     `/api/v1/adventures/${adventureId}`,
     { status: "abandoned" },
+  );
+  return response.data;
+}
+
+/** Fetch milestones for an adventure (fast — from DB, no LLM dependency). */
+export async function getMilestones(adventureId: string): Promise<MilestoneDTO[]> {
+  const response = await api.get<{ success: true; data: MilestoneDTO[] }>(
+    `/api/v1/adventures/${adventureId}/milestones`,
   );
   return response.data;
 }
