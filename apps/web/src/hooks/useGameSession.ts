@@ -437,6 +437,8 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean;
       setHasLLMError(true);
       setIsLoading(false);
       setIsStreaming(false);
+      // Dismiss intro overlay on LLM error — prevents permanent block when first narration fails
+      setIsFirstLaunch(false);
     };
 
     // Story 6.8 — game:state-snapshot: reload state after reconnection
@@ -511,6 +513,8 @@ export function useGameSession(adventureId: string, options?: { isNew?: boolean;
       setIsStreaming(false);
       setPlayerEcho(null);
       setGameError("Impossible d'envoyer votre action. Veuillez réessayer.");
+      // Dismiss intro overlay on network error — prevents permanent block on first launch
+      setIsFirstLaunch(false);
     }
   }
 
