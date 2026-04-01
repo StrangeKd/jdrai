@@ -1,12 +1,14 @@
 import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import { router } from "@/router";
 
-// Typed error that preserves the Better Auth error code for consumer-side mapping.
+// Typed error that preserves the Better Auth error code and HTTP status for consumer-side mapping.
 export class AuthError extends Error {
   readonly code?: string;
-  constructor(message: string | undefined, code?: string) {
+  readonly status?: number;
+  constructor(message: string | undefined, code?: string, status?: number) {
     super(message ?? "Erreur d'authentification");
     if (code !== undefined) this.code = code;
+    if (status !== undefined) this.status = status;
   }
 }
 
@@ -30,14 +32,16 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     const result = await signIn.email({ email, password });
-    if (result.error) throw new AuthError(result.error.message, result.error.code ?? undefined);
+    if (result.error)
+      throw new AuthError(result.error.message, result.error.code ?? undefined, result.error.status ?? undefined);
     return result.data;
   };
 
   const register = async (email: string, password: string) => {
     const name = email.split("@")[0] ?? email;
     const result = await signUp.email({ email, password, name });
-    if (result.error) throw new AuthError(result.error.message, result.error.code ?? undefined);
+    if (result.error)
+      throw new AuthError(result.error.message, result.error.code ?? undefined, result.error.status ?? undefined);
     return result.data;
   };
 

@@ -62,7 +62,7 @@ describe("AbandonModal (Story 5.2 AC-6)", () => {
     expect(screen.getByText(/irréversible/i)).toBeInTheDocument();
   });
 
-  it("calls mutateAsync and onClose when ABANDONNER is clicked", async () => {
+  it("calls mutateAsync and onClose when ABANDONNER is clicked (no onSuccess prop)", async () => {
     const onClose = vi.fn();
     mockMutateAsync.mockResolvedValueOnce(undefined);
 
@@ -73,6 +73,28 @@ describe("AbandonModal (Story 5.2 AC-6)", () => {
       expect(mockMutateAsync).toHaveBeenCalledWith("adv-1");
       expect(onClose).toHaveBeenCalledOnce();
     });
+  });
+
+  it("calls onSuccess instead of onClose after successful PATCH (Story 7.3 AC-2)", async () => {
+    const onClose = vi.fn();
+    const onSuccess = vi.fn();
+    mockMutateAsync.mockResolvedValueOnce(undefined);
+
+    render(<AbandonModal adventure={MOCK_ADVENTURE} onClose={onClose} onSuccess={onSuccess} />);
+    fireEvent.click(screen.getByRole("button", { name: /abandonner/i }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith("adv-1");
+      expect(onSuccess).toHaveBeenCalledOnce();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  it("shows loading state on ABANDONNER button during request (Story 7.3 AC-2)", () => {
+    mockIsPending.value = true;
+    render(<AbandonModal adventure={MOCK_ADVENTURE} onClose={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /abandon en cours/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /abandon en cours/i })).toBeDisabled();
   });
 
   it("calls onClose when Annuler is clicked", () => {

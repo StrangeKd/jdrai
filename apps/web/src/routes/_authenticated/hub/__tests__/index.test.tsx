@@ -30,9 +30,22 @@ vi.mock("@/hooks/useUser", () => ({
 
 const mockUseActiveAdventures = vi.fn();
 const mockUseCompletedAdventures = vi.fn();
+const mockUseAbandonedAdventures = vi.fn();
 vi.mock("@/hooks/useAdventures", () => ({
   useActiveAdventures: () => mockUseActiveAdventures(),
   useCompletedAdventures: () => mockUseCompletedAdventures(),
+  useAbandonedAdventures: () => mockUseAbandonedAdventures(),
+}));
+
+// Mock AbandonModal to avoid deep rendering complexity in Hub tests
+vi.mock("@/components/adventure/AbandonModal", () => ({
+  AbandonModal: ({ adventure, onClose }: { adventure: AdventureDTO | null; onClose: () => void }) =>
+    adventure ? (
+      <div data-testid="abandon-modal">
+        <span>{adventure.title}</span>
+        <button onClick={onClose}>close-modal</button>
+      </div>
+    ) : null,
 }));
 
 // Mock sonner to avoid import issues in jsdom
@@ -59,11 +72,15 @@ const mockUser: UserDTO = {
   createdAt: "2025-01-01T00:00:00Z",
 };
 
-function makeAdventure(n: number, lastPlayedAt: string): AdventureDTO {
+function makeAdventure(
+  n: number,
+  lastPlayedAt: string,
+  status: "active" | "completed" | "abandoned" = "active",
+): AdventureDTO {
   return {
     id: `adv-${n}`,
     title: `Adventure ${n}`,
-    status: "active",
+    status,
     isGameOver: false,
     difficulty: "normal",
     estimatedDuration: "medium",
@@ -82,32 +99,41 @@ function makeAdventure(n: number, lastPlayedAt: string): AdventureDTO {
   };
 }
 
-describe("HubPage (Story 4.2)", () => {
-  beforeEach(() => {
-    mockNavigate.mockClear();
-    mockUseCurrentUser.mockReset();
-    mockUseActiveAdventures.mockReset();
-    mockUseCompletedAdventures.mockReset();
+const defaultMocks = () => {
+  mockNavigate.mockClear();
+  mockUseCurrentUser.mockReset();
+  mockUseActiveAdventures.mockReset();
+  mockUseCompletedAdventures.mockReset();
+  mockUseAbandonedAdventures.mockReset();
 
-    mockUseCurrentUser.mockReturnValue({
-      data: mockUser,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    });
-    mockUseActiveAdventures.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    });
-    mockUseCompletedAdventures.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    });
+  mockUseCurrentUser.mockReturnValue({
+    data: mockUser,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   });
+  mockUseActiveAdventures.mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+  mockUseCompletedAdventures.mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+  mockUseAbandonedAdventures.mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+};
+
+describe("HubPage (Story 4.2)", () => {
+  beforeEach(defaultMocks);
 
   it("renders ActionCards in a 3-column grid (AC-4)", () => {
     const { container } = render(<HubPage />);
@@ -137,17 +163,7 @@ describe("HubPage (Story 4.2)", () => {
 
   it("navigates when clicking 'Tout >' (AC-5)", () => {
     mockUseCompletedAdventures.mockReturnValue({
-      data: [
-        {
-          id: "c1",
-          userId: "u1",
-          title: "Completed 1",
-          status: "completed",
-          lastPlayedAt: "2025-01-01T10:00:00Z",
-          completedAt: "2025-01-01T10:00:00Z",
-          createdAt: "2025-01-01T00:00:00Z",
-        },
-      ],
+      data: [makeAdventure(1, "2025-01-01T10:00:00Z", "completed")],
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -172,14 +188,114 @@ describe("HubPage (Story 4.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: /réessayer/i }));
     expect(refetchCompleted).toHaveBeenCalledOnce();
   });
+
+  it("shows a history error state when abandoned adventures query fails", () => {
+    const refetchAbandoned = vi.fn();
+    mockUseAbandonedAdventures.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchAbandoned,
+    });
+
+    render(<HubPage />);
+    expect(screen.getByText(/impossible de charger votre historique/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /réessayer/i }));
+    expect(refetchAbandoned).toHaveBeenCalledOnce();
+  });
+});
+
+describe("HubPage — Historique merged (Story 7.3 AC-3, AC-4)", () => {
+  beforeEach(defaultMocks);
+
+  it("shows history section label 'Historique' (AC-3)", () => {
+    mockUseCompletedAdventures.mockReturnValue({
+      data: [makeAdventure(1, "2025-01-01T10:00:00Z", "completed")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HubPage />);
+    expect(screen.getByText(/Historique/i)).toBeInTheDocument();
+  });
+
+  it("merges completed and abandoned adventures in history section (AC-3)", () => {
+    mockUseCompletedAdventures.mockReturnValue({
+      data: [makeAdventure(1, "2025-01-01T10:00:00Z", "completed")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseAbandonedAdventures.mockReturnValue({
+      data: [makeAdventure(2, "2025-01-01T09:00:00Z", "abandoned")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HubPage />);
+    expect(screen.getByText("Adventure 1")).toBeInTheDocument();
+    expect(screen.getByText("Adventure 2")).toBeInTheDocument();
+  });
+
+  it("shows history section when only abandoned adventures exist (AC-3)", () => {
+    mockUseAbandonedAdventures.mockReturnValue({
+      data: [makeAdventure(3, "2025-01-01T08:00:00Z", "abandoned")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HubPage />);
+    expect(screen.getByText("Adventure 3")).toBeInTheDocument();
+  });
+
+  it("sorts history by lastPlayedAt DESC (AC-3)", () => {
+    mockUseCompletedAdventures.mockReturnValue({
+      data: [makeAdventure(1, "2025-01-01T08:00:00Z", "completed")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseAbandonedAdventures.mockReturnValue({
+      data: [makeAdventure(2, "2025-01-01T10:00:00Z", "abandoned")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HubPage />);
+    const cards = screen.getAllByRole("button", { name: /Adventure/i });
+    // Adventure 2 is more recent (10h), should appear before Adventure 1 (8h)
+    expect(cards[0]).toHaveTextContent("Adventure 2");
+    expect(cards[1]).toHaveTextContent("Adventure 1");
+  });
+
+  it("hides history section when both completed and abandoned are empty", () => {
+    render(<HubPage />);
+    expect(screen.queryByText(/Historique/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("HubPage — AbandonModal integration (Story 7.3 AC-2)", () => {
+  beforeEach(defaultMocks);
+
+  it("does not show AbandonModal on initial render", () => {
+    mockUseActiveAdventures.mockReturnValue({
+      data: [makeAdventure(1, "2025-01-01T10:00:00Z")],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HubPage />);
+    expect(screen.queryByTestId("abandon-modal")).not.toBeInTheDocument();
+  });
 });
 
 describe("HubBanner priority (Story 4.3 AC-3)", () => {
-  beforeEach(() => {
-    mockNavigate.mockClear();
-    mockUseActiveAdventures.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
-    mockUseCompletedAdventures.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() });
-  });
+  beforeEach(defaultMocks);
 
   it("shows EmailVerificationBanner when email unverified (AC-3)", () => {
     mockUseCurrentUser.mockReturnValue({
@@ -203,4 +319,3 @@ describe("HubBanner priority (Story 4.3 AC-3)", () => {
     expect(screen.queryByText(/Vérifiez votre email/i)).not.toBeInTheDocument();
   });
 });
-

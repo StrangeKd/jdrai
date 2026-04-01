@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-// Extend TanStack Router's HistoryState to allow passing isNew flag on navigation
+// Extend TanStack Router's HistoryState to allow passing isNew and isResume flags on navigation
 declare module "@tanstack/react-router" {
   interface HistoryState {
     isNew?: boolean;
+    isResume?: boolean;
   }
 }
 
@@ -24,6 +25,14 @@ export function useCompletedAdventures() {
   return useQuery({
     queryKey: ["adventures", "completed"],
     queryFn: () => getAdventures("completed"),
+    staleTime: 60_000,
+  });
+}
+
+export function useAbandonedAdventures() {
+  return useQuery({
+    queryKey: ["adventures", "abandoned"],
+    queryFn: () => getAdventures("abandoned"),
     staleTime: 60_000,
   });
 }

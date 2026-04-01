@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthError, useAuth } from "@/hooks/useAuth";
 import { router } from "@/router";
 import { getNoUsernameOnboardingTarget, redirectIfAuthenticated } from "@/routes/routing.utils";
 import { type LoginFormValues, loginSchema, loginSearchSchema } from "@/schemas/auth";
@@ -61,8 +61,12 @@ function LoginPage() {
         sessionStorage.setItem("just-logged-in", "true");
       }
       router.navigate({ to: destination });
-    } catch {
-      setGlobalError("Identifiants incorrects.");
+    } catch (err) {
+      if (err instanceof AuthError && err.status !== undefined && err.status >= 500) {
+        setGlobalError("Une erreur serveur est survenue. Veuillez réessayer.");
+      } else {
+        setGlobalError("Identifiants incorrects.");
+      }
     }
   };
 

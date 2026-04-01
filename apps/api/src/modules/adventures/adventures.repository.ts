@@ -147,7 +147,7 @@ export async function updateAdventureStatus(
     .set({
       status,
       updatedAt: new Date(),
-      ...(status === "completed" ? { completedAt: new Date() } : {}),
+      completedAt: new Date(),
     })
     .where(eq(adventures.id, id))
     .returning();

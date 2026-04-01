@@ -13,15 +13,21 @@ import { useAbandonAdventure } from "@/hooks/useAdventures";
 interface AbandonModalProps {
   adventure: AdventureDTO | null; // null = closed
   onClose: () => void;
+  /** Called after successful PATCH — parent handles any additional invalidations. */
+  onSuccess?: () => void;
 }
 
-export function AbandonModal({ adventure, onClose }: AbandonModalProps) {
+export function AbandonModal({ adventure, onClose, onSuccess }: AbandonModalProps) {
   const abandon = useAbandonAdventure();
 
   const handleAbandon = async () => {
     if (!adventure) return;
     await abandon.mutateAsync(adventure.id);
-    onClose();
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      onClose();
+    }
   };
 
   return (

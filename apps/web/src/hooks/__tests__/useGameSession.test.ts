@@ -394,4 +394,36 @@ describe("useGameSession", () => {
 
     expect(mockSendMessage).toHaveBeenCalledTimes(1);
   });
+
+  // Story 7.3 — isResume option: early guard for isFirstLaunch
+  it("isResume=true → isFirstLaunch=false from the start (Story 7.3 AC-6)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
+
+  it("isResume=true + messages.length=0 → isFirstLaunch still false (edge case guard)", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        ...gameStateResponse,
+        data: {
+          ...gameStateResponse.data,
+          messages: [],
+        },
+      },
+    });
+    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
+    expect(result.current.isFirstLaunch).toBe(false);
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+
+  it("isResume=false + messages.length=0 → isFirstLaunch=true for new adventure (AC-6)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
+    expect(result.current.isFirstLaunch).toBe(true);
+  });
+
+  it("isResume=true overrides isNew=true — isFirstLaunch stays false (Story 7.3 AC-6)", () => {
+    // Should never happen in practice but guards against incorrect call sites
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true, isResume: true }));
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
 });
