@@ -28,7 +28,7 @@ export function AdventureCard({ adventure, onClick }: AdventureCardProps) {
       )}
       <p className="text-xs text-stone-500">
         {isAbandoned
-          ? `Abandonnée ${formatRelativeTime(adventure.lastPlayedAt)}`
+          ? `Abandonnée ${formatRelativeTime(adventure.completedAt ?? adventure.lastPlayedAt)}`
           : formatRelativeTime(adventure.lastPlayedAt)}
       </p>
     </Button>

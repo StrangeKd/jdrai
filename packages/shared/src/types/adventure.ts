@@ -32,6 +32,8 @@ export interface AdventureDTO {
   currentMilestone?: string | null | undefined;
   startedAt: string;
   lastPlayedAt: string;
+  /** Set when adventure reaches a terminal state (completed or abandoned). */
+  completedAt?: string | undefined;
   character: AdventureCharacterDTO;
   /** LLM-generated summary (2–4 sentences). Null while generating; populated async after completion. */
   narrativeSummary?: string | undefined;

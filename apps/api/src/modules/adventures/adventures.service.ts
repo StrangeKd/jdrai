@@ -57,6 +57,7 @@ function mapRowToDTO(row: AdventureRow): AdventureDTO {
     estimatedDuration: adventure.estimatedDuration as EstimatedDuration,
     startedAt: toISOString(adventure.startedAt ?? adventure.createdAt),
     lastPlayedAt: toISOString(adventure.lastPlayedAt ?? adventure.createdAt),
+    ...(adventure.completedAt ? { completedAt: toISOString(adventure.completedAt) } : {}),
     currentMilestone: currentMilestoneName ?? null,
     character: characterDTO,
     isGameOver: adventure.isGameOver ?? false,
