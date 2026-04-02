@@ -18,6 +18,7 @@
  */
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import type { GameStateDTO } from "@jdrai/shared";
 
@@ -211,9 +212,13 @@ export function useGameUI({
       // Silent — don't block exit on save failure
     }
 
-    // MUST be set to false before navigate() / blocker.proceed() to prevent
-    // the beforeunload listener from firing during the router transition.
-    setIsInGameSession(false);
+    // flushSync: force synchronous application of isInGameSession=false BEFORE
+    // navigate() is called. Without this, the router blocker (shouldBlockFn:
+    // () => isInGameSession) still reads true in the current render and
+    // intercepts our programmatic navigation.
+    flushSync(() => {
+      setIsInGameSession(false);
+    });
 
     if (onNavigate) {
       onNavigate(); // e.g. blocker.proceed() — let TanStack Router complete blocked navigation
