@@ -140,11 +140,8 @@ describe("useGameStreaming — socket lifecycle", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
-    mockSendMessage.mockResolvedValue(undefined);
     vi.clearAllMocks();
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
     mockSendMessage.mockResolvedValue(undefined);
@@ -395,11 +392,8 @@ describe("useGameStreaming — game:state-update", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
-    mockSendMessage.mockResolvedValue(undefined);
     vi.clearAllMocks();
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
   });
@@ -491,10 +485,8 @@ describe("useGameStreaming — game:state-snapshot", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
     vi.clearAllMocks();
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
   });
@@ -542,11 +534,8 @@ describe("useGameStreaming — auto-start", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
-    mockSendMessage.mockResolvedValue(undefined);
     vi.clearAllMocks();
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
     mockSendMessage.mockResolvedValue(undefined);
@@ -595,11 +584,8 @@ describe("useGameStreaming — retryLastAction", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
-    mockSendMessage.mockResolvedValue(undefined);
     vi.clearAllMocks();
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
     mockSendMessage.mockResolvedValue(undefined);

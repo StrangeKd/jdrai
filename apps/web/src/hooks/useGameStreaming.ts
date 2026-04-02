@@ -56,7 +56,7 @@ export interface GameStreamingCallbacks {
   onMilestoneComplete: (nextMilestone: string | null) => void;
   onResponseComplete: (savedAt: Date) => void;
   /** Called on game:error and sendAction network error — used to dismiss intro */
-  onGameError?: () => void;
+  onGameError: () => void;
 }
 
 export interface GameStreamingState {
@@ -125,7 +125,7 @@ export function useGameStreaming(
     const sock = getSocket();
     if (!sock?.connected) {
       setGameError("La connexion au serveur de jeu est perdue.");
-      callbacksRef.current.onGameError?.();
+      callbacksRef.current.onGameError();
       return;
     }
     if (isLoading || isStreaming) return;
@@ -147,7 +147,7 @@ export function useGameStreaming(
       setIsStreaming(false);
       setPlayerEcho(null);
       setGameError("Impossible d'envoyer votre action. Veuillez réessayer.");
-      callbacksRef.current.onGameError?.();
+      callbacksRef.current.onGameError();
     }
   }
 
@@ -219,9 +219,8 @@ export function useGameStreaming(
       if (data.type === "hp_change") {
         if (data.currentHp !== undefined && data.maxHp !== undefined) {
           callbacksRef.current.onHpChange(data.currentHp, data.maxHp);
-        } else if (data.currentHp !== undefined) {
-          callbacksRef.current.onHpChange(data.currentHp, 0);
         }
+        // If maxHp is absent, skip: displaying 0/0 is worse than showing stale HP
       } else if (data.type === "adventure_complete") {
         setChoices([]);
         callbacksRef.current.onAdventureComplete(false);
@@ -241,7 +240,7 @@ export function useGameStreaming(
       setHasLLMError(true);
       setIsLoading(false);
       setIsStreaming(false);
-      callbacksRef.current.onGameError?.();
+      callbacksRef.current.onGameError();
     };
 
     const onStateSnapshot = (snapshot: GameStateDTO) => {

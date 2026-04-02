@@ -46,7 +46,7 @@ export function useGameResilience(): GameResilienceState {
       rateLimitIntervalRef.current = setInterval(() => {
         setRateLimitCountdown((prev) => {
           if (prev <= 1) {
-            clearInterval(rateLimitIntervalRef.current!);
+            if (rateLimitIntervalRef.current) clearInterval(rateLimitIntervalRef.current);
             rateLimitIntervalRef.current = null;
             setIsRateLimited(false);
             return 0;
