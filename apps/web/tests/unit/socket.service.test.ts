@@ -30,6 +30,10 @@ const {
         localManagerHandlers.set(event, handler);
         return localSocketMock.io;
       }),
+      off: vi.fn((event: string) => {
+        localManagerHandlers.delete(event);
+        return localSocketMock.io;
+      }),
     },
   };
 
@@ -111,9 +115,20 @@ describe("socket.service", () => {
     expect(connectionStatusEmitMock).toHaveBeenCalledWith("reconnect-failed");
   });
 
-  it("manualReconnect calls socket.connect()", () => {
+  it("manualReconnect destroys the socket and removes manager listeners", () => {
     connect("adv-1");
+
+    expect(managerHandlers.has("reconnect")).toBe(true);
+    expect(managerHandlers.has("reconnect_failed")).toBe(true);
+
     manualReconnect();
-    expect(reconnectMock).toHaveBeenCalledTimes(1);
+
+    // Socket must be fully disconnected and listeners removed
+    expect(disconnectMock).toHaveBeenCalledTimes(1);
+    expect(socketMock.io.off).toHaveBeenCalledWith("reconnect");
+    expect(socketMock.io.off).toHaveBeenCalledWith("reconnect_failed");
+    // Manager handlers are cleared so stale events can't fire on the old socket
+    expect(managerHandlers.has("reconnect")).toBe(false);
+    expect(managerHandlers.has("reconnect_failed")).toBe(false);
   });
 });
