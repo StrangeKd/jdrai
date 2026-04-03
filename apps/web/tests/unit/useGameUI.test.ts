@@ -33,6 +33,7 @@ const mockGameState: GameStateDTO = {
     title: "Test",
     status: "active",
     isGameOver: false,
+    isTutorial: false,
     difficulty: "normal",
     estimatedDuration: "medium",
     startedAt: "2026-03-01T10:00:00.000Z",

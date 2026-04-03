@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
+import { TUTORIAL_TEMPLATE_ID } from "@/config/constants";
 import { env } from "@/config/env";
 
 import * as schema from "./schema/index";
@@ -61,6 +62,25 @@ async function seed() {
           "Tu es le Chroniqueur. L'aventurier traverse une forêt magique. Ambiance mystérieuse et enchanteresse. [PLACEHOLDER — contenu à affiner]",
         seedData: { emoji: "🌲", genre: "exploration", theme: "enchanted" },
         isPublic: true,
+      },
+    ])
+    .onConflictDoNothing();
+
+  // Tutorial template — not user-selectable (isPublic: false), accessed only via tutorial flow
+  await db
+    .insert(schema.adventureTemplates)
+    .values([
+      {
+        id: TUTORIAL_TEMPLATE_ID,
+        name: "Le Premier Pas",
+        description: "Votre première aventure guidée. Apprenez les bases en jouant.",
+        genre: "heroic_fantasy",
+        difficulty: "easy",
+        estimatedDuration: "short",
+        systemPrompt: "", // Built dynamically by PromptBuilder.buildTutorialSystemPrompt()
+        seedData: {},
+        isPublic: false,
+        isTutorial: true,
       },
     ])
     .onConflictDoNothing();

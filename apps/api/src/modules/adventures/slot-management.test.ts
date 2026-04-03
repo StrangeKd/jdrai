@@ -24,6 +24,7 @@ vi.mock("@/db", () => ({
     select: vi.fn(),
     query: {
       users: { findFirst: vi.fn() },
+      metaCharacters: { findFirst: vi.fn().mockResolvedValue(null) }, // no meta-character by default
     },
   },
 }));
@@ -60,6 +61,7 @@ const MOCK_ADVENTURE_ROW = {
   completedAt: null,
   narrativeSummary: null,
   isGameOver: false,
+  isTutorial: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   templateId: null,
@@ -101,17 +103,26 @@ describe("Slot management — 5-adventure limit (Story 7.1 AC #6)", () => {
   it("after abandoning one adventure, a new POST /adventures succeeds (AC #6)", async () => {
     // Step 1: abandon an adventure (slot freed)
     const abandonedRow = { ...MOCK_ADVENTURE_ROW, status: "abandoned" as const };
+    // findAdventureById called twice: pre-check then re-fetch after update
+    vi.mocked(findAdventureById)
+      .mockResolvedValueOnce({ // pre-check (isTutorial: false → no delete)
+        adventure: MOCK_ADVENTURE_ROW,
+        character: MOCK_CHARACTER_ROW,
+        className: "Aventurier",
+        raceName: "Humain",
+        currentMilestoneName: null,
+      })
+      .mockResolvedValueOnce({ // re-fetch after updateAdventureStatus
+        adventure: abandonedRow,
+        character: MOCK_CHARACTER_ROW,
+        className: "Aventurier",
+        raceName: "Humain",
+        currentMilestoneName: null,
+      });
     vi.mocked(updateAdventureStatus).mockResolvedValueOnce(abandonedRow);
-    vi.mocked(findAdventureById).mockResolvedValueOnce({
-      adventure: abandonedRow,
-      character: MOCK_CHARACTER_ROW,
-      className: "Aventurier",
-      raceName: "Humain",
-      currentMilestoneName: null,
-    });
 
     const abandonResult = await updateAdventureForUser(USER_ID, "adv-1", "abandoned");
-    expect(abandonResult.status).toBe("abandoned");
+    expect(abandonResult!.status).toBe("abandoned");
 
     // Step 2: now count = 4 (one was abandoned) → POST succeeds
     vi.mocked(countActiveAdventures).mockResolvedValueOnce(4);
@@ -146,21 +157,38 @@ describe("Slot management — 5-adventure limit (Story 7.1 AC #6)", () => {
 
   it("transition from active → abandoned succeeds (valid transition)", async () => {
     const abandonedRow = { ...MOCK_ADVENTURE_ROW, status: "abandoned" as const };
+    // findAdventureById called twice: pre-check then re-fetch
+    vi.mocked(findAdventureById)
+      .mockResolvedValueOnce({
+        adventure: MOCK_ADVENTURE_ROW,
+        character: MOCK_CHARACTER_ROW,
+        className: "Aventurier",
+        raceName: "Humain",
+        currentMilestoneName: null,
+      })
+      .mockResolvedValueOnce({
+        adventure: abandonedRow,
+        character: MOCK_CHARACTER_ROW,
+        className: "Aventurier",
+        raceName: "Humain",
+        currentMilestoneName: null,
+      });
     vi.mocked(updateAdventureStatus).mockResolvedValueOnce(abandonedRow);
+
+    const result = await updateAdventureForUser(USER_ID, "adv-1", "abandoned");
+    expect(result!.status).toBe("abandoned");
+    expect(updateAdventureStatus).toHaveBeenCalledWith("adv-1", USER_ID, "abandoned");
+  });
+
+  it("INVALID_TRANSITION: abandoned → anything → 400 (AC #1)", async () => {
+    // Pre-check: adventure exists, isTutorial: false
     vi.mocked(findAdventureById).mockResolvedValueOnce({
-      adventure: abandonedRow,
+      adventure: MOCK_ADVENTURE_ROW,
       character: MOCK_CHARACTER_ROW,
       className: "Aventurier",
       raceName: "Humain",
       currentMilestoneName: null,
     });
-
-    const result = await updateAdventureForUser(USER_ID, "adv-1", "abandoned");
-    expect(result.status).toBe("abandoned");
-    expect(updateAdventureStatus).toHaveBeenCalledWith("adv-1", USER_ID, "abandoned");
-  });
-
-  it("INVALID_TRANSITION: abandoned → anything → 400 (AC #1)", async () => {
     vi.mocked(updateAdventureStatus).mockRejectedValueOnce(
       new AppError(400, "INVALID_TRANSITION", 'Cannot transition from "abandoned" to "completed"'),
     );

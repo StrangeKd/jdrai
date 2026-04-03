@@ -24,6 +24,9 @@ vi.mock("@/db", () => ({
       users: {
         findFirst: vi.fn(),
       },
+      metaCharacters: {
+        findFirst: vi.fn().mockResolvedValue(null), // no meta-character by default
+      },
     },
   },
 }));
@@ -83,6 +86,7 @@ const MOCK_ADVENTURE_ROW = {
   completedAt: null,
   narrativeSummary: null,
   isGameOver: false,
+  isTutorial: false,
   createdAt: new Date("2026-02-26"),
   updatedAt: new Date("2026-02-26"),
   templateId: null,
@@ -332,6 +336,14 @@ describe("currentMilestone derivation", () => {
 describe("updateAdventureForUser (Story 5.2 AC-6)", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  const ACTIVE_FULL_ROW = {
+    adventure: MOCK_ADVENTURE_ROW,
+    character: MOCK_CHARACTER_ROW,
+    className: "Aventurier",
+    raceName: "Humain",
+    currentMilestoneName: null,
+  };
+
   const ABANDONED_ROW = { ...MOCK_ADVENTURE_ROW, status: "abandoned" as const };
   const ABANDONED_FULL_ROW = {
     adventure: ABANDONED_ROW,
@@ -342,26 +354,28 @@ describe("updateAdventureForUser (Story 5.2 AC-6)", () => {
   };
 
   it("marks adventure as abandoned and returns updated DTO", async () => {
+    // findAdventureById called twice: pre-check then re-fetch after update
+    vi.mocked(findAdventureById)
+      .mockResolvedValueOnce(ACTIVE_FULL_ROW) // pre-check (isTutorial: false → no delete)
+      .mockResolvedValueOnce(ABANDONED_FULL_ROW); // re-fetch after updateAdventureStatus
     vi.mocked(updateAdventureStatus).mockResolvedValueOnce(ABANDONED_ROW);
-    vi.mocked(findAdventureById).mockResolvedValueOnce(ABANDONED_FULL_ROW);
 
     const result = await updateAdventureForUser(USER_ID, "adv-1", "abandoned");
 
-    expect(result.status).toBe("abandoned");
+    expect(result!.status).toBe("abandoned");
     expect(updateAdventureStatus).toHaveBeenCalledWith("adv-1", USER_ID, "abandoned");
     expect(findAdventureById).toHaveBeenCalledWith("adv-1", USER_ID);
   });
 
   it("throws 404 NOT_FOUND when adventure does not exist or belongs to another user", async () => {
-    vi.mocked(updateAdventureStatus).mockRejectedValueOnce(
-      new AppError(404, "NOT_FOUND", "Adventure not found"),
-    );
+    // Pre-check returns null → 404 thrown before updateAdventureStatus is called
+    vi.mocked(findAdventureById).mockResolvedValueOnce(null);
 
     await expect(updateAdventureForUser(USER_ID, "adv-other", "abandoned")).rejects.toThrow(
       expect.objectContaining({ statusCode: 404, code: "NOT_FOUND" }),
     );
 
-    expect(findAdventureById).not.toHaveBeenCalled();
+    expect(updateAdventureStatus).not.toHaveBeenCalled();
   });
 });
 

@@ -14,6 +14,7 @@ export const adventureTemplates = pgTable("adventure_templates", {
   systemPrompt: text("system_prompt").notNull(),
   seedData: jsonb("seed_data"),
   isPublic: boolean("is_public").notNull().default(true),
+  isTutorial: boolean("is_tutorial").notNull().default(false),
 });
 
 export const insertAdventureTemplateSchema = createInsertSchema(adventureTemplates);

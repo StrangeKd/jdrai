@@ -82,6 +82,7 @@ function makeAdventure(
     title: `Adventure ${n}`,
     status,
     isGameOver: false,
+    isTutorial: false,
     difficulty: "normal",
     estimatedDuration: "medium",
     startedAt: "2025-01-01T00:00:00Z",

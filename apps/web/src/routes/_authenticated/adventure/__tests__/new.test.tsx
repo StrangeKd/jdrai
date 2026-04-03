@@ -78,6 +78,7 @@ function makeAdventure(n: number): AdventureDTO {
     title: `Adventure ${n}`,
     status: "active",
     isGameOver: false,
+    isTutorial: false,
     difficulty: "normal",
     estimatedDuration: "medium",
     startedAt: "2025-01-01T00:00:00Z",

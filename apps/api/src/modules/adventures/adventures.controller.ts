@@ -59,8 +59,13 @@ export async function updateAdventureHandler(
 ): Promise<void> {
   try {
     const input = adventureUpdateSchema.parse(req.body);
-    const adventure = await updateAdventureForUser(req.user!.id, req.params["id"]!, input.status);
-    res.json({ success: true, data: adventure });
+    const result = await updateAdventureForUser(req.user!.id, req.params["id"]!, input.status);
+    // Tutorial abandonment returns null — hard deleted, no content to return
+    if (result === null) {
+      res.status(204).send();
+      return;
+    }
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

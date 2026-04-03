@@ -64,6 +64,7 @@ const baseAdventure: AdventureDTO = {
   id: "adv-1",
   title: "Les Ruines d'Eldoria",
   status: "completed",
+  isTutorial: false,
   difficulty: "normal",
   estimatedDuration: "medium",
   startedAt: "2026-01-01",
