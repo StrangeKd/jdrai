@@ -22,13 +22,7 @@ export function LLMErrorMessage({ visible, onRetry }: LLMErrorMessageProps) {
       <p className="font-serif text-amber-200/80 italic leading-relaxed">
         Le MJ a renversé son encrier...
       </p>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onRetry}
-        className="border-amber-600/50 text-amber-200 hover:bg-amber-900/30"
-      >
+      <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
         Réessayer
       </Button>
     </div>

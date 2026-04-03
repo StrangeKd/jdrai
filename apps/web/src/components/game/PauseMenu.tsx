@@ -34,7 +34,7 @@ export function PauseMenu({
       role="dialog"
       aria-modal="true"
       aria-label="Menu pause"
-      className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center"
+      className="fixed inset-0 z-100 bg-black/40 backdrop-blur-xs flex items-center justify-center"
       onClick={onClose}
     >
       <div
@@ -43,11 +43,7 @@ export function PauseMenu({
       >
         <h2 className="text-center text-xl font-bold text-amber-200">⚔️ PAUSE</h2>
 
-        <Button
-          onClick={onSave}
-          disabled={isSaving}
-          className="w-full"
-        >
+        <Button onClick={onSave} disabled={isSaving} className="w-full">
           {isSaving ? "Sauvegarde..." : "💾 Sauvegarder"}
         </Button>
 
@@ -60,25 +56,17 @@ export function PauseMenu({
           🎭 Paramètres MJ
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={onHistory}
-          className="w-full"
-        >
+        <Button variant="secondary" onClick={onHistory} className="w-full">
           📜 Historique
         </Button>
 
-        <Button
-          variant="destructive"
-          onClick={onQuit}
-          className="w-full"
-        >
+        <Button variant="destructive" onClick={onQuit} className="w-full">
           🚪 Quitter l'aventure
         </Button>
 
         <button
           onClick={onClose}
-          className="text-center text-sm underline text-stone-400 hover:text-stone-200 mt-2"
+          className="text-center text-sm underline text-stone-400 hover:text-stone-200 mt-2 cursor-pointer"
         >
           Reprendre
         </button>

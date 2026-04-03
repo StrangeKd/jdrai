@@ -37,8 +37,12 @@ export function SessionHeader({
       {/* Desktop only: character info inline */}
       {character && (
         <span className="hidden md:flex items-center gap-2 text-sm text-stone-400 mr-4">
-          <span>🧙 {character.name} · {character.className}</span>
-          <span className="text-rose-400">❤️ {currentHp}/{maxHp}</span>
+          <span>
+            🧙 {character.name} · {character.className}
+          </span>
+          <span className="text-rose-400">
+            ❤️ {currentHp}/{maxHp}
+          </span>
         </span>
       )}
 
@@ -51,7 +55,7 @@ export function SessionHeader({
         size="sm"
         onClick={onPauseMenuOpen}
         aria-label="Ouvrir le menu pause"
-        className="text-stone-400 hover:text-amber-200"
+        className="text-stone-400 hover:bg-stone-800 hover:text-stone-200"
       >
         <span className="md:hidden">⚙️</span>
         <span className="hidden md:inline">⚙️ Menu</span>

@@ -31,10 +31,10 @@ export function ExitConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label="Quitter l'aventure ?"
-      className="fixed inset-0 z-[110] bg-black/70 flex items-center justify-center"
+      className="fixed inset-0 z-110 bg-black/40 backdrop-blur-xs flex items-center justify-center"
       // No onClick on backdrop — intentional, requires explicit choice
     >
-      <div className="bg-background rounded-lg p-6 w-80 max-w-[90vw] flex flex-col gap-4">
+      <div className="bg-stone-900 border border-stone-700 rounded-lg p-6 w-80 max-w-[90vw] flex flex-col gap-4">
         <h2 className="text-lg font-bold text-center">Quitter l'aventure ?</h2>
 
         <p className="text-sm text-muted-foreground text-center">
@@ -56,12 +56,7 @@ export function ExitConfirmModal({
           >
             {isConfirming ? "Sauvegarde en cours..." : "Quitter"}
           </Button>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            disabled={isConfirming}
-            className="w-full"
-          >
+          <Button variant="secondary" onClick={onCancel} disabled={isConfirming} className="w-full">
             Rester
           </Button>
         </div>

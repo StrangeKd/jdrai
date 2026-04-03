@@ -27,13 +27,7 @@ export function ConnectionLostBanner({ visible, failed, onRetry }: ConnectionLos
       {failed ? (
         <>
           <span>⚠️ Connexion impossible</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-            className="shrink-0 border-amber-600/50 text-amber-200 hover:bg-amber-900/30"
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
             Réessayer
           </Button>
         </>
