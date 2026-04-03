@@ -45,6 +45,7 @@ const activeAdventure: AdventureDTO = {
   title: "La Crypte des Ombres",
   status: "active",
   isGameOver: false,
+  isTutorial: false,
   difficulty: "normal",
   estimatedDuration: "medium",
   startedAt: "2024-12-01T00:00:00Z",

@@ -166,6 +166,7 @@ describe("initializeMilestones() — LLM success path (AC #1-3)", () => {
       lastPlayedAt: new Date().toISOString(),
       currentMilestone: null,
       isGameOver: false,
+      isTutorial: false,
       character: {
         id: "",
         name: "Héros",
@@ -220,6 +221,7 @@ describe("initializeMilestones() — LLM failure fallback (AC #4)", () => {
       lastPlayedAt: new Date().toISOString(),
       currentMilestone: null,
       isGameOver: false,
+      isTutorial: false,
       character: {
         id: "",
         name: "Héros",
@@ -257,6 +259,7 @@ describe("initializeMilestones() — LLM failure fallback (AC #4)", () => {
       lastPlayedAt: new Date().toISOString(),
       currentMilestone: null,
       isGameOver: false,
+      isTutorial: false,
       character: {
         id: "",
         name: "Héros",
@@ -294,6 +297,7 @@ describe("initializeMilestones() — LLM failure fallback (AC #4)", () => {
       lastPlayedAt: new Date().toISOString(),
       currentMilestone: null,
       isGameOver: false,
+      isTutorial: false,
       character: {
         id: "",
         name: "Héros",

@@ -74,6 +74,7 @@ const MOCK_ADVENTURE: AdventureDTO = {
   lastPlayedAt: "2026-02-26T00:00:00.000Z",
   character: MOCK_CHARACTER,
   isGameOver: false,
+  isTutorial: false,
 };
 
 const MOCK_TEMPLATE: AdventureTemplateDTO = {

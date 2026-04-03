@@ -97,6 +97,7 @@ const baseGameState: GameStateDTO = {
     title: "La Forêt Maudite",
     status: "active",
     isGameOver: false,
+    isTutorial: false,
     difficulty: "normal",
     estimatedDuration: "medium",
     startedAt: new Date().toISOString(),

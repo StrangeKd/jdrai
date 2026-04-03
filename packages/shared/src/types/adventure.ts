@@ -39,6 +39,8 @@ export interface AdventureDTO {
   narrativeSummary?: string | undefined;
   /** True when the adventure ended via [GAME_OVER] (E11-WF-02). False = success (E11-WF-01). */
   isGameOver: boolean;
+  /** True when this adventure is the guided tutorial (Epic 8). */
+  isTutorial: boolean;
 }
 
 export interface AdventureCharacterCreateInput {
@@ -56,6 +58,8 @@ export interface AdventureCreateInput {
   tone?: Tone | undefined;
   estimatedDuration: EstimatedDuration;
   character?: AdventureCharacterCreateInput | undefined; // Optional — server auto-creates in P1
+  /** True when creating from the guided tutorial flow (Epic 8). */
+  isTutorial?: boolean | undefined;
 }
 
 export interface AdventureUpdateInput {

@@ -20,6 +20,7 @@ import {
   adventures,
   characterClasses,
   messages,
+  metaCharacters,
   milestones,
   races,
   users,
@@ -617,6 +618,137 @@ describe("processAction() — full turn + signals", () => {
       .limit(1);
 
     expect(adv!.status).toBe("completed");
+  });
+});
+
+describe("processAction() — tutorial choices and completion (Story 8.1)", () => {
+  it("captures tutorial race/class choices only when choiceId exists in lookup tables", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Le guide attend ta réponse."]);
+
+    const [tutorialAdventure] = await db
+      .insert(adventures)
+      .values({
+        userId: TEST_USER_ID,
+        title: "Tutoriel choix",
+        difficulty: "easy",
+        estimatedDuration: "short",
+        isTutorial: true,
+        state: { worldState: {}, tutorialChoices: {}, tutorialPhase: "intro" },
+      })
+      .returning({ id: adventures.id });
+
+    await db.insert(adventureCharacters).values({
+      adventureId: tutorialAdventure!.id,
+      raceId,
+      classId,
+      name: "Héros Tutoriel",
+      currentHp: 20,
+      maxHp: 20,
+      stats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
+    });
+
+    await db.insert(milestones).values([
+      { adventureId: tutorialAdventure!.id, name: "L'Éveil", sortOrder: 1, status: "active" },
+      { adventureId: tutorialAdventure!.id, name: "La Rencontre", sortOrder: 2, status: "pending" },
+      { adventureId: tutorialAdventure!.id, name: "L'Épreuve", sortOrder: 3, status: "pending" },
+    ]);
+
+    await svc.processAction({
+      adventureId: tutorialAdventure!.id,
+      userId: TEST_USER_ID,
+      action: "Je choisis ma race",
+      choiceType: "race",
+      choiceId: raceId,
+    });
+
+    await svc.processAction({
+      adventureId: tutorialAdventure!.id,
+      userId: TEST_USER_ID,
+      action: "Je tente un choix invalide",
+      choiceType: "class",
+      choiceId: "00000000-0000-0000-0000-000000000999",
+    });
+
+    const [advRow] = await db
+      .select({ state: adventures.state })
+      .from(adventures)
+      .where(eq(adventures.id, tutorialAdventure!.id))
+      .limit(1);
+
+    const state = (advRow!.state ?? {}) as Record<string, unknown>;
+    const choices = (state["tutorialChoices"] ?? {}) as Record<string, string>;
+
+    expect(choices["raceId"]).toBe(raceId);
+    expect(choices["raceName"]).toBe("Humain (integ-game-svc)");
+    expect(choices["classId"]).toBeUndefined();
+    expect(choices["className"]).toBeUndefined();
+
+    await db.delete(adventures).where(eq(adventures.id, tutorialAdventure!.id));
+  });
+
+  it("uses the same-turn captured choice for MetaCharacter creation and sets onboardingCompleted=true", async () => {
+    const svc = new GameService();
+    injectStreamLLM(
+      svc,
+      ["Ton choix est scellé. [MILESTONE_COMPLETE:L'Épreuve] [ADVENTURE_COMPLETE]"],
+    );
+
+    const [tutorialAdventure] = await db
+      .insert(adventures)
+      .values({
+        userId: TEST_USER_ID,
+        title: "Tutoriel completion",
+        difficulty: "easy",
+        estimatedDuration: "short",
+        isTutorial: true,
+        state: { worldState: {}, tutorialChoices: {}, tutorialPhase: "class_choice" },
+      })
+      .returning({ id: adventures.id });
+
+    await db.insert(adventureCharacters).values({
+      adventureId: tutorialAdventure!.id,
+      raceId,
+      classId,
+      name: "Héros Tutoriel",
+      currentHp: 20,
+      maxHp: 20,
+      stats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
+    });
+
+    await db.insert(milestones).values([
+      { adventureId: tutorialAdventure!.id, name: "L'Éveil", sortOrder: 1, status: "completed" },
+      { adventureId: tutorialAdventure!.id, name: "La Rencontre", sortOrder: 2, status: "completed" },
+      { adventureId: tutorialAdventure!.id, name: "L'Épreuve", sortOrder: 3, status: "active" },
+    ]);
+
+    await svc.processAction({
+      adventureId: tutorialAdventure!.id,
+      userId: TEST_USER_ID,
+      action: "Je choisis ma classe",
+      choiceType: "class",
+      choiceId: classId,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const [metaRow] = await db
+      .select({ userId: metaCharacters.userId, classId: metaCharacters.classId })
+      .from(metaCharacters)
+      .where(eq(metaCharacters.userId, TEST_USER_ID))
+      .limit(1);
+
+    const [userRow] = await db
+      .select({ onboardingCompleted: users.onboardingCompleted })
+      .from(users)
+      .where(eq(users.id, TEST_USER_ID))
+      .limit(1);
+
+    expect(metaRow).toBeDefined();
+    expect(metaRow!.classId).toBe(classId);
+    expect(userRow!.onboardingCompleted).toBe(true);
+
+    await db.delete(adventures).where(eq(adventures.id, tutorialAdventure!.id));
   });
 });
 

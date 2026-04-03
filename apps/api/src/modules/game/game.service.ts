@@ -17,7 +17,7 @@ import type {
 } from "@jdrai/shared";
 
 import { db } from "@/db";
-import { adventureCharacters, adventures, messages, milestones } from "@/db/schema";
+import { adventureCharacters, adventures, characterClasses, messages, milestones, races, users } from "@/db/schema";
 import { logger } from "@/utils/logger";
 import { AppError } from "@/utils/errors";
 
@@ -130,6 +130,7 @@ function buildAdventureDTO(
     currentMilestone: currentMilestoneName,
     character: characterDTO,
     isGameOver: adventureRow.isGameOver ?? false,
+    isTutorial: adventureRow.isTutorial ?? false,
   };
 
   if (adventureRow.tone) dto.tone = adventureRow.tone as AdventureDTO["tone"];
@@ -147,6 +148,8 @@ export interface ProcessActionParams {
   userId: string;
   action: string;
   choiceId?: string | undefined;
+  /** Distinguishes a tutorial preset selection (race/class) from a regular suggested choice. */
+  choiceType?: "race" | "class" | undefined;
   socketId?: string | undefined;
   io?: import("socket.io").Server | undefined;
   /** DEV only — bypasses LLM and returns hardcoded text to save tokens during manual testing. */
@@ -161,6 +164,7 @@ export interface ProcessActionResult {
 export interface ProcessActionResponse {
   cleanText: string;
   choices: SuggestedAction[];
+  presetSelector?: "race" | "class";
   stateChanges: {
     hpChange?: number;
     milestoneCompleted?: string | null;
@@ -181,6 +185,8 @@ export interface ParsedSignals {
   adventureComplete: boolean;
   isGameOver: boolean;
   choices: SuggestedAction[];
+  /** Present when the LLM emitted [SHOW_PRESET_SELECTOR:race|class] in a tutorial adventure. */
+  presetSelector?: "race" | "class";
 }
 
 interface GameMessageRow {
@@ -199,6 +205,7 @@ const SIGNAL_PATTERNS = {
   ADVENTURE_COMPLETE: /\[ADVENTURE_COMPLETE\]/g,
   GAME_OVER: /\[GAME_OVER\]/g,
   CHOICES: /\[CHOIX\]([\s\S]*?)\[\/CHOIX\]/g,
+  SHOW_PRESET_SELECTOR: /\[SHOW_PRESET_SELECTOR:(race|class)\]/,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -258,12 +265,19 @@ export function parseSignals(rawText: string): { cleanText: string; signals: Par
     }));
   }
 
+  // Tutorial signal — [SHOW_PRESET_SELECTOR:race|class]
+  const presetMatch = SIGNAL_PATTERNS.SHOW_PRESET_SELECTOR.exec(rawText);
+  if (presetMatch) {
+    signals.presetSelector = presetMatch[1] as "race" | "class";
+  }
+
   const cleanText = rawText
     .replace(/\[MILESTONE_COMPLETE:[^\]]+\]/g, "")
     .replace(/\[HP_CHANGE:[+-]?\d+\]/g, "")
     .replace(/\[ADVENTURE_COMPLETE\]/g, "")
     .replace(/\[GAME_OVER\]/g, "")
     .replace(/\[CHOIX\][\s\S]*?\[\/CHOIX\]/g, "")
+    .replace(/\[SHOW_PRESET_SELECTOR:[^\]]+\]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
@@ -323,7 +337,7 @@ export class GameService {
    * Full turn orchestration — see Dev Notes for exact execution order.
    */
   async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
-    const { adventureId, userId, action, io } = params;
+    const { adventureId, userId, action, io, choiceType, choiceId } = params;
     // Stream whenever io is available — socketId is not needed since we emit to the room
     const shouldStream = Boolean(io);
 
@@ -361,8 +375,8 @@ export class GameService {
       currentHp: characterRow.currentHp,
       maxHp: characterRow.maxHp,
     };
-    const worldState =
-      (adventureRow.state as { worldState?: Record<string, unknown> } | null)?.worldState ?? {};
+    let latestState = (adventureRow.state ?? {}) as Record<string, unknown>;
+    const worldState = (latestState["worldState"] as Record<string, unknown> | undefined) ?? {};
 
     const allMilestones = await getMilestones(adventureId);
     const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
@@ -408,10 +422,15 @@ export class GameService {
       d20Block = this.promptBuilder.buildD20InjectionBlock(d20Result, action);
     }
 
-    // 4–6. Build prompt context
-    const systemPrompt = this.promptBuilder.buildSystemPrompt({
-      difficulty: adventureRow.difficulty as Difficulty,
-    });
+    // Handle tutorial preset choice capture (race/class) BEFORE building the prompt
+    if (adventureRow.isTutorial && choiceType && choiceId) {
+      latestState = await this.captureTutorialPresetChoice(adventureRow.id, latestState, choiceType, choiceId);
+    }
+
+    // 4–6. Build prompt context — tutorial uses a dedicated system prompt
+    const systemPrompt = adventureRow.isTutorial
+      ? this.promptBuilder.buildTutorialSystemPrompt()
+      : this.promptBuilder.buildSystemPrompt({ difficulty: adventureRow.difficulty as Difficulty });
     const contextWindow = this.promptBuilder.buildContextWindow({
       systemPrompt,
       d20Block,
@@ -528,6 +547,28 @@ export class GameService {
         : undefined,
     );
 
+    // 12b. Tutorial completion — create MetaCharacter when [ADVENTURE_COMPLETE] on a tutorial
+    if (adventureRow.isTutorial && signals.adventureComplete) {
+      const choices = (latestState["tutorialChoices"] ?? {}) as Record<string, string>;
+
+      const [userRow] = await db
+        .select({ username: users.username })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const { metaCharacterService } = await import("@/modules/meta-character/meta-character.service");
+      await metaCharacterService.createFromTutorial({
+        userId,
+        username: userRow?.username ?? "Aventurier",
+        raceId: choices["raceId"],
+        classId: choices["classId"],
+      });
+
+      // Set user onboarding as completed
+      await db.update(users).set({ onboardingCompleted: true }).where(eq(users.id, userId));
+    }
+
     // 13. Auto-save state
     const [updatedCharacter] = await db
       .select({ currentHp: adventureCharacters.currentHp })
@@ -557,6 +598,7 @@ export class GameService {
         messageId: assistantMessageId,
         cleanText,
         choices: signals.choices,
+        ...(signals.presetSelector ? { presetSelector: signals.presetSelector } : {}),
         stateChanges,
       });
     }
@@ -565,7 +607,12 @@ export class GameService {
       ? { messageId: assistantMessageId }
       : {
           messageId: assistantMessageId,
-          response: { cleanText, choices: signals.choices, stateChanges },
+          response: {
+            cleanText,
+            choices: signals.choices,
+            ...(signals.presetSelector ? { presetSelector: signals.presetSelector } : {}),
+            stateChanges,
+          },
         };
   }
 
@@ -611,6 +658,42 @@ export class GameService {
         type: signals.isGameOver ? "game_over" : "adventure_complete",
       });
     }
+  }
+
+  /**
+   * Captures a tutorial preset choice (race or class) into Adventure.state.tutorialChoices.
+   * Called before the LLM turn when PlayerActionInput includes choiceType + choiceId.
+   */
+  private async captureTutorialPresetChoice(
+    adventureId: string,
+    currentState: Record<string, unknown>,
+    choiceType: "race" | "class",
+    choiceId: string,
+  ): Promise<Record<string, unknown>> {
+    const tutorialChoices = (currentState["tutorialChoices"] ?? {}) as Record<string, string>;
+
+    if (choiceType === "race") {
+      const race = await db.query.races.findFirst({ where: eq(races.id, choiceId) });
+      if (!race) return currentState;
+      tutorialChoices["raceId"] = choiceId;
+      tutorialChoices["raceName"] = race.name;
+    } else {
+      const cls = await db.query.characterClasses.findFirst({
+        where: eq(characterClasses.id, choiceId),
+      });
+      if (!cls) return currentState;
+      tutorialChoices["classId"] = choiceId;
+      tutorialChoices["className"] = cls.name;
+    }
+
+    const nextState = { ...currentState, tutorialChoices };
+
+    await db
+      .update(adventures)
+      .set({ state: nextState })
+      .where(eq(adventures.id, adventureId));
+
+    return nextState;
   }
 
   /**
@@ -753,10 +836,10 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
       .limit(50);
     messageRows.reverse();
 
-    // 4. Load milestones — initialize if empty
+    // 4. Load milestones — initialize if empty (tutorial milestones are pre-seeded; skip LLM)
     let allMilestones = await getMilestones(adventureId);
 
-    if (allMilestones.length === 0) {
+    if (allMilestones.length === 0 && !adventureRow.isTutorial) {
       const adventureDTO = buildAdventureDTO(adventureRow, characterRow);
       allMilestones = await this.initializeMilestones(adventureDTO, mockLlm);
     }

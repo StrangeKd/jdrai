@@ -26,6 +26,7 @@ export const adventures = pgTable("adventures", {
   completedAt: timestamp("completed_at"),
   narrativeSummary: text("narrative_summary"),
   isGameOver: boolean("is_game_over").default(false).notNull(),
+  isTutorial: boolean("is_tutorial").default(false).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

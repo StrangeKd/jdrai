@@ -56,6 +56,24 @@ export interface GameMessageDTO {
   createdAt: string;
   /** Suggested choices attached to this assistant message (restored on reload). */
   choices?: SuggestedAction[];
+  /**
+   * Present when the LLM emitted [SHOW_PRESET_SELECTOR:race|class] in a tutorial adventure.
+   * Instructs the client to display a race or class PresetSelector UI.
+   */
+  presetSelector?: "race" | "class";
+}
+
+/**
+ * Player action sent to POST /api/v1/adventures/:id/action.
+ * Extends with tutorial-specific fields for preset (race/class) selection.
+ */
+export interface PlayerActionInput {
+  adventureId: string;
+  action: string;
+  /** UUID of the selected preset (race or class) when using PresetSelector in tutorial. */
+  choiceId?: string | undefined;
+  /** Distinguishes a preset selection from a regular suggested choice. Tutorial only. */
+  choiceType?: "race" | "class" | undefined;
 }
 
 /**

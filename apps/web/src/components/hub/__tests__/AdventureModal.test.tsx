@@ -54,6 +54,7 @@ function makeAdventure(overrides: Partial<AdventureDTO> = {}): AdventureDTO {
     id: "adv-1",
     title: "La Forêt Maudite",
     status: "active",
+    isTutorial: false,
     difficulty: "normal",
     estimatedDuration: "medium",
     startedAt: "2025-01-01T00:00:00Z",
