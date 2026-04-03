@@ -19,6 +19,7 @@
 import { io, type Socket } from "socket.io-client";
 
 import { connectionStatusEmitter } from "@/lib/emitters";
+import { rateLimitEmitter } from "@/services/api";
 
 // Use VITE_API_URL when defined (explicit cross-origin setup).
 // Falls back to empty string → socket.io uses current window origin (same-origin / reverse proxy in prod).
@@ -29,6 +30,10 @@ let _currentAdventureId: string | null = null;
 // Story 6.8 — tracks whether we went through a disconnect so the `connect` handler
 // can distinguish an initial connection from a manual re-connect.
 let _wasDisconnected = false;
+// Story 7.4 — set in manualReconnect() so the new socket's `connect` event emits
+// "reconnected" even though disconnect() cleared _wasDisconnected during cleanup.
+// Intentionally NOT cleared in disconnect() — must survive the effect cleanup cycle.
+let _pendingManualReconnect = false;
 
 /**
  * Connects to the Socket.io server and joins the adventure room.
@@ -49,9 +54,10 @@ export function connect(adventureId: string): Socket {
   });
 
   _socket.on("connect", () => {
-    if (_wasDisconnected) {
-      // Manual re-connect after reconnect_failed succeeded — notify UI and resync state.
+    if (_wasDisconnected || _pendingManualReconnect) {
+      // Re-connect after disconnect or manual retry — notify UI and resync state.
       _wasDisconnected = false;
+      _pendingManualReconnect = false;
       connectionStatusEmitter.emit("reconnected");
       if (_currentAdventureId) {
         _socket!.emit("game:join", { adventureId: _currentAdventureId });
@@ -96,6 +102,9 @@ export function disconnect(): void {
   _socket = null;
   _currentAdventureId = null;
   _wasDisconnected = false;
+  // Note: _pendingManualReconnect is intentionally NOT cleared here.
+  // It must survive the useGameStreaming effect cleanup so the subsequent
+  // connect() call knows to emit "reconnected" when the new socket connects.
 }
 
 /** Returns the current socket instance, or null if not yet connected. */
@@ -104,12 +113,25 @@ export function getSocket(): Socket | null {
 }
 
 /**
- * Story 6.8 — Manually restart Socket.io connection attempts after reconnect_failed.
- * Calling socket.connect() resets the internal attempt counter so Socket.io will
- * try up to reconnectionAttempts times again before firing reconnect_failed.
+ * Story 7.4 — Manually restart Socket.io connection after reconnect_failed.
+ *
+ * socket.connect() after reconnect_failed is unreliable in socket.io-client v4 —
+ * the internal engine may not restart properly. Instead, we destroy the socket
+ * entirely and let useGameStreaming's reconnectKey-driven effect re-run call
+ * connect(adventureId) to create a fresh socket with clean state.
+ *
+ * _pendingManualReconnect survives the disconnect() cleanup so the new socket's
+ * `connect` handler knows to emit "reconnected" and re-join the adventure room.
  */
 export function manualReconnect(): void {
-  _socket?.connect();
+  _pendingManualReconnect = true;
+  if (_socket) {
+    // Remove Manager-level listeners to prevent stale reconnect/reconnect_failed events
+    _socket.io.off("reconnect");
+    _socket.io.off("reconnect_failed");
+    _socket.disconnect();
+    _socket = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +227,18 @@ if (import.meta.env.DEV) {
     };
   };
 
+  // ---------------------------------------------------------------------------
+  // DEV test plan helpers — Story 7.4
+  // Usage:
+  //   __triggerRateLimit(10)  — rate-limit for N seconds (default 10)
+  // ---------------------------------------------------------------------------
+  (window as unknown as Record<string, unknown>).__triggerRateLimit = (retryAfter = 10) => {
+    rateLimitEmitter.emit("rate-limited", { retryAfter });
+    console.log(`[DEV] Triggered rate-limit (retryAfter=${retryAfter as number}s)`);
+  };
+
   console.info(
     "[DEV] __devAdventureOps(adventureId) available — story 7.1 test plan helpers. See socket.service.ts for docs.",
   );
+  console.info("[DEV] __triggerRateLimit(seconds) available — story 7.4 test plan helper.");
 }

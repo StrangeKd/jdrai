@@ -188,6 +188,9 @@ export function useGameSession(
   // Sub-hooks
   // ---------------------------------------------------------------------------
 
+  // resilience must be called before streaming — reconnectKey is passed as a dependency
+  const resilience = useGameResilience();
+
   const streaming = useGameStreaming(
     adventureId,
     gameState,
@@ -199,9 +202,8 @@ export function useGameSession(
       onGameError: useCallback(() => onGameErrorRef.current(), []),
     },
     options,
+    resilience.reconnectKey,
   );
-
-  const resilience = useGameResilience();
   const navigate = useNavigate();
   const ui = useGameUI({
     options: options ?? {},

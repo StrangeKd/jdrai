@@ -81,6 +81,8 @@ export function useGameStreaming(
   gameState: GameStateDTO | null,
   callbacks: GameStreamingCallbacks,
   options?: { isResume?: boolean },
+  /** Incremented by useGameResilience on manual reconnect — forces socket re-init */
+  reconnectKey?: number,
 ): GameStreamingState {
   const [currentScene, setCurrentScene] = useState("");
   const [streamingBuffer, setStreamingBuffer] = useState("");
@@ -277,7 +279,8 @@ export function useGameStreaming(
       sock.off("game:state-snapshot", onStateSnapshot as (...args: unknown[]) => void);
       disconnect();
     };
-  }, [adventureId]);
+    // reconnectKey triggers a full socket re-init on manual reconnect after reconnect_failed
+  }, [adventureId, reconnectKey]);
 
   return {
     currentScene,

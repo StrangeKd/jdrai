@@ -25,6 +25,11 @@ export interface GameResilienceState {
   connectionFailed: boolean;
   /** Manually restart Socket.io connection attempts after permanent failure */
   manualReconnect: () => void;
+  /**
+   * Incremented on each manual reconnect — used as a dependency key by useGameStreaming
+   * to force its socket effect to re-run and create a fresh Socket.io connection.
+   */
+  reconnectKey: number;
 }
 
 export function useGameResilience(): GameResilienceState {
@@ -32,6 +37,7 @@ export function useGameResilience(): GameResilienceState {
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const [isDisconnected, setIsDisconnected] = useState(false);
   const [connectionFailed, setConnectionFailed] = useState(false);
+  const [reconnectKey, setReconnectKey] = useState(0);
 
   const rateLimitIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -89,8 +95,9 @@ export function useGameResilience(): GameResilienceState {
 
   function handleManualReconnect(): void {
     setConnectionFailed(false);
-    setIsDisconnected(true); // Shows "reconnecting" banner while new attempts run
-    socketManualReconnect();
+    setIsDisconnected(true); // Shows "reconnecting..." banner while new socket connects
+    socketManualReconnect(); // Destroys old socket, sets _pendingManualReconnect = true
+    setReconnectKey((k) => k + 1); // Triggers useGameStreaming to re-create the socket
   }
 
   return {
@@ -99,5 +106,6 @@ export function useGameResilience(): GameResilienceState {
     isDisconnected,
     connectionFailed,
     manualReconnect: handleManualReconnect,
+    reconnectKey,
   };
 }
