@@ -78,20 +78,20 @@ async function seedTutorialMilestones(adventureId: string): Promise<void> {
     {
       adventureId,
       name: "L'Éveil",
-      sortOrder: 0,
+      sortOrder: 1,
       status: "active",
       startedAt: new Date(),
     },
     {
       adventureId,
       name: "La Rencontre",
-      sortOrder: 1,
+      sortOrder: 2,
       status: "pending",
     },
     {
       adventureId,
       name: "L'Épreuve",
-      sortOrder: 2,
+      sortOrder: 3,
       status: "pending",
     },
   ]);

@@ -375,8 +375,8 @@ export class GameService {
       currentHp: characterRow.currentHp,
       maxHp: characterRow.maxHp,
     };
-    const worldState =
-      (adventureRow.state as { worldState?: Record<string, unknown> } | null)?.worldState ?? {};
+    let latestState = (adventureRow.state ?? {}) as Record<string, unknown>;
+    const worldState = (latestState["worldState"] as Record<string, unknown> | undefined) ?? {};
 
     const allMilestones = await getMilestones(adventureId);
     const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
@@ -424,7 +424,7 @@ export class GameService {
 
     // Handle tutorial preset choice capture (race/class) BEFORE building the prompt
     if (adventureRow.isTutorial && choiceType && choiceId) {
-      await this.captureTutorialPresetChoice(adventureRow, choiceType, choiceId);
+      latestState = await this.captureTutorialPresetChoice(adventureRow.id, latestState, choiceType, choiceId);
     }
 
     // 4–6. Build prompt context — tutorial uses a dedicated system prompt
@@ -549,8 +549,7 @@ export class GameService {
 
     // 12b. Tutorial completion — create MetaCharacter when [ADVENTURE_COMPLETE] on a tutorial
     if (adventureRow.isTutorial && signals.adventureComplete) {
-      const state = (adventureRow.state ?? {}) as Record<string, unknown>;
-      const choices = (state["tutorialChoices"] ?? {}) as Record<string, string>;
+      const choices = (latestState["tutorialChoices"] ?? {}) as Record<string, string>;
 
       const [userRow] = await db
         .select({ username: users.username })
@@ -666,29 +665,35 @@ export class GameService {
    * Called before the LLM turn when PlayerActionInput includes choiceType + choiceId.
    */
   private async captureTutorialPresetChoice(
-    adventureRow: typeof adventures.$inferSelect,
+    adventureId: string,
+    currentState: Record<string, unknown>,
     choiceType: "race" | "class",
     choiceId: string,
-  ): Promise<void> {
-    const currentState = (adventureRow.state ?? {}) as Record<string, unknown>;
+  ): Promise<Record<string, unknown>> {
     const tutorialChoices = (currentState["tutorialChoices"] ?? {}) as Record<string, string>;
 
     if (choiceType === "race") {
       const race = await db.query.races.findFirst({ where: eq(races.id, choiceId) });
+      if (!race) return currentState;
       tutorialChoices["raceId"] = choiceId;
-      tutorialChoices["raceName"] = race?.name ?? "Humain";
+      tutorialChoices["raceName"] = race.name;
     } else {
       const cls = await db.query.characterClasses.findFirst({
         where: eq(characterClasses.id, choiceId),
       });
+      if (!cls) return currentState;
       tutorialChoices["classId"] = choiceId;
-      tutorialChoices["className"] = cls?.name ?? "Aventurier";
+      tutorialChoices["className"] = cls.name;
     }
+
+    const nextState = { ...currentState, tutorialChoices };
 
     await db
       .update(adventures)
-      .set({ state: { ...currentState, tutorialChoices } })
-      .where(eq(adventures.id, adventureRow.id));
+      .set({ state: nextState })
+      .where(eq(adventures.id, adventureId));
+
+    return nextState;
   }
 
   /**

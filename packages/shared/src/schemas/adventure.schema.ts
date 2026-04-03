@@ -13,6 +13,8 @@ export const adventureCreateSchema = z.object({
   difficulty: z.enum(["easy", "normal", "hard", "nightmare"]),
   estimatedDuration: z.enum(["short", "medium", "long"]),
   tone: z.enum(["serious", "humorous", "epic", "dark"]).optional(),
+  // Tutorial flow flag (Epic 8)
+  isTutorial: z.boolean().optional(),
   // Optional in P1 — server auto-creates character from meta-character or defaults
   character: z
     .object({
