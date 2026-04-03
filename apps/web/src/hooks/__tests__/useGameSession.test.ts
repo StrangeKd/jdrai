@@ -1,22 +1,37 @@
 /**
- * useGameSession tests — AC: #3, #6, #8, #11
+ * useGameSession — coordinator integration tests (Story 7.4 refactor)
  *
- * Mocks: socket.service, useGameChat, @tanstack/react-query
+ * Verifies coordinator-level concerns ONLY:
+ *  - REST query → gameState exposure
+ *  - HP seeding from gameState + cross-domain onHpChange wiring
+ *  - isAdventureComplete / isGameOver via onAdventureComplete wiring
+ *  - isLocked composite
+ *  - manualSave() — API call, lastSavedAt, autosave indicator, silent fail
+ *  - Cross-domain wiring: game:response-complete → autosave indicator
+ *  - Cross-domain wiring: milestone_complete → showMilestoneOverlay + timer
+ *  - options passthrough: isFirstLaunch, isResume
+ *  - UI delegation: pause menu, exit modal, history drawer, confirmExit, beforeunload
+ *
+ * Socket-level behavior (sendAction, streaming events) → useGameStreaming.test.ts
+ * Resilience behavior (rate-limit, reconnect) → useGameResilience.test.ts
+ * useGameUI unit behavior → useGameUI.test.ts (Story 7.4 C1)
  */
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 afterEach(cleanup);
 
-import type { ApiResponse, GameStateDTO } from "@jdrai/shared";
-
 // ---------------------------------------------------------------------------
-// Module mocks (hoisted before imports)
+// Mocks
 // ---------------------------------------------------------------------------
 
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockGetSocket = vi.fn();
+const mockSendMessage = vi.fn();
+const mockApiPost = vi.fn();
+const mockNavigate = vi.fn();
+const mockUseQuery = vi.fn();
 
 vi.mock("@/services/socket.service", () => ({
   connect: (...args: unknown[]) => mockConnect(...args),
@@ -25,9 +40,7 @@ vi.mock("@/services/socket.service", () => ({
   manualReconnect: vi.fn(),
 }));
 
-const mockSendMessage = vi.fn();
-
-vi.mock("../useGameChat", () => ({
+vi.mock("@/hooks/useGameChat", () => ({
   useGameChat: () => ({
     messages: [],
     sendMessage: mockSendMessage,
@@ -37,41 +50,36 @@ vi.mock("../useGameChat", () => ({
   }),
 }));
 
-const mockUseQuery = vi.fn();
-
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@/services/api", () => {
-  // Minimal no-op EventEmitter compatible with useGameSession's .on()/.off() calls
-  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
-  return {
-    api: {
-      get: vi.fn(),
-      post: vi.fn(),
-    },
-    rateLimitEmitter: noopEmitter,
-  };
-});
+vi.mock("@/services/api", () => ({
+  api: {
+    get: vi.fn(),
+    post: (...args: unknown[]) => mockApiPost(...args),
+  },
+  rateLimitEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
+}));
 
-vi.mock("@/lib/emitters", () => {
-  const noopEmitter = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
-  return { connectionStatusEmitter: noopEmitter };
-});
+vi.mock("@/lib/emitters", () => ({
+  connectionStatusEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
+}));
 
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------
 
+import type { ApiResponse, GameStateDTO } from "@jdrai/shared";
+
 import { useGameSession } from "../useGameSession";
 
 // ---------------------------------------------------------------------------
-// Mock socket with event emitter behavior
+// Mock socket factory
 // ---------------------------------------------------------------------------
 
 type SocketHandler = (...args: unknown[]) => void;
@@ -86,18 +94,18 @@ function createMockSocket() {
     },
     off: (event: string, handler: SocketHandler) => {
       const current = handlers.get(event) ?? [];
-      handlers.set(
-        event,
-        current.filter((h) => h !== handler),
-      );
+      handlers.set(event, current.filter((h) => h !== handler));
     },
     emit: vi.fn(),
-    /** Trigger all registered handlers for an event */
     trigger: (event: string, ...args: unknown[]) => {
       (handlers.get(event) ?? []).forEach((h) => h(...args));
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Shared fixture
+// ---------------------------------------------------------------------------
 
 const gameStateResponse: ApiResponse<GameStateDTO> = {
   success: true,
@@ -110,7 +118,7 @@ const gameStateResponse: ApiResponse<GameStateDTO> = {
       difficulty: "normal",
       estimatedDuration: "medium",
       startedAt: new Date().toISOString(),
-      lastPlayedAt: new Date().toISOString(),
+      lastPlayedAt: "2026-03-01T12:00:00.000Z",
       character: {
         id: "char-1",
         name: "Héros",
@@ -135,17 +143,16 @@ const gameStateResponse: ApiResponse<GameStateDTO> = {
   },
 };
 
-describe("useGameSession", () => {
+// ---------------------------------------------------------------------------
+// Tests — gameState (REST query)
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — gameState", () => {
   let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(() => {
-    mockSocket = createMockSocket();
-    mockConnect.mockReturnValue(mockSocket);
-    mockGetSocket.mockReturnValue(mockSocket);
-    mockSendMessage.mockResolvedValue(undefined);
-    mockUseQuery.mockReturnValue({ data: gameStateResponse });
     vi.clearAllMocks();
-    // Re-set mocks after clearAllMocks
+    mockSocket = createMockSocket();
     mockConnect.mockReturnValue(mockSocket);
     mockGetSocket.mockReturnValue(mockSocket);
     mockSendMessage.mockResolvedValue(undefined);
@@ -156,274 +163,462 @@ describe("useGameSession", () => {
     vi.restoreAllMocks();
   });
 
-  it("connects socket on mount and disconnects on unmount", () => {
-    const { unmount } = renderHook(() => useGameSession("adv-1"));
-    expect(mockConnect).toHaveBeenCalledWith("adv-1");
-    unmount();
-    expect(mockDisconnect).toHaveBeenCalled();
-  });
-
-  it("seeds currentScene from last assistant message in gameState", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-    expect(result.current.currentScene).toBe("Vous vous réveillez dans une forêt sombre.");
-  });
-
-  it("seeds choices from last assistant message on reload (session restore)", () => {
-    const restoredChoices = [
-      { id: "c1", label: "Explorer la grotte", type: "suggested" as const },
-      { id: "c2", label: "Rebrousser chemin", type: "suggested" as const },
-    ];
-    mockUseQuery.mockReturnValue({
-      data: {
-        ...gameStateResponse,
-        data: {
-          ...gameStateResponse.data,
-          messages: [
-            {
-              id: "msg-1",
-              role: "assistant",
-              content: "Vous vous réveillez dans une forêt sombre.",
-              milestoneId: null,
-              createdAt: new Date().toISOString(),
-              choices: restoredChoices,
-            },
-          ],
-        },
-      },
-    });
-    const { result } = renderHook(() => useGameSession("adv-1"));
-    expect(result.current.choices).toHaveLength(2);
-    expect(result.current.choices[0]!.label).toBe("Explorer la grotte");
-  });
-
-  it("sendAction sets isLoading=true and calls sendMessage", async () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    await act(async () => {
-      await result.current.sendAction("J'avance prudemment");
-    });
-
-    expect(mockSendMessage).toHaveBeenCalledWith("J'avance prudemment", undefined);
-  });
-
-  it("forwards choiceId when submitting a suggested action", async () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    await act(async () => {
-      await result.current.sendAction("Attaquer", "choice-1");
-    });
-
-    expect(mockSendMessage).toHaveBeenCalledWith("Attaquer", "choice-1");
-  });
-
-  it("sendAction sets playerEcho immediately", async () => {
-    mockSendMessage.mockImplementation(() => {
-      // echo should already be set when sendMessage is called
-      return Promise.resolve();
-    });
-
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    await act(async () => {
-      void result.current.sendAction("Je cours");
-    });
-
-    // After sendAction resolves, playerEcho should be reset by game:response-complete
-    // (not triggered in this test — so it remains set)
-    expect(mockSendMessage).toHaveBeenCalled();
-  });
-
-  it("game:chunk event appends to streamingBuffer", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    act(() => {
-      mockSocket.trigger("game:response-start");
-    });
-
-    act(() => {
-      mockSocket.trigger("game:chunk", { adventureId: "adv-1", chunk: "Le vent" });
-      mockSocket.trigger("game:chunk", { adventureId: "adv-1", chunk: " souffle fort." });
-    });
-
-    expect(result.current.streamingBuffer).toBe("Le vent souffle fort.");
-    expect(result.current.isStreaming).toBe(true);
-  });
-
-  it("ignores socket chunks from another adventureId", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    act(() => {
-      mockSocket.trigger("game:response-start", { adventureId: "adv-1" });
-      mockSocket.trigger("game:chunk", { adventureId: "adv-2", chunk: "Intrus" });
-    });
-
-    expect(result.current.streamingBuffer).toBe("");
-  });
-
-  it("game:response-complete replaces streamingBuffer with cleanText and sets choices", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    act(() => {
-      mockSocket.trigger("game:response-start");
-    });
-
-    act(() => {
-      mockSocket.trigger("game:chunk", { adventureId: "adv-1", chunk: "Texte brut avec signal." });
-    });
-
-    act(() => {
-      mockSocket.trigger("game:response-complete", {
-        adventureId: "adv-1",
-        messageId: "m1",
-        cleanText: "Texte propre sans signal.",
-        choices: [
-          { id: "c1", label: "Attaquer", type: "suggested" },
-          { id: "c2", label: "Fuir", type: "suggested" },
-        ],
-        stateChanges: {},
-      });
-    });
-
-    expect(result.current.currentScene).toBe("Texte propre sans signal.");
-    expect(result.current.streamingBuffer).toBe("");
-    expect(result.current.isStreaming).toBe(false);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.choices).toHaveLength(2);
-    expect(result.current.choices[0]!.label).toBe("Attaquer");
-  });
-
-  it("ignores response-complete from another adventureId", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    act(() => {
-      mockSocket.trigger("game:response-start", { adventureId: "adv-1" });
-      mockSocket.trigger("game:chunk", { adventureId: "adv-1", chunk: "Texte local" });
-      mockSocket.trigger("game:response-complete", {
-        adventureId: "adv-2",
-        cleanText: "Ne doit pas remplacer",
-        choices: [{ id: "x", label: "X", type: "suggested" }],
-      });
-    });
-
-    expect(result.current.currentScene).toBe("Vous vous réveillez dans une forêt sombre.");
-    expect(result.current.streamingBuffer).toBe("Texte local");
-  });
-
-  it("game:error sets gameError and resets loading flags", () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    act(() => {
-      mockSocket.trigger("game:error", { error: "Connexion perdue." });
-    });
-
-    expect(result.current.gameError).toBe("Connexion perdue.");
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.isStreaming).toBe(false);
-  });
-
-  it("does not call sendMessage when already loading", async () => {
-    const { result } = renderHook(() => useGameSession("adv-1"));
-
-    // Trigger loading state
-    act(() => {
-      void result.current.sendAction("Première action");
-    });
-
-    // Try to submit again while loading
-    await act(async () => {
-      await result.current.sendAction("Deuxième action");
-    });
-
-    // sendMessage called only once (second call blocked by isLoading guard)
-    expect(mockSendMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns gameState from the REST query", () => {
+  it("exposes gameState from the REST query", () => {
     const { result } = renderHook(() => useGameSession("adv-1"));
     expect(result.current.gameState).toEqual(gameStateResponse.data);
   });
 
-  // Story 6.6: game:request-intro replaced by sendAction("Commencer l'aventure")
-  // isFirstLaunch is now initialized from options.isNew (not derived from message count)
-  it("calls sendMessage when adventure has no messages (auto-start trigger)", async () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        ...gameStateResponse,
-        data: {
-          ...gameStateResponse.data,
-          adventure: {
-            ...gameStateResponse.data.adventure,
-            status: "completed",
-          },
-          messages: [],
-        },
-      },
-    });
-
-    renderHook(() => useGameSession("adv-1"));
-
-    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+  it("seeds currentHp and maxHp from gameState.adventure.character", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.currentHp).toBe(20);
+    expect(result.current.maxHp).toBe(20);
   });
 
-  it("initializes isFirstLaunch=true when options.isNew=true is passed", () => {
-    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
-    expect(result.current.isFirstLaunch).toBe(true);
+  it("seeds lastSavedAt from gameState.adventure.lastPlayedAt", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.lastSavedAt?.toISOString()).toBe("2026-03-01T12:00:00.000Z");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — cross-domain wiring: HP & adventure completion
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — cross-domain: HP & completion", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
   });
 
-  it("does not set isFirstLaunch=true when messages already exist", () => {
-    // Default gameStateResponse has messages
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("updates currentHp and maxHp on game:state-update hp_change (onHpChange wiring)", () => {
     const { result } = renderHook(() => useGameSession("adv-1"));
 
+    act(() => {
+      mockSocket.trigger("game:state-update", { type: "hp_change", currentHp: 12, maxHp: 20 });
+    });
+
+    expect(result.current.currentHp).toBe(12);
+    expect(result.current.maxHp).toBe(20);
+  });
+
+  it("sets isAdventureComplete=true, isGameOver=false on adventure_complete (onAdventureComplete wiring)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:state-update", { type: "adventure_complete" });
+    });
+
+    expect(result.current.isAdventureComplete).toBe(true);
+    expect(result.current.isGameOver).toBe(false);
+  });
+
+  it("sets isAdventureComplete=true, isGameOver=true on game_over (onAdventureComplete wiring)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:state-update", { type: "game_over" });
+    });
+
+    expect(result.current.isAdventureComplete).toBe(true);
+    expect(result.current.isGameOver).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — cross-domain wiring: autosave indicator
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — cross-domain: autosave indicator", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("game:response-complete triggers autosave indicator (onResponseComplete → ui.triggerSave wiring)", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    const initialSavedAt = result.current.lastSavedAt?.getTime() ?? 0;
+
+    expect(result.current.showAutosaveIndicator).toBe(false);
+
+    act(() => {
+      mockSocket.trigger("game:response-complete", {
+        adventureId: "adv-1",
+        cleanText: "La suite…",
+        choices: [],
+      });
+    });
+
+    expect(result.current.showAutosaveIndicator).toBe(true);
+    expect((result.current.lastSavedAt?.getTime() ?? 0) > initialSavedAt).toBe(true);
+
+    act(() => { vi.advanceTimersByTime(2000); });
+
+    expect(result.current.showAutosaveIndicator).toBe(false);
+
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — cross-domain wiring: milestone overlay
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — cross-domain: milestone overlay", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("milestone_complete with name sets showMilestoneOverlay=true (onMilestoneComplete → ui.showMilestone wiring)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: "La Forêt Sombre",
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(true);
+    expect(result.current.milestoneOverlayName).toBe("La Forêt Sombre");
+  });
+
+  it("milestone_complete with nextMilestone=null does NOT show overlay", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: null,
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(false);
+    expect(result.current.milestoneOverlayName).toBeNull();
+  });
+
+  it("milestone overlay auto-clears after 2500ms", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => {
+      mockSocket.trigger("game:state-update", {
+        type: "milestone_complete",
+        nextMilestone: "Prologue",
+      });
+    });
+
+    expect(result.current.showMilestoneOverlay).toBe(true);
+
+    act(() => { vi.advanceTimersByTime(2500); });
+
+    expect(result.current.showMilestoneOverlay).toBe(false);
+    expect(result.current.milestoneOverlayName).toBeNull();
+
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — isLocked composite
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — isLocked", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("isLocked=false on mount", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.isLocked).toBe(false);
+  });
+
+  it("isLocked=true when isStreaming (game:response-start event)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => { mockSocket.trigger("game:response-start"); });
+
+    expect(result.current.isStreaming).toBe(true);
+    expect(result.current.isLocked).toBe(true);
+  });
+
+  it("isLocked=true when isAdventureComplete (adventure_complete event)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    act(() => { mockSocket.trigger("game:state-update", { type: "adventure_complete" }); });
+
+    expect(result.current.isAdventureComplete).toBe(true);
+    expect(result.current.isLocked).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — manualSave
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — manualSave", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls POST /api/v1/adventures/:id/save and updates lastSavedAt", async () => {
+    const savedAt = "2026-03-25T10:00:00.000Z";
+    mockApiPost.mockResolvedValue({ success: true, data: { savedAt } });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => { await result.current.manualSave(); });
+
+    expect(mockApiPost).toHaveBeenCalledWith("/api/v1/adventures/adv-1/save", {});
+    expect(result.current.lastSavedAt?.toISOString()).toBe(savedAt);
+  });
+
+  it("triggers autosave indicator for 2s after successful save", async () => {
+    vi.useFakeTimers();
+    mockApiPost.mockResolvedValue({ success: true, data: { savedAt: "2026-03-25T10:00:00.000Z" } });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => { await result.current.manualSave(); });
+
+    expect(result.current.showAutosaveIndicator).toBe(true);
+
+    act(() => { vi.advanceTimersByTime(2000); });
+
+    expect(result.current.showAutosaveIndicator).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("silently fails when API throws — lastSavedAt stays seeded from gameState", async () => {
+    mockApiPost.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => { await result.current.manualSave(); });
+
+    expect(result.current.lastSavedAt?.toISOString()).toBe("2026-03-01T12:00:00.000Z");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — options passthrough (isFirstLaunch / isResume / auto-start)
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — options passthrough", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("no options → isFirstLaunch=false, no auto-start (messages already exist)", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
     expect(result.current.isFirstLaunch).toBe(false);
     expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
-  it("does not call sendMessage twice on re-render (hasAutoStarted guard)", async () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        ...gameStateResponse,
-        data: {
-          ...gameStateResponse.data,
-          messages: [],
-        },
-      },
-    });
-
-    const { rerender } = renderHook(() => useGameSession("adv-1"));
-    rerender();
-
-    expect(mockSendMessage).toHaveBeenCalledTimes(1);
-  });
-
-  // Story 7.3 — isResume option: early guard for isFirstLaunch
-  it("isResume=true → isFirstLaunch=false from the start (Story 7.3 AC-6)", () => {
-    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
-    expect(result.current.isFirstLaunch).toBe(false);
-  });
-
-  it("isResume=true + messages.length=0 → isFirstLaunch still false (edge case guard)", () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        ...gameStateResponse,
-        data: {
-          ...gameStateResponse.data,
-          messages: [],
-        },
-      },
-    });
-    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
-    expect(result.current.isFirstLaunch).toBe(false);
-    expect(mockSendMessage).not.toHaveBeenCalled();
-  });
-
-  it("isResume=false + messages.length=0 → isFirstLaunch=true for new adventure (AC-6)", () => {
+  it("isNew=true → isFirstLaunch=true", () => {
     const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
     expect(result.current.isFirstLaunch).toBe(true);
   });
 
-  it("isResume=true overrides isNew=true — isFirstLaunch stays false (Story 7.3 AC-6)", () => {
-    // Should never happen in practice but guards against incorrect call sites
+  it("isResume=true → isFirstLaunch=false", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
+
+  it("isResume=true overrides isNew=true → isFirstLaunch=false", () => {
     const { result } = renderHook(() => useGameSession("adv-1", { isNew: true, isResume: true }));
     expect(result.current.isFirstLaunch).toBe(false);
+  });
+
+  it("isResume=true + empty messages → no auto-start, isFirstLaunch=false", () => {
+    mockUseQuery.mockReturnValue({
+      data: { ...gameStateResponse, data: { ...gameStateResponse.data, messages: [] } },
+    });
+    const { result } = renderHook(() => useGameSession("adv-1", { isResume: true }));
+    expect(result.current.isFirstLaunch).toBe(false);
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+
+  it("auto-start when no messages (delegates to useGameStreaming)", () => {
+    mockUseQuery.mockReturnValue({
+      data: { ...gameStateResponse, data: { ...gameStateResponse.data, messages: [] } },
+    });
+    renderHook(() => useGameSession("adv-1"));
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — UI delegation (pause menu, history drawer, exit modal, confirmExit, beforeunload)
+// ---------------------------------------------------------------------------
+
+describe("useGameSession — UI delegation", () => {
+  let mockSocket: ReturnType<typeof createMockSocket>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSocket = createMockSocket();
+    mockConnect.mockReturnValue(mockSocket);
+    mockGetSocket.mockReturnValue(mockSocket);
+    mockSendMessage.mockResolvedValue(undefined);
+    mockUseQuery.mockReturnValue({ data: gameStateResponse });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("openPauseMenu / closePauseMenu toggle isPauseMenuOpen", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isPauseMenuOpen).toBe(false);
+    act(() => result.current.openPauseMenu());
+    expect(result.current.isPauseMenuOpen).toBe(true);
+    act(() => result.current.closePauseMenu());
+    expect(result.current.isPauseMenuOpen).toBe(false);
+  });
+
+  it("openHistoryDrawer / closeHistoryDrawer toggle isHistoryDrawerOpen", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isHistoryDrawerOpen).toBe(false);
+    act(() => result.current.openHistoryDrawer());
+    expect(result.current.isHistoryDrawerOpen).toBe(true);
+    act(() => result.current.closeHistoryDrawer());
+    expect(result.current.isHistoryDrawerOpen).toBe(false);
+  });
+
+  it("openExitModal / closeExitModal toggle isExitModalOpen", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    expect(result.current.isExitModalOpen).toBe(false);
+    act(() => result.current.openExitModal());
+    expect(result.current.isExitModalOpen).toBe(true);
+    act(() => result.current.closeExitModal());
+    expect(result.current.isExitModalOpen).toBe(false);
+  });
+
+  it("dismissIntro() immediately sets isFirstLaunch=false", () => {
+    const { result } = renderHook(() => useGameSession("adv-1", { isNew: true }));
+
+    expect(result.current.isFirstLaunch).toBe(true);
+    act(() => result.current.dismissIntro());
+    expect(result.current.isFirstLaunch).toBe(false);
+  });
+
+  it("isInGameSession=true on mount", () => {
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    expect(result.current.isInGameSession).toBe(true);
+  });
+
+  it("beforeunload is prevented when isInGameSession=true", () => {
+    renderHook(() => useGameSession("adv-1"));
+
+    const event = new Event("beforeunload") as BeforeUnloadEvent;
+    Object.defineProperty(event, "returnValue", { writable: true, value: "" });
+    const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+
+    act(() => { window.dispatchEvent(event); });
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  it("confirmExit() calls POST save, sets isInGameSession=false, navigates to /hub", async () => {
+    mockApiPost.mockResolvedValue({ success: true, data: { savedAt: "2026-03-25T10:00:00.000Z" } });
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => { await result.current.confirmExit(); });
+
+    expect(mockApiPost).toHaveBeenCalledWith("/api/v1/adventures/adv-1/save", {});
+    expect(result.current.isInGameSession).toBe(false);
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/hub" });
+  });
+
+  it("confirmExit(onNavigate) calls onNavigate instead of navigate", async () => {
+    mockApiPost.mockResolvedValue({ success: true, data: { savedAt: "2026-03-25T10:00:00.000Z" } });
+    const { result } = renderHook(() => useGameSession("adv-1"));
+    const onNavigate = vi.fn();
+
+    await act(async () => { await result.current.confirmExit(onNavigate); });
+
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("confirmExit() still navigates when manualSave fails", async () => {
+    mockApiPost.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useGameSession("adv-1"));
+
+    await act(async () => { await result.current.confirmExit(); });
+
+    expect(result.current.isInGameSession).toBe(false);
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/hub" });
   });
 });
