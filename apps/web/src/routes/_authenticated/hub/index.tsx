@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import { MetaCharacterBanner } from "@/components/hub/MetaCharacterBanner";
 import { Button } from "@/components/ui/button";
 import { useAbandonedAdventures, useActiveAdventures, useCompletedAdventures } from "@/hooks/useAdventures";
 import { useCurrentUser } from "@/hooks/useUser";
+import { metaCharacterQuery } from "@/queries/meta-character.queries";
 
 export const Route = createFileRoute("/_authenticated/hub/")({
   component: HubPage,
@@ -48,6 +50,9 @@ export function HubPage() {
 
   // Story 7.3 — abandon modal state (controlled at Hub level to avoid re-mount issues)
   const [abandonTarget, setAbandonTarget] = useState<AdventureDTO | null>(null);
+
+  // Story 8.2 — MetaCharacter query (shared cache key with TutorialEndCard)
+  const { data: metaCharacter } = useQuery(metaCharacterQuery);
 
   // AC-6: reconnection toast — shown once per session after login redirect
   useEffect(() => {
@@ -184,6 +189,36 @@ export function HubPage() {
             nouvelle.
           </p>
         )}
+      </section>
+
+      {/* Tutorial section — always visible (AC: #9) */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-amber-200/60">
+          Tutoriel
+        </h2>
+        <div
+          className="flex items-center justify-between rounded-xl border border-stone-700/50 bg-stone-800/40 px-4 py-4 cursor-pointer hover:bg-stone-800/60 transition-colors"
+          onClick={() => void navigate({ to: "/onboarding/tutorial" })}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              void navigate({ to: "/onboarding/tutorial" });
+            }
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold text-amber-100">
+              {metaCharacter ? "🎮 Rejouer le tutoriel" : "🎮 Commencer le tutoriel"}
+            </span>
+            <span className="text-sm text-stone-400">
+              {metaCharacter
+                ? `${metaCharacter.raceName ?? ""} ${metaCharacter.className ? `— ${metaCharacter.className}` : ""}`.trim() || "Apprenez à jouer en ~5 minutes"
+                : "Apprenez à jouer en ~5 minutes"}
+            </span>
+          </div>
+          <span className="text-stone-500 text-lg">›</span>
+        </div>
       </section>
 
       {/* History — shown if completed or abandoned adventures exist */}

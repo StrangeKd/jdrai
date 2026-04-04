@@ -102,6 +102,15 @@ export function createSocketAdapter(adventureId: string) {
         : typeof (lastMessage as { content?: unknown } | undefined)?.content === "string"
           ? String((lastMessage as { content: string }).content)
           : "";
+    // Extract choiceId from root field OR metadata (sendGameMessage sets root; some existing
+    // paths may set metadata.choiceId — support both for backwards compatibility)
+    const choiceIdFromRoot =
+      lastMessage &&
+      typeof lastMessage === "object" &&
+      "choiceId" in lastMessage &&
+      typeof (lastMessage as { choiceId?: unknown }).choiceId === "string"
+        ? ((lastMessage as { choiceId?: string }).choiceId ?? undefined)
+        : undefined;
     const choiceIdFromMetadata =
       lastMessage &&
       typeof lastMessage === "object" &&
@@ -111,14 +120,15 @@ export function createSocketAdapter(adventureId: string) {
       typeof (lastMessage as { metadata?: { choiceId?: unknown } }).metadata?.choiceId === "string"
         ? ((lastMessage as { metadata?: { choiceId?: string } }).metadata?.choiceId ?? undefined)
         : undefined;
-    const choiceIdFromRoot =
+    const choiceId = choiceIdFromRoot ?? choiceIdFromMetadata;
+    const choiceType =
       lastMessage &&
       typeof lastMessage === "object" &&
-      "choiceId" in lastMessage &&
-      typeof (lastMessage as { choiceId?: unknown }).choiceId === "string"
-        ? ((lastMessage as { choiceId?: string }).choiceId ?? undefined)
+      "choiceType" in lastMessage &&
+      ((lastMessage as { choiceType?: unknown }).choiceType === "race" ||
+        (lastMessage as { choiceType?: unknown }).choiceType === "class")
+        ? ((lastMessage as { choiceType?: "race" | "class" }).choiceType ?? undefined)
         : undefined;
-    const choiceId = choiceIdFromMetadata ?? choiceIdFromRoot;
 
     const queue = new AsyncQueue<StreamChunk>();
     const messageId = `msg-${Date.now()}`;
@@ -193,6 +203,7 @@ export function createSocketAdapter(adventureId: string) {
         api.post(`/api/v1/adventures/${adventureId}/action`, {
           action: actionContent,
           ...(choiceId ? { choiceId } : {}),
+          ...(choiceType ? { choiceType } : {}),
           ...(isMockLlm ? { mockLlm: true } : {}),
         }),
         ACTION_REQUEST_TIMEOUT_MS,
@@ -240,12 +251,15 @@ export function useGameChat(adventureId: string) {
     connection: createSocketAdapter(adventureId),
   });
 
-  const sendGameMessage = async (action: string, choiceId?: string) => {
-    const payload: Parameters<typeof sendMessage>[0] = {
-      content: action,
-      ...(choiceId ? { choiceId, metadata: { choiceId } } : {}),
-    };
-    await sendMessage(payload);
+  const sendGameMessage = async (action: string, choiceId?: string, choiceType?: "race" | "class") => {
+    // Spread extra fields (choiceId, choiceType) onto the payload object.
+    // sendMessage accepts MultimodalContent | string; we rely on TanStack AI preserving
+    // additional properties on the message object so the socket adapter can read them.
+    const extra: Record<string, unknown> = {};
+    if (choiceId) extra.choiceId = choiceId;
+    if (choiceType) extra.choiceType = choiceType;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await sendMessage({ content: action, ...extra } as any);
   };
 
   return {

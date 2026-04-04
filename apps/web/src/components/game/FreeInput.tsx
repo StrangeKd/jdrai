@@ -26,6 +26,8 @@ interface FreeInputProps {
   onSubmit: (text: string) => void;
   onHistoryClick: () => void;
   placeholder?: string;
+  /** Called once on first focus — used by tutorial tooltip tracking (Story 8.2). */
+  onFocus?: () => void;
 }
 
 function resolvePlaceholder(
@@ -53,6 +55,7 @@ export function FreeInput({
   onSubmit,
   onHistoryClick,
   placeholder,
+  onFocus,
 }: FreeInputProps) {
   const [value, setValue] = useState("");
   const resolvedPlaceholder = resolvePlaceholder(
@@ -98,6 +101,7 @@ export function FreeInput({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onFocus={onFocus}
         disabled={disabled}
         placeholder={resolvedPlaceholder}
         aria-label="Votre action"
