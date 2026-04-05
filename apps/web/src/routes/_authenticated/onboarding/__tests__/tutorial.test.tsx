@@ -4,7 +4,7 @@
  * Tests the tutorial route loading, creation, and "Recommencer" dialog behavior.
  * TutorialSession (game session layer) is mocked to isolate tutorial orchestration logic.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock TanStack Router
@@ -129,85 +129,93 @@ import { TutorialPage } from "../tutorial";
 afterEach(cleanup);
 
 describe("TutorialPage", () => {
+  const executedQueryKeys = new Set<string>();
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: no existing tutorial adventure, useQuery calls are passthrough
-    mockUseQuery.mockImplementation((_opts: { queryFn: () => unknown }) => {
-      // Only execute for the tutorial-check query
+    executedQueryKeys.clear();
+
+    // Execute each queryFn once per queryKey to simulate React Query mount behavior.
+    mockUseQuery.mockImplementation((opts: {
+      queryKey: unknown[];
+      queryFn?: () => Promise<unknown> | unknown;
+      enabled?: boolean;
+    }) => {
+      // meta-character query stays inert in these route orchestration tests
+      if (Array.isArray(opts.queryKey) && opts.queryKey[0] === "meta-character") {
+        return { data: null, isLoading: false };
+      }
+
+      const key = JSON.stringify(opts.queryKey ?? []);
+      const isEnabled = opts.enabled ?? true;
+
+      if (isEnabled && typeof opts.queryFn === "function" && !executedQueryKeys.has(key)) {
+        executedQueryKeys.add(key);
+        void Promise.resolve().then(() => opts.queryFn?.());
+      }
+
       return { data: undefined, isLoading: false };
     });
+
     mockApiPost.mockResolvedValue({ data: { id: "adventure-123", status: "active" } });
     mockApiPatch.mockResolvedValue({ data: {} });
     mockApiGet.mockResolvedValue({ data: [] });
   });
 
-  it("shows loading state initially", () => {
+  it("mount sans tutoriel actif -> crée une aventure tutoriel", async () => {
+    mockApiGet.mockResolvedValueOnce({ data: [] });
+
     render(<TutorialPage />);
-    // No adventureId yet — shows loading/creating message
-    expect(screen.getByText(/Chargement/i)).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith("/api/v1/adventures", {
+        isTutorial: true,
+        difficulty: "easy",
+        estimatedDuration: "short",
+      }),
+    );
   });
 
-  it("shows 'Recommencer' dialog when existing active tutorial found", async () => {
-    // Simulate tutorial-check query finding an active tutorial
-    mockUseQuery.mockImplementation(
-      ({ queryKey }: { queryKey: readonly unknown[]; queryFn?: () => unknown }) => {
-        if (Array.isArray(queryKey) && queryKey.includes("tutorial-check")) {
-          // Execute the check and set state
-          return { data: undefined, isLoading: false };
-        }
-        return { data: undefined, isLoading: false };
-      },
-    );
-
-    // Simulate the dialog being shown by rendering with showRestartDialog state
-    // We test the restart dialog by rendering TutorialPage and manually triggering the dialog logic
-    render(<TutorialPage />);
-
-    // When an existing tutorial is found, the dialog should be shown.
-    // Since the query runs async in useQuery, we trigger it manually via api mock
+  it("mount avec tutoriel actif -> affiche la modale 'Recommencer'", async () => {
     mockApiGet.mockResolvedValueOnce({
       data: [{ id: "existing-tutorial-id", isTutorial: true, status: "active" }],
     });
 
-    // Component renders loading initially
-    expect(screen.getByText(/Chargement/i)).toBeInTheDocument();
+    render(<TutorialPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Une aventure est déjà en cours.")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Recommencer")).toBeInTheDocument();
+    expect(screen.getByText("Continuer là où j'en étais")).toBeInTheDocument();
+    expect(mockApiPost).not.toHaveBeenCalled();
   });
 
-  it("'Recommencer' button calls PATCH abandoned + creates new adventure", async () => {
-    // This test verifies the flow: restart dialog → PATCH abandoned → POST new
-    // We test the restart handler logic by simulating the dialog state
-
-    // When showRestartDialog=true and user clicks "Recommencer":
-    // 1. PATCH /adventures/:id { status: "abandoned" }
-    // 2. POST /adventures { isTutorial: true }
-
-    const patchSpy = vi.fn().mockResolvedValue({ data: {} });
-    const postSpy = vi
-      .fn()
-      .mockResolvedValue({ data: { id: "new-adventure-id", status: "active" } });
-    mockApiPatch.mockImplementation(patchSpy);
-    mockApiPost.mockImplementation(postSpy);
-
-    // Verify the expected API calls would be made in order:
-    // PATCH first, POST second
-    expect(patchSpy).not.toHaveBeenCalled();
-    expect(postSpy).not.toHaveBeenCalled();
-
-    // Direct invocation test — simulate what handleRestart does
-    await patchSpy("/api/v1/adventures/existing-id", { status: "abandoned" });
-    await postSpy("/api/v1/adventures", {
-      isTutorial: true,
-      difficulty: "easy",
-      estimatedDuration: "short",
+  it("clic 'Recommencer' -> PATCH abandoned puis POST nouvelle aventure", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [{ id: "existing-id", isTutorial: true, status: "active" }],
     });
 
-    expect(patchSpy).toHaveBeenCalledWith("/api/v1/adventures/existing-id", {
-      status: "abandoned",
-    });
-    expect(postSpy).toHaveBeenCalledWith("/api/v1/adventures", {
-      isTutorial: true,
-      difficulty: "easy",
-      estimatedDuration: "short",
-    });
+    render(<TutorialPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Une aventure est déjà en cours.")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByText("Recommencer"));
+
+    await waitFor(() =>
+      expect(mockApiPatch).toHaveBeenCalledWith("/api/v1/adventures/existing-id", {
+        status: "abandoned",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith("/api/v1/adventures", {
+        isTutorial: true,
+        difficulty: "easy",
+        estimatedDuration: "short",
+      }),
+    );
   });
 });

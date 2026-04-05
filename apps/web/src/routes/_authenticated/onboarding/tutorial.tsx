@@ -8,7 +8,7 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { AdventureDTO, MetaCharacterDTO } from "@jdrai/shared";
 
@@ -197,7 +197,7 @@ export function TutorialPage() {
     );
   }
 
-  return <TutorialSession adventureId={adventureId} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter ?? null} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasChoicesRendered={hasChoicesRendered} setHasChoicesRendered={setHasChoicesRendered} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
+  return <TutorialSession adventureId={adventureId} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasChoicesRendered={hasChoicesRendered} setHasChoicesRendered={setHasChoicesRendered} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +208,7 @@ export function TutorialPage() {
 interface TutorialSessionProps {
   adventureId: string;
   username: string;
-  metaCharacter: MetaCharacterDTO | null;
+  metaCharacter: MetaCharacterDTO | null | undefined;
   races: ReturnType<typeof useTutorial>["races"];
   classes: ReturnType<typeof useTutorial>["classes"];
   isTooltipSeen: (id: string) => boolean;
@@ -243,6 +243,7 @@ function TutorialSession({
   queryClient,
 }: TutorialSessionProps) {
   const navigate = useNavigate();
+  const [isAbandoningTutorial, setIsAbandoningTutorial] = useState(false);
 
   const {
     gameState,
@@ -313,9 +314,11 @@ function TutorialSession({
 
   // Track tooltip trigger: choices/preset are visible
   const hasChoices = choices.length > 0 || (!!presetType && presetOptions.length > 0);
-  if (hasChoices && !hasChoicesRendered) {
-    setHasChoicesRendered(true);
-  }
+  useEffect(() => {
+    if (hasChoices && !hasChoicesRendered) {
+      setHasChoicesRendered(true);
+    }
+  }, [hasChoices, hasChoicesRendered, setHasChoicesRendered]);
 
   // -------------------------------------------------------------------------
   // Pause menu — track first open for tooltip
@@ -333,17 +336,29 @@ function TutorialSession({
   // -------------------------------------------------------------------------
 
   // On adventure complete, invalidate meta-character cache so TutorialEndCard shows fresh data
-  if (isAdventureComplete || isGameOver) {
-    void queryClient.invalidateQueries({ queryKey: ["meta-character"] });
-  }
+  useEffect(() => {
+    if (isAdventureComplete || isGameOver) {
+      void queryClient.invalidateQueries({ queryKey: ["meta-character"] });
+    }
+  }, [isAdventureComplete, isGameOver, queryClient]);
 
   // -------------------------------------------------------------------------
-  // Exit / Quit tutorial — calls confirmExit which saves + navigates to /hub
+  // Exit / Quit tutorial — abandons tutorial then returns to /hub
   // -------------------------------------------------------------------------
 
-  const handleConfirmExit = () => {
-    exitGameSession();
-    void confirmExit();
+  const handleConfirmExit = async () => {
+    setIsAbandoningTutorial(true);
+    try {
+      await api.patch(`/api/v1/adventures/${adventureId}`, { status: "abandoned" });
+      closeExitModal();
+      exitGameSession();
+      void navigate({ to: "/hub" });
+    } catch {
+      // Fallback to default safe exit flow if tutorial abandonment fails
+      void confirmExit();
+    } finally {
+      setIsAbandoningTutorial(false);
+    }
   };
 
   const handleCancelExit = () => {
@@ -409,18 +424,17 @@ function TutorialSession({
             rateLimitCountdown={rateLimitCountdown}
             onReconnectRetry={manualReconnect}
             onLLMRetry={retryLastAction}
+            choicesSlot={
+              showPresetSelector ? (
+                <PresetSelector
+                  type={presetType}
+                  options={presetOptions}
+                  onSelect={(opt) => void sendAction(opt.name, opt.id, presetType)}
+                  isDisabled={isLocked}
+                />
+              ) : undefined
+            }
           />
-          {/* PresetSelector rendered below NarrationPanel content */}
-          {showPresetSelector && (
-            <div className="px-6 pb-4">
-              <PresetSelector
-                type={presetType}
-                options={presetOptions}
-                onSelect={(opt) => void sendAction(opt.name, opt.id, presetType)}
-                isDisabled={isLocked}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -513,7 +527,7 @@ function TutorialSession({
         onConfirm={handleConfirmExit}
         onCancel={handleCancelExit}
         lastSavedAt={lastSavedAt}
-        isConfirming={isConfirmingExit}
+        isConfirming={isConfirmingExit || isAbandoningTutorial}
       />
     </div>
   );
