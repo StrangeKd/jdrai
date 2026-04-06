@@ -75,6 +75,10 @@ export function TutorialPage() {
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [existingTutorialId, setExistingTutorialId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // Ensures the tutorial-check query runs exactly once on mount.
+  // Without this, dismissing the restart dialog (showRestartDialog → false)
+  // re-enables the query and causes a race with handleRestart / duplicate adventure creation.
+  const [tutorialCheckDone, setTutorialCheckDone] = useState(false);
 
   // -------------------------------------------------------------------------
   // Tutorial overlay tracking flags
@@ -104,22 +108,28 @@ export function TutorialPage() {
   useQuery({
     queryKey: ["adventures", "active", "tutorial-check"],
     queryFn: async () => {
-      const response = await api.get<{ success: true; data: AdventureDTO[] }>(
-        "/api/v1/adventures?status=active",
-      );
-      const activeTutorial = response.data.find((a) => a.isTutorial && a.status === "active");
-      if (activeTutorial) {
-        setExistingTutorialId(activeTutorial.id);
-        setShowRestartDialog(true);
-      } else {
-        await createTutorialAdventure();
+      try {
+        const response = await api.get<{ success: true; data: AdventureDTO[] }>(
+          "/api/v1/adventures?status=active",
+        );
+        const activeTutorial = response.data.find((a) => a.isTutorial && a.status === "active");
+        if (activeTutorial) {
+          setExistingTutorialId(activeTutorial.id);
+          setShowRestartDialog(true);
+        } else {
+          await createTutorialAdventure();
+        }
+        return response.data;
+      } finally {
+        // Mark as done so the query never re-runs, regardless of subsequent state changes
+        // (e.g. dismissing showRestartDialog would otherwise re-enable the query)
+        setTutorialCheckDone(true);
       }
-      return response.data;
     },
-    // Run once on mount only
     staleTime: Infinity,
     gcTime: 0,
-    enabled: adventureId === null && !showRestartDialog,
+    // Run exactly once on mount — tutorialCheckDone prevents re-triggering
+    enabled: !tutorialCheckDone,
   });
 
   // -------------------------------------------------------------------------
