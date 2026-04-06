@@ -95,6 +95,10 @@ export function useGameStreaming(
   const [isStreaming, setIsStreaming] = useState(false);
   const [gameError, setGameError] = useState<string | null>(null);
   const [hasLLMError, setHasLLMError] = useState(false);
+  // Tracks whether the Socket.io connection is established.
+  // Auto-start is gated on this to avoid a race condition where the REST game
+  // state response arrives before the WebSocket handshake completes (tutorial flow).
+  const [isSocketConnected, setIsSocketConnected] = useState(() => !!getSocket()?.connected);
 
   // Stores the last player action for LLM error retry
   const lastActionRef = useRef<{ action: string; choiceId?: string; choiceType?: "race" | "class" } | null>(null);
@@ -178,17 +182,19 @@ export function useGameStreaming(
 
   // ---------------------------------------------------------------------------
   // Auto-trigger first GM narration on new adventures (no messages yet)
+  // Gated on isSocketConnected to prevent a race condition where the REST game
+  // state response arrives before the WebSocket handshake completes.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!gameState) return;
+    if (!gameState || !isSocketConnected) return;
     if (hasAutoStarted.current) return;
     const shouldAutoStart = !options?.isResume && (gameState.messages ?? []).length === 0;
     if (shouldAutoStart) {
       hasAutoStarted.current = true;
       void sendAction("Commencer l'aventure");
     }
-  }, [gameState, options?.isResume]);
+  }, [gameState, options?.isResume, isSocketConnected]);
 
   // ---------------------------------------------------------------------------
   // Socket connection lifecycle + game event handlers
@@ -196,6 +202,14 @@ export function useGameStreaming(
 
   useEffect(() => {
     const sock = connect(adventureId);
+
+    // Sync initial connected state (idempotent re-mount: socket may already be connected)
+    if (sock.connected) setIsSocketConnected(true);
+
+    const onConnect = () => setIsSocketConnected(true);
+    const onDisconnect = () => setIsSocketConnected(false);
+    sock.on("connect", onConnect);
+    sock.on("disconnect", onDisconnect);
 
     const onResponseStart = (data?: { adventureId?: string }) => {
       if (data?.adventureId && data.adventureId !== adventureId) return;
@@ -285,6 +299,8 @@ export function useGameStreaming(
     sock.on("game:state-snapshot", onStateSnapshot as (...args: unknown[]) => void);
 
     return () => {
+      sock.off("connect", onConnect);
+      sock.off("disconnect", onDisconnect);
       sock.off("game:response-start", onResponseStart as (...args: unknown[]) => void);
       sock.off("game:chunk", onChunk as (...args: unknown[]) => void);
       sock.off("game:response-complete", onResponseComplete as (...args: unknown[]) => void);
@@ -292,6 +308,7 @@ export function useGameStreaming(
       sock.off("game:error", onError as (...args: unknown[]) => void);
       sock.off("game:state-snapshot", onStateSnapshot as (...args: unknown[]) => void);
       disconnect();
+      setIsSocketConnected(false);
     };
     // reconnectKey triggers a full socket re-init on manual reconnect after reconnect_failed
   }, [adventureId, reconnectKey]);
