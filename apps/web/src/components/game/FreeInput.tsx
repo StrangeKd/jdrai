@@ -82,18 +82,18 @@ export function FreeInput({
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-3 border-t border-stone-700 bg-stone-900">
+    <div className="flex items-center gap-2 px-4 py-6 border-t border-stone-700 bg-stone-900">
       {/* History button — opens HistoryDrawer (Story 6.6) */}
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon-lg"
         disabled={disabled}
         onClick={onHistoryClick}
         aria-label="Historique"
         title="Historique"
       >
-        📜
+        <span className="text-2xl">📜</span>
       </Button>
 
       {/* Text input */}
@@ -105,14 +105,14 @@ export function FreeInput({
         disabled={disabled}
         placeholder={resolvedPlaceholder}
         aria-label="Votre action"
-        className="flex-1 bg-stone-800 border-stone-700 text-amber-100 placeholder:text-stone-500 focus-visible:border-amber-600"
+        className="flex-1 bg-stone-800 border-stone-700 text-amber-100 placeholder:text-stone-500 focus-visible:border-amber-600 h-10"
       />
 
       {/* Send button — shows 🔒 when rate-limited (Story 6.8 AC: #1) */}
       <Button
         type="button"
         variant="default"
-        size="icon-sm"
+        size="icon-lg"
         disabled={disabled || value.trim().length === 0}
         onClick={handleSubmit}
         aria-label="Envoyer"

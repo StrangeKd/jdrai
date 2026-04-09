@@ -75,6 +75,8 @@ export function TutorialPage() {
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [existingTutorialId, setExistingTutorialId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isResumeSession, setIsResumeSession] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   // Ensures the tutorial-check query runs exactly once on mount.
   // Without this, dismissing the restart dialog (showRestartDialog → false)
   // re-enables the query and causes a race with handleRestart / duplicate adventure creation.
@@ -109,6 +111,7 @@ export function TutorialPage() {
     queryKey: ["adventures", "active", "tutorial-check"],
     queryFn: async () => {
       try {
+        setInitError(null);
         const response = await api.get<{ success: true; data: AdventureDTO[] }>(
           "/api/v1/adventures?status=active",
         );
@@ -120,6 +123,9 @@ export function TutorialPage() {
           await createTutorialAdventure();
         }
         return response.data;
+      } catch {
+        setInitError("Impossible de démarrer le tutoriel pour le moment.");
+        return [];
       } finally {
         // Mark as done so the query never re-runs, regardless of subsequent state changes
         // (e.g. dismissing showRestartDialog would otherwise re-enable the query)
@@ -138,6 +144,7 @@ export function TutorialPage() {
 
   const createTutorialAdventure = useCallback(async () => {
     setIsCreating(true);
+    setIsResumeSession(false);
     try {
       const response = await api.post<{ success: true; data: AdventureDTO }>(
         "/api/v1/adventures",
@@ -167,6 +174,7 @@ export function TutorialPage() {
   const handleContinueExisting = useCallback(() => {
     if (!existingTutorialId) return;
     setShowRestartDialog(false);
+    setIsResumeSession(true);
     setAdventureId(existingTutorialId);
   }, [existingTutorialId]);
 
@@ -198,6 +206,21 @@ export function TutorialPage() {
               </button>
             </div>
           </div>
+        ) : initError ? (
+          <div className="w-full max-w-sm space-y-4 text-center">
+            <p role="alert" className="text-sm text-red-300">
+              {initError}
+            </p>
+            <button
+              onClick={() => {
+                setInitError(null);
+                setTutorialCheckDone(false);
+              }}
+              className="rounded-lg border border-stone-600 px-4 py-2 text-sm text-stone-200 hover:border-stone-400 transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
         ) : (
           <div className="text-stone-400 text-sm">
             {isCreating ? "Création du tutoriel…" : "Chargement…"}
@@ -207,7 +230,7 @@ export function TutorialPage() {
     );
   }
 
-  return <TutorialSession adventureId={adventureId} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasChoicesRendered={hasChoicesRendered} setHasChoicesRendered={setHasChoicesRendered} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
+  return <TutorialSession adventureId={adventureId} isResumeSession={isResumeSession} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasChoicesRendered={hasChoicesRendered} setHasChoicesRendered={setHasChoicesRendered} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +240,7 @@ export function TutorialPage() {
 
 interface TutorialSessionProps {
   adventureId: string;
+  isResumeSession: boolean;
   username: string;
   metaCharacter: MetaCharacterDTO | null | undefined;
   races: ReturnType<typeof useTutorial>["races"];
@@ -236,6 +260,7 @@ interface TutorialSessionProps {
 
 function TutorialSession({
   adventureId,
+  isResumeSession,
   username,
   metaCharacter,
   races,
@@ -254,6 +279,7 @@ function TutorialSession({
 }: TutorialSessionProps) {
   const navigate = useNavigate();
   const [isAbandoningTutorial, setIsAbandoningTutorial] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
 
   const {
     gameState,
@@ -287,7 +313,6 @@ function TutorialSession({
     openExitModal,
     closeExitModal,
     isConfirmingExit,
-    confirmExit,
     isRateLimited,
     rateLimitCountdown,
     isDisconnected,
@@ -297,7 +322,7 @@ function TutorialSession({
     retryLastAction,
     isLocked,
     exitGameSession,
-  } = useGameSession(adventureId, { isNew: true });
+  } = useGameSession(adventureId, { isNew: !isResumeSession, isResume: isResumeSession });
 
   // -------------------------------------------------------------------------
   // PresetSelector — derive options from reference data + presetSelector signal
@@ -357,6 +382,7 @@ function TutorialSession({
   // -------------------------------------------------------------------------
 
   const handleConfirmExit = async () => {
+    setExitError(null);
     setIsAbandoningTutorial(true);
     try {
       await api.patch(`/api/v1/adventures/${adventureId}`, { status: "abandoned" });
@@ -364,14 +390,14 @@ function TutorialSession({
       exitGameSession();
       void navigate({ to: "/hub" });
     } catch {
-      // Fallback to default safe exit flow if tutorial abandonment fails
-      void confirmExit();
+      setExitError("Impossible d'abandonner le tutoriel. Réessayez.");
     } finally {
       setIsAbandoningTutorial(false);
     }
   };
 
   const handleCancelExit = () => {
+    setExitError(null);
     closeExitModal();
   };
 
@@ -457,6 +483,14 @@ function TutorialSession({
           {gameError}
         </div>
       )}
+      {exitError && (
+        <div
+          role="alert"
+          className="shrink-0 px-4 py-2 bg-red-900/80 text-red-200 text-sm text-center border-t border-red-700"
+        >
+          {exitError}
+        </div>
+      )}
 
       {/* FreeInput */}
       <div className="shrink-0">
@@ -503,6 +537,7 @@ function TutorialSession({
         onSave={handleManualSave}
         onHistory={openHistoryDrawer}
         onQuit={() => {
+          setExitError(null);
           closePauseMenu();
           openExitModal();
         }}

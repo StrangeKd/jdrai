@@ -24,27 +24,41 @@ export function TutorialTooltipLayer({
   isTooltipSeen,
   dismissTooltip,
 }: TutorialTooltipLayerProps) {
+  const showFirstChoice = hasChoicesRendered && !isTooltipSeen("first-choice");
+  const showFirstInput =
+    !showFirstChoice &&
+    hasFreeInputFocused &&
+    isTooltipSeen("first-choice") &&
+    !isTooltipSeen("first-input");
+  const showPauseMenu =
+    !showFirstChoice &&
+    !showFirstInput &&
+    hasPauseMenuOpened &&
+    isTooltipSeen("first-choice") &&
+    isTooltipSeen("first-input") &&
+    !isTooltipSeen("pause-menu");
+
   return (
     <>
       <TutorialTooltip
         id="first-choice"
         text="Choisissez une option ou écrivez librement ci-dessous !"
         position="above-choices"
-        isVisible={hasChoicesRendered && !isTooltipSeen("first-choice")}
+        isVisible={showFirstChoice}
         onDismiss={() => dismissTooltip("first-choice")}
       />
       <TutorialTooltip
         id="first-input"
         text="Vous pouvez aussi écrire votre propre réponse ici !"
         position="above-input"
-        isVisible={hasFreeInputFocused && !isTooltipSeen("first-input")}
+        isVisible={showFirstInput}
         onDismiss={() => dismissTooltip("first-input")}
       />
       <TutorialTooltip
         id="pause-menu"
         text="Vous pouvez mettre en pause ou quitter depuis ici."
         position="near-pause"
-        isVisible={hasPauseMenuOpened && !isTooltipSeen("pause-menu")}
+        isVisible={showPauseMenu}
         onDismiss={() => dismissTooltip("pause-menu")}
       />
     </>

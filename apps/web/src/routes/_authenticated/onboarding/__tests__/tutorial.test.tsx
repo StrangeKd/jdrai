@@ -33,51 +33,9 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 // Mock useGameSession — prevents socket connection in tests
+const mockUseGameSession = vi.fn();
 vi.mock("@/hooks/useGameSession", () => ({
-  useGameSession: () => ({
-    gameState: null,
-    currentScene: "",
-    streamingBuffer: "",
-    playerEcho: null,
-    choices: [],
-    presetSelector: undefined,
-    isLoading: false,
-    isStreaming: false,
-    gameError: null,
-    sendAction: vi.fn(),
-    currentHp: 10,
-    maxHp: 10,
-    lastSavedAt: null,
-    showAutosaveIndicator: false,
-    isPauseMenuOpen: false,
-    isAdventureComplete: false,
-    openPauseMenu: vi.fn(),
-    closePauseMenu: vi.fn(),
-    manualSave: vi.fn(),
-    showMilestoneOverlay: false,
-    milestoneOverlayName: null,
-    isHistoryDrawerOpen: false,
-    isFirstLaunch: false,
-    openHistoryDrawer: vi.fn(),
-    closeHistoryDrawer: vi.fn(),
-    dismissIntro: vi.fn(),
-    isGameOver: false,
-    isInGameSession: true,
-    isExitModalOpen: false,
-    openExitModal: vi.fn(),
-    closeExitModal: vi.fn(),
-    isConfirmingExit: false,
-    confirmExit: vi.fn(),
-    isRateLimited: false,
-    rateLimitCountdown: 0,
-    isDisconnected: false,
-    connectionFailed: false,
-    manualReconnect: vi.fn(),
-    hasLLMError: false,
-    retryLastAction: vi.fn(),
-    isLocked: false,
-    exitGameSession: vi.fn(),
-  }),
+  useGameSession: (...args: unknown[]) => mockUseGameSession(...args),
 }));
 
 // Mock useTutorial
@@ -134,6 +92,50 @@ describe("TutorialPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     executedQueryKeys.clear();
+    mockUseGameSession.mockImplementation(() => ({
+      gameState: null,
+      currentScene: "",
+      streamingBuffer: "",
+      playerEcho: null,
+      choices: [],
+      presetSelector: undefined,
+      isLoading: false,
+      isStreaming: false,
+      gameError: null,
+      sendAction: vi.fn(),
+      currentHp: 10,
+      maxHp: 10,
+      lastSavedAt: null,
+      showAutosaveIndicator: false,
+      isPauseMenuOpen: false,
+      isAdventureComplete: false,
+      openPauseMenu: vi.fn(),
+      closePauseMenu: vi.fn(),
+      manualSave: vi.fn(),
+      showMilestoneOverlay: false,
+      milestoneOverlayName: null,
+      isHistoryDrawerOpen: false,
+      isFirstLaunch: false,
+      openHistoryDrawer: vi.fn(),
+      closeHistoryDrawer: vi.fn(),
+      dismissIntro: vi.fn(),
+      isGameOver: false,
+      isInGameSession: true,
+      isExitModalOpen: false,
+      openExitModal: vi.fn(),
+      closeExitModal: vi.fn(),
+      isConfirmingExit: false,
+      confirmExit: vi.fn(),
+      isRateLimited: false,
+      rateLimitCountdown: 0,
+      isDisconnected: false,
+      connectionFailed: false,
+      manualReconnect: vi.fn(),
+      hasLLMError: false,
+      retryLastAction: vi.fn(),
+      isLocked: false,
+      exitGameSession: vi.fn(),
+    }));
 
     // Execute each queryFn once per queryKey to simulate React Query mount behavior.
     mockUseQuery.mockImplementation((opts: {
@@ -217,5 +219,39 @@ describe("TutorialPage", () => {
         estimatedDuration: "short",
       }),
     );
+  });
+
+  it("clic 'Continuer là où j'en étais' -> session en mode resume", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [{ id: "existing-id", isTutorial: true, status: "active" }],
+    });
+
+    render(<TutorialPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Une aventure est déjà en cours.")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByText("Continuer là où j'en étais"));
+
+    await waitFor(() => {
+      expect(mockUseGameSession).toHaveBeenCalledWith("existing-id", {
+        isNew: false,
+        isResume: true,
+      });
+    });
+  });
+
+  it("erreur au chargement initial -> affiche un message et un bouton Réessayer", async () => {
+    mockApiGet.mockRejectedValueOnce(new Error("network"));
+
+    render(<TutorialPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Impossible de démarrer le tutoriel pour le moment.",
+      );
+    });
+    expect(screen.getByRole("button", { name: /réessayer/i })).toBeInTheDocument();
   });
 });
