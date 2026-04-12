@@ -76,7 +76,18 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     );
   }
 
-  return response.json() as Promise<T>;
+  // Some endpoints (e.g. PATCH/DELETE) may return 204/205 or an empty body.
+  // Calling response.json() on an empty payload throws "Unexpected end of JSON input".
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+
+  const rawBody = await response.text();
+  if (rawBody.trim().length === 0) {
+    return undefined as T;
+  }
+
+  return JSON.parse(rawBody) as T;
 }
 
 if (import.meta.env.DEV) {

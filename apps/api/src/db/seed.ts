@@ -12,7 +12,7 @@ async function seed() {
 
   console.log("Seeding reference data...");
 
-  // Races
+  // Races — minimum 3 for the tutorial PresetSelector (WF-E7-02)
   await db
     .insert(schema.races)
     .values([
@@ -22,10 +22,22 @@ async function seed() {
         traits: { adaptable: true, resilient: true },
         isDefault: true,
       },
+      {
+        name: "Elfe",
+        description: "Un peuple ancien, habile et en harmonie avec la nature.",
+        traits: { agile: true, perceptive: true },
+        isDefault: false,
+      },
+      {
+        name: "Nain",
+        description: "Un peuple robuste et tenace, forgé par les profondeurs.",
+        traits: { tough: true, stubborn: true },
+        isDefault: false,
+      },
     ])
     .onConflictDoNothing();
 
-  // Character classes
+  // Character classes — minimum 4 for the tutorial PresetSelector (WF-E7-03)
   await db
     .insert(schema.characterClasses)
     .values([
@@ -34,6 +46,24 @@ async function seed() {
         description: "Un aventurier polyvalent, prêt à affronter l'inconnu.",
         baseStats: { strength: 10, agility: 10, charisma: 10, karma: 10 },
         isDefault: true,
+      },
+      {
+        name: "Guerrier",
+        description: "Un combattant endurci, maître des armes et de l'armure.",
+        baseStats: { strength: 14, agility: 8, charisma: 8, karma: 10 },
+        isDefault: false,
+      },
+      {
+        name: "Mage",
+        description: "Un érudit des arts mystiques, manipulateur des forces magiques.",
+        baseStats: { strength: 6, agility: 10, charisma: 12, karma: 12 },
+        isDefault: false,
+      },
+      {
+        name: "Voleur",
+        description: "Un artiste de l'ombre, spécialiste de la discrétion et de l'astuce.",
+        baseStats: { strength: 8, agility: 14, charisma: 10, karma: 8 },
+        isDefault: false,
       },
     ])
     .onConflictDoNothing();

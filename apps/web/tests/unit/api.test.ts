@@ -6,11 +6,13 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 function makeResponse(status: number, body: unknown, headers: Record<string, string> = {}) {
+  const serializedBody = typeof body === "string" ? body : JSON.stringify(body);
   return {
     status,
     ok: status >= 200 && status < 300,
     headers: { get: (key: string) => headers[key.toLowerCase()] ?? null },
     json: () => Promise.resolve(body),
+    text: () => Promise.resolve(serializedBody),
   };
 }
 
@@ -39,6 +41,19 @@ describe("api service", () => {
     const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(options.method).toBe("POST");
     expect(options.body).toBe(JSON.stringify({ foo: "bar" }));
+  });
+
+  it("returns undefined for 204 No Content responses", async () => {
+    mockFetch.mockResolvedValueOnce({
+      status: 204,
+      ok: true,
+      headers: { get: () => null },
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve(""),
+    });
+
+    const result = await api.patch("/api/v1/adventures/adv-1", { status: "abandoned" });
+    expect(result).toBeUndefined();
   });
 
   it("returns 429 as RateLimitError with correct retryAfter", async () => {

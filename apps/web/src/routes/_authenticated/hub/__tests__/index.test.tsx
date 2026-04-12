@@ -51,6 +51,11 @@ vi.mock("@/components/adventure/AbandonModal", () => ({
 // Mock sonner to avoid import issues in jsdom
 vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
 
+// Mock react-query — useQuery for metaCharacterQuery (Story 8.2) returns null by default
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: null, isLoading: false }),
+}));
+
 // Mock authClient for EmailVerificationBanner
 vi.mock("@/lib/auth-client", () => ({
   authClient: { sendVerificationEmail: vi.fn().mockResolvedValue({ data: null, error: null }) },

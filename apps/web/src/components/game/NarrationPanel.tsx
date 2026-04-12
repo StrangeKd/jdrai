@@ -5,6 +5,7 @@
  * Story 6.8: adds ConnectionLostBanner, LLMErrorMessage, RateLimitMessage.
  * Auto-scrolls to bottom during streaming (AC: #2, #3, #4).
  */
+import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 
 import type { SuggestedAction } from "@jdrai/shared";
@@ -33,6 +34,8 @@ interface NarrationPanelProps {
   rateLimitCountdown: number;
   onReconnectRetry: () => void;
   onLLMRetry: () => void;
+  /** Optional replacement for the default ChoiceList area (e.g. tutorial PresetSelector). */
+  choicesSlot?: ReactNode;
 }
 
 export function NarrationPanel({
@@ -51,6 +54,7 @@ export function NarrationPanel({
   rateLimitCountdown,
   onReconnectRetry,
   onLLMRetry,
+  choicesSlot,
 }: NarrationPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -98,10 +102,16 @@ export function NarrationPanel({
           </p>
         )}
 
-        {/* 4. ChoiceList — after narration, hidden during streaming or LLM error (AC: #6) */}
-        {!isStreaming && !hasLLMError && choices.length > 0 && (
+        {/* 4. Choices area — default ChoiceList or optional replacement slot */}
+        {!isStreaming && !hasLLMError && (
           <div className="mt-6">
-            <ChoiceList choices={choices} disabled={isLocked} onSelect={onChoiceSelect} />
+            {choicesSlot ?? (
+              <>
+                {choices.length > 0 && (
+                  <ChoiceList choices={choices} disabled={isLocked} onSelect={onChoiceSelect} />
+                )}
+              </>
+            )}
           </div>
         )}
 

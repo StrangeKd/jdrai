@@ -67,7 +67,9 @@ export interface GameSessionState {
   /** true on first load when adventure has no messages yet — shows IntroSession */
   isFirstLaunch: boolean;
   /** Submit a player action (free text or choice label) */
-  sendAction: (action: string, choiceId?: string) => Promise<void>;
+  sendAction: (action: string, choiceId?: string, choiceType?: "race" | "class") => Promise<void>;
+  /** presetSelector from the last game:response-complete (tutorial: "race" | "class", else undefined) */
+  presetSelector: "race" | "class" | undefined;
   /** Open the pause overlay */
   openPauseMenu: () => void;
   /** Close the pause overlay */
