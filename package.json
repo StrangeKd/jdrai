@@ -17,7 +17,9 @@
     "db:migrate": "turbo run db:migrate --filter=@jdrai/api",
     "db:push": "turbo run db:push --filter=@jdrai/api",
     "db:studio": "turbo run db:studio --filter=@jdrai/api",
-    "db:seed": "turbo run db:seed --filter=@jdrai/api"
+    "db:seed": "turbo run db:seed --filter=@jdrai/api",
+    "db:reset": "turbo run db:reset --filter=@jdrai/api",
+    "db:fresh": "pnpm --filter @jdrai/api db:reset && pnpm --filter @jdrai/api db:seed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
