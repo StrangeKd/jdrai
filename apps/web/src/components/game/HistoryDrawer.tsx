@@ -5,12 +5,18 @@
  * Story 6.6 Task 3.
  */
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { GameMessageDTO, MilestoneDTO } from "@jdrai/shared";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { fetchMessages } from "@/services/adventure.service";
 
 import { MilestoneHeader } from "./MilestoneHeader";
@@ -19,10 +25,27 @@ import { MilestoneHeader } from "./MilestoneHeader";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Truncates text to maxLength chars, appending "..." if cut. */
-function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + "...";
+const TRUNCATE_LENGTH = 200;
+
+/** Inline expand/collapse for long assistant messages (Instagram-style). */
+function ExpandableMessage({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > TRUNCATE_LENGTH;
+
+  return (
+    <p className="text-sm text-foreground leading-relaxed">
+      {!isLong || expanded ? content : content.slice(0, TRUNCATE_LENGTH) + "…"}
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="ml-1 text-muted-foreground hover:text-foreground font-medium transition-colors underline underline-offset-4 cursor-pointer"
+        >
+          {expanded ? "Voir moins" : "Voir plus"}
+        </button>
+      )}
+    </p>
+  );
 }
 
 /**
@@ -156,9 +179,7 @@ export function HistoryDrawer({ isOpen, onClose, adventureId, milestones }: Hist
                         return (
                           <div key={message.id}>
                             {message.role === "assistant" && (
-                              <p className="text-sm text-foreground leading-relaxed">
-                                {truncate(message.content, 200)}
-                              </p>
+                              <ExpandableMessage content={message.content} />
                             )}
                             {message.role === "user" && (
                               <p className="text-sm text-muted-foreground italic">

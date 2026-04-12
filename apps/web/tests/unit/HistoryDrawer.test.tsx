@@ -172,7 +172,7 @@ describe("HistoryDrawer", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("truncates long assistant messages to 200 chars", () => {
+  it("truncates long assistant messages to 200 chars with expand button", () => {
     const longContent = "A".repeat(300);
     useQueryMock.mockReturnValue({
       data: [{ id: "x", role: "assistant", content: longContent, milestoneId: "m1", createdAt: "2026-03-01T00:00:00Z" }],
@@ -190,8 +190,19 @@ describe("HistoryDrawer", () => {
       />,
     );
 
-    const displayed = screen.getByText(/^A+\.\.\./);
-    expect(displayed.textContent).toHaveLength(203); // 200 chars + "..."
+    // Le composant tronque à 200 chars + "…" (U+2026) et affiche un bouton "Voir plus"
+    const voirPlus = screen.getByRole("button", { name: "Voir plus" });
+    expect(voirPlus).toBeInTheDocument();
+
+    const paragraph = voirPlus.closest("p");
+    // textContent = 200 "A" + "…" + "Voir plus" — on vérifie que la partie visible est bien tronquée
+    expect(paragraph?.textContent).toContain("A".repeat(200) + "…");
+    expect(paragraph?.textContent).not.toContain("A".repeat(201));
+
+    // Clic sur "Voir plus" → texte complet affiché, bouton devient "Voir moins"
+    fireEvent.click(voirPlus);
+    expect(screen.getByRole("button", { name: "Voir moins" })).toBeInTheDocument();
+    expect(screen.getByText("Voir moins").closest("p")?.textContent).toContain(longContent);
   });
 
   it("shows error state and retries when message fetch fails", () => {
