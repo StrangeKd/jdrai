@@ -86,7 +86,6 @@ export function TutorialPage() {
   // Tutorial overlay tracking flags
   // -------------------------------------------------------------------------
 
-  const [hasChoicesRendered, setHasChoicesRendered] = useState(false);
   const [hasFreeInputFocused, setHasFreeInputFocused] = useState(false);
   const [hasPauseMenuOpenedForTooltip, setHasPauseMenuOpenedForTooltip] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -230,7 +229,7 @@ export function TutorialPage() {
     );
   }
 
-  return <TutorialSession adventureId={adventureId} isResumeSession={isResumeSession} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasChoicesRendered={hasChoicesRendered} setHasChoicesRendered={setHasChoicesRendered} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
+  return <TutorialSession adventureId={adventureId} isResumeSession={isResumeSession} username={user?.username ?? user?.email ?? "Aventurier"} metaCharacter={metaCharacter} races={races} classes={classes} isTooltipSeen={isTooltipSeen} dismissTooltip={dismissTooltip} isSaving={isSaving} setIsSaving={setIsSaving} hasFreeInputFocused={hasFreeInputFocused} setHasFreeInputFocused={setHasFreeInputFocused} hasPauseMenuOpenedForTooltip={hasPauseMenuOpenedForTooltip} setHasPauseMenuOpenedForTooltip={setHasPauseMenuOpenedForTooltip} queryClient={queryClient} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,8 +248,6 @@ interface TutorialSessionProps {
   dismissTooltip: (id: string) => void;
   isSaving: boolean;
   setIsSaving: (v: boolean) => void;
-  hasChoicesRendered: boolean;
-  setHasChoicesRendered: (v: boolean) => void;
   hasFreeInputFocused: boolean;
   setHasFreeInputFocused: (v: boolean) => void;
   hasPauseMenuOpenedForTooltip: boolean;
@@ -269,8 +266,6 @@ function TutorialSession({
   dismissTooltip,
   isSaving,
   setIsSaving,
-  hasChoicesRendered,
-  setHasChoicesRendered,
   hasFreeInputFocused,
   setHasFreeInputFocused,
   hasPauseMenuOpenedForTooltip,
@@ -346,14 +341,6 @@ function TutorialSession({
             trait: c.description ?? "",
           }))
         : [];
-
-  // Track tooltip trigger: choices/preset are visible
-  const hasChoices = choices.length > 0 || (!!presetType && presetOptions.length > 0);
-  useEffect(() => {
-    if (hasChoices && !hasChoicesRendered) {
-      setHasChoicesRendered(true);
-    }
-  }, [hasChoices, hasChoicesRendered, setHasChoicesRendered]);
 
   // -------------------------------------------------------------------------
   // Pause menu — track first open for tooltip
@@ -511,11 +498,12 @@ function TutorialSession({
 
       {/* Tutorial overlay layer */}
       <TutorialTooltipLayer
-        hasChoicesRendered={hasChoicesRendered}
         hasFreeInputFocused={hasFreeInputFocused}
         hasPauseMenuOpened={hasPauseMenuOpenedForTooltip}
         isTooltipSeen={isTooltipSeen}
         dismissTooltip={dismissTooltip}
+        onTriggerFreeInput={() => setHasFreeInputFocused(true)}
+        onTriggerPauseMenu={() => setHasPauseMenuOpenedForTooltip(true)}
       />
 
       {/* TutorialEndCard — full-screen overlay when adventure completed */}

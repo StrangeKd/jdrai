@@ -7,24 +7,27 @@
 import { TutorialTooltip } from "./TutorialTooltip";
 
 interface TutorialTooltipLayerProps {
-  /** true when ChoiceList or PresetSelector is visible */
-  hasChoicesRendered: boolean;
   /** true after the first FreeInput focus event */
   hasFreeInputFocused: boolean;
   /** true after the first [⚙] pause button tap */
   hasPauseMenuOpened: boolean;
   isTooltipSeen: (id: string) => boolean;
   dismissTooltip: (id: string) => void;
+  /** Called when first-choice is dismissed — force-triggers the free-input tooltip */
+  onTriggerFreeInput?: () => void;
+  /** Called when first-input is dismissed — force-triggers the pause-menu tooltip */
+  onTriggerPauseMenu?: () => void;
 }
 
 export function TutorialTooltipLayer({
-  hasChoicesRendered,
   hasFreeInputFocused,
   hasPauseMenuOpened,
   isTooltipSeen,
   dismissTooltip,
+  onTriggerFreeInput,
+  onTriggerPauseMenu,
 }: TutorialTooltipLayerProps) {
-  const showFirstChoice = hasChoicesRendered && !isTooltipSeen("first-choice");
+  const showFirstChoice = !isTooltipSeen("first-choice");
   const showFirstInput =
     !showFirstChoice &&
     hasFreeInputFocused &&
@@ -45,14 +48,20 @@ export function TutorialTooltipLayer({
         text="Choisissez une option ou écrivez librement ci-dessous !"
         position="above-choices"
         isVisible={showFirstChoice}
-        onDismiss={() => dismissTooltip("first-choice")}
+        onDismiss={() => {
+          dismissTooltip("first-choice");
+          onTriggerFreeInput?.();
+        }}
       />
       <TutorialTooltip
         id="first-input"
         text="Vous pouvez aussi écrire votre propre réponse ici !"
         position="above-input"
         isVisible={showFirstInput}
-        onDismiss={() => dismissTooltip("first-input")}
+        onDismiss={() => {
+          dismissTooltip("first-input");
+          onTriggerPauseMenu?.();
+        }}
       />
       <TutorialTooltip
         id="pause-menu"
