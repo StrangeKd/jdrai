@@ -2,11 +2,16 @@
   "name": "jdrai",
   "private": true,
   "packageManager": "pnpm@10.29.3",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "pnpm --filter @jdrai/web dev",
     "dev:api": "pnpm --filter @jdrai/api dev",
     "build": "turbo run build",
+    "build:api": "turbo run build --filter=@jdrai/api...",
+    "build:web": "turbo run build --filter=@jdrai/web...",
     "start": "turbo run start",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint -- --fix",
