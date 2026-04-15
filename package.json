@@ -12,7 +12,7 @@
     "build": "turbo run build",
     "build:api": "turbo run build --filter=@jdrai/api...",
     "build:web": "turbo run build --filter=@jdrai/web...",
-    "start": "turbo run start",
+    "start": "turbo run start --filter=@jdrai/api",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint -- --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
