@@ -22,7 +22,8 @@ RUN pnpm --filter @jdrai/shared build
 RUN pnpm --filter @jdrai/api build
 
 # Remove devDependencies before copying to production stage
-RUN pnpm prune --prod
+# CI=true required: pnpm refuses to delete node_modules without TTY otherwise
+RUN CI=true pnpm prune --prod
 
 # ── Production ──────────────────────────────────────────────────────────────────
 FROM base AS production
