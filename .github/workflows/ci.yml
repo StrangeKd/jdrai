@@ -37,3 +37,17 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  deploy:
+    name: Trigger Dokploy deployment
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Dokploy webhook
+        run: |
+          curl -fsSL -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/${{ github.ref_name }}"}' \
+            "${{ secrets.DOKPLOY_WEBHOOK_URL }}"

@@ -29,16 +29,17 @@ RUN CI=true pnpm prune --prod
 FROM base AS production
 WORKDIR /app
 
-# Copy pruned node_modules (includes @jdrai/shared symlink → packages/shared)
+# Copy pnpm virtual store (root node_modules/.pnpm) + app-level symlinks
+# pnpm splits installs: root has the virtual store, apps/api/node_modules has symlinks into it
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
-# Copy compiled shared package + a minimal package.json pointing to dist
-# The symlink node_modules/@jdrai/shared resolves to /app/packages/shared at runtime
+# Compiled shared package — symlink @jdrai/shared resolves here
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 RUN printf '{"name":"@jdrai/shared","version":"0.0.0","type":"module","main":"./dist/index.js"}' \
     > ./packages/shared/package.json
 
-# Copy compiled API and migrations
+# Compiled API + migrations
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/drizzle ./apps/api/drizzle
 COPY --from=builder /app/apps/api/package.json ./apps/api/
