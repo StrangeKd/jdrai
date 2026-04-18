@@ -47,6 +47,10 @@ jobs:
       - name: Call Dokploy webhook
         run: |
           curl -fsSL -X POST \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-connrefused \
             -H "Content-Type: application/json" \
             -H "X-GitHub-Event: push" \
             -d '{"ref":"refs/heads/${{ github.ref_name }}"}' \

@@ -23,7 +23,7 @@ RUN pnpm --filter @jdrai/api build
 
 # pnpm deploy creates a self-contained folder with real files (no symlinks, no virtual store)
 # This is the recommended way to handle pnpm monorepos in Docker
-RUN pnpm --filter @jdrai/api deploy --prod /deploy
+RUN pnpm --filter @jdrai/api deploy --prod --legacy /deploy
 
 # dist/ and drizzle/ are gitignored so pnpm deploy skips them — copy manually
 RUN cp -r apps/api/dist /deploy/dist
