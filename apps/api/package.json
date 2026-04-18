@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --out-dir dist --no-splitting",
+    "build": "tsup",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

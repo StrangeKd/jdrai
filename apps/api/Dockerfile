@@ -26,13 +26,9 @@ RUN pnpm --filter @jdrai/api build
 RUN pnpm --filter @jdrai/api deploy --prod --legacy /deploy
 
 # dist/ and drizzle/ are gitignored so pnpm deploy skips them — copy manually
+# @jdrai/shared is bundled inline by tsup — no patching needed
 RUN cp -r apps/api/dist /deploy/dist
 RUN cp -r apps/api/drizzle /deploy/drizzle
-
-# Patch @jdrai/shared inside the deploy: replace ts source with compiled dist
-RUN cp -r packages/shared/dist /deploy/node_modules/@jdrai/shared/dist
-RUN printf '{"name":"@jdrai/shared","version":"0.0.0","type":"module","main":"./dist/index.js"}' \
-    > /deploy/node_modules/@jdrai/shared/package.json
 
 # ── Production ──────────────────────────────────────────────────────────────────
 FROM base AS production
