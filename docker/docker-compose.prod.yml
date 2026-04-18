@@ -11,6 +11,9 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    networks:
+      - default
+      - dokploy-network
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -38,3 +41,9 @@ services:
       - "80"
     depends_on:
       - api
+
+networks:
+  default:
+  dokploy-network:
+    external: true
+    name: dokploy-network
