@@ -21,30 +21,25 @@ COPY . .
 RUN pnpm --filter @jdrai/shared build
 RUN pnpm --filter @jdrai/api build
 
-# Remove devDependencies before copying to production stage
-# CI=true required: pnpm refuses to delete node_modules without TTY otherwise
-RUN CI=true pnpm prune --prod
+# pnpm deploy creates a self-contained folder with real files (no symlinks, no virtual store)
+# This is the recommended way to handle pnpm monorepos in Docker
+RUN pnpm --filter @jdrai/api deploy --prod /deploy
+
+# dist/ and drizzle/ are gitignored so pnpm deploy skips them — copy manually
+RUN cp -r apps/api/dist /deploy/dist
+RUN cp -r apps/api/drizzle /deploy/drizzle
+
+# Patch @jdrai/shared inside the deploy: replace ts source with compiled dist
+RUN cp -r packages/shared/dist /deploy/node_modules/@jdrai/shared/dist
+RUN printf '{"name":"@jdrai/shared","version":"0.0.0","type":"module","main":"./dist/index.js"}' \
+    > /deploy/node_modules/@jdrai/shared/package.json
 
 # ── Production ──────────────────────────────────────────────────────────────────
 FROM base AS production
 WORKDIR /app
 
-# Copy pnpm virtual store (root node_modules/.pnpm) + app-level symlinks
-# pnpm splits installs: root has the virtual store, apps/api/node_modules has symlinks into it
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /deploy .
 
-# Compiled shared package — symlink @jdrai/shared resolves here
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-RUN printf '{"name":"@jdrai/shared","version":"0.0.0","type":"module","main":"./dist/index.js"}' \
-    > ./packages/shared/package.json
-
-# Compiled API + migrations
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/drizzle ./apps/api/drizzle
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-
-WORKDIR /app/apps/api
 USER node
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
