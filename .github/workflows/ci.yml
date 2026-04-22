@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 jobs:
   ci:
@@ -38,8 +38,8 @@ jobs:
       - name: Test
         run: pnpm test
 
-  deploy:
-    name: Trigger Dokploy deployment
+  deploy-production:
+    name: Deploy → Production
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -53,5 +53,23 @@ jobs:
             --retry-connrefused \
             -H "Content-Type: application/json" \
             -H "X-GitHub-Event: push" \
-            -d '{"ref":"refs/heads/${{ github.ref_name }}"}' \
+            -d '{"ref":"refs/heads/main"}' \
             "${{ secrets.DOKPLOY_WEBHOOK_URL }}"
+
+  deploy-staging:
+    name: Deploy → Staging
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Dokploy webhook
+        run: |
+          curl -fsSL -X POST \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-connrefused \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/staging"}' \
+            "${{ secrets.DOKPLOY_WEBHOOK_URL_STAGING }}"
