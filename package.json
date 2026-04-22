@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --ui=tui",
     "dev:web": "pnpm --filter @jdrai/web dev",
     "dev:api": "pnpm --filter @jdrai/api dev",
     "build": "turbo run build",
