@@ -1,4 +1,4 @@
-name: jdrai
+name: jdrai-staging
 
 # PostgreSQL is managed by Dokploy — not declared here.
 # Set DATABASE_URL in Dokploy's environment variables to point to the Dokploy DB.
