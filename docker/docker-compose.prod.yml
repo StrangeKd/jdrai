@@ -12,8 +12,10 @@ services:
     expose:
       - "3000"
     networks:
-      - default
-      - dokploy-network
+      default:
+        aliases:
+          - api-internal
+      dokploy-network: {}
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
