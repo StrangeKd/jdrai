@@ -217,6 +217,18 @@ export async function createLLMService(): Promise<LLMService> {
     ...dedupedFallbackProviders.flatMap((p) => modelsByProvider[p].map((m) => `${p}:${m}`)),
   ];
 
+  // Register LLM_FREE_MODEL_KEY if not already in the map (DEV freeModels flag support).
+  // Requires OPENROUTER_API_KEY since free models are OpenRouter-only by default.
+  const freeKey = env.LLM_FREE_MODEL_KEY;
+  if (freeKey && !providers.has(freeKey) && env.OPENROUTER_API_KEY) {
+    const colonIdx = freeKey.indexOf(":");
+    if (colonIdx !== -1) {
+      const freeProvider = freeKey.slice(0, colonIdx) as "openai" | "anthropic" | "openrouter";
+      const freeModel = freeKey.slice(colonIdx + 1);
+      providers.set(freeKey, new TanStackAIProvider(freeProvider, freeModel));
+    }
+  }
+
   // chain is always non-empty: env validation guarantees at least one model per provider
   const primaryKey = chain[0] as string;
 

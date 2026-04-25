@@ -116,14 +116,19 @@ export function NewAdventurePage() {
   );
   const [abandonTarget, setAbandonTarget] = useState<AdventureDTO | null>(null);
 
-  // DEV only — mock LLM toggle (persisted in localStorage, read by useGameChat on action send)
-  const [devMockLlm, setDevMockLlm] = useState<boolean>(
-    () => import.meta.env.DEV && localStorage.getItem("dev:mockLlm") === "true",
-  );
+  // DEV only — LLM mode selector (persisted in localStorage, read by useGameChat on action send)
+  type DevMode = "normal" | "mock" | "free";
+  const [devMode, setDevMode] = useState<DevMode>(() => {
+    if (!import.meta.env.DEV) return "normal";
+    if (localStorage.getItem("dev:mockLlm") === "true") return "mock";
+    if (localStorage.getItem("dev:freeModels") === "true") return "free";
+    return "normal";
+  });
 
-  function toggleDevMockLlm(enabled: boolean) {
-    localStorage.setItem("dev:mockLlm", String(enabled));
-    setDevMockLlm(enabled);
+  function changeDevMode(mode: DevMode) {
+    localStorage.setItem("dev:mockLlm",    String(mode === "mock"));
+    localStorage.setItem("dev:freeModels", String(mode === "free"));
+    setDevMode(mode);
   }
 
   const isAtLimit = !activeLoading && !activeError && activeAdventures.length >= 5;
@@ -132,27 +137,37 @@ export function NewAdventurePage() {
   // DEV mock LLM toggle — rendered on all config/confirmation/random steps
   // ---------------------------------------------------------------------------
 
+  const DEV_MODES: { id: DevMode; label: string; title: string }[] = [
+    { id: "normal", label: "Normal",  title: "Provider configuré dans .env" },
+    { id: "mock",   label: "Mock",    title: "Réponse hardcodée — zéro token" },
+    { id: "free",   label: "Gratuit", title: "OpenRouter free tier (LLM_FREE_MODEL_KEY)" },
+  ];
+
   const DevMockToggle = import.meta.env.DEV ? (
     <div className="flex items-center gap-2 rounded border border-yellow-600/40 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-400">
-      <span className="font-mono font-semibold">DEV</span>
-      <span className="flex-1">Mock LLM (pas de tokens)</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={devMockLlm}
-        onClick={() => toggleDevMockLlm(!devMockLlm)}
-        className={[
-          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-          devMockLlm ? "bg-yellow-500" : "bg-stone-600",
-        ].join(" ")}
-      >
-        <span
-          className={[
-            "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-            devMockLlm ? "translate-x-4" : "translate-x-0",
-          ].join(" ")}
-        />
-      </button>
+      <span className="font-mono font-semibold shrink-0">DEV</span>
+      <span className="shrink-0 text-yellow-600">LLM :</span>
+      <div className="flex flex-1 gap-1">
+        {DEV_MODES.map(({ id, label, title }) => (
+          <button
+            key={id}
+            type="button"
+            title={title}
+            onClick={() => changeDevMode(id)}
+            className={[
+              "rounded px-2 py-0.5 font-medium transition-colors",
+              devMode === id
+                ? "bg-yellow-500 text-stone-900"
+                : "bg-stone-700 text-stone-400 hover:bg-stone-600 hover:text-stone-200",
+            ].join(" ")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <span className="shrink-0 text-yellow-600/60 italic">
+        {DEV_MODES.find((m) => m.id === devMode)?.title}
+      </span>
     </div>
   ) : null;
 

@@ -67,6 +67,8 @@ const envSchema = z
       z.array(z.string().min(1)),
     ),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    /** DEV only — provider:model key routed when freeModels flag is set on an action. */
+    LLM_FREE_MODEL_KEY: z.string().default("openrouter:openai/gpt-oss-120b:free"),
   })
   .superRefine((data, ctx) => {
     if (data.LLM_PRIMARY_PROVIDER === "openai" && !data.OPENAI_API_KEY) {

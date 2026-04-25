@@ -154,6 +154,8 @@ export interface ProcessActionParams {
   io?: import("socket.io").Server | undefined;
   /** DEV only — bypasses LLM and returns hardcoded text to save tokens during manual testing. */
   mockLlm?: boolean | undefined;
+  /** DEV only — routes to LLM_FREE_MODEL_KEY (OpenRouter free tier) instead of primary provider. */
+  freeModels?: boolean | undefined;
 }
 
 export interface ProcessActionResult {
@@ -488,10 +490,15 @@ export class GameService {
       }
     } else {
       const llm = await this.getLLMService();
+      const freeModelKey =
+        process.env["NODE_ENV"] !== "production" && params.freeModels
+          ? (process.env["LLM_FREE_MODEL_KEY"] ?? undefined)
+          : undefined;
       try {
         for await (const chunk of llm.stream({
           systemPrompt: combinedSystemPrompt,
           messages: conversationMessages,
+          ...(freeModelKey ? { modelKey: freeModelKey } : {}),
         })) {
           if (shouldStream) {
             io!.to(room).emit("game:chunk", { adventureId, chunk });
