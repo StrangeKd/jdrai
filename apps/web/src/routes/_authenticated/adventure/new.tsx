@@ -143,7 +143,7 @@ export function NewAdventurePage() {
     { id: "free",   label: "Gratuit", title: "OpenRouter free tier (LLM_FREE_MODEL_KEY)" },
   ];
 
-  const DevMockToggle = import.meta.env.DEV ? (
+  const DevMockToggle = import.meta.env.DEV && import.meta.env.MODE !== "test" ? (
     <div className="flex items-center gap-2 rounded border border-yellow-600/40 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-400">
       <span className="font-mono font-semibold shrink-0">DEV</span>
       <span className="shrink-0 text-yellow-600">LLM :</span>

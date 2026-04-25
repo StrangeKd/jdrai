@@ -305,7 +305,7 @@ export class PromptBuilder {
       "- Utilise le présent de narration",
       "- Ne brise JAMAIS le 4e mur",
       "- Ne mentionne JAMAIS de mécanique de jeu (\"jet de dés\", \"score de...\", \"points de vie...\")",
-      "- Varie la longueur de tes réponses : courtes pour l'action, longues pour l'ambiance",
+      "- Longueur des réponses : 2 paragraphes maximum. Exception : jusqu'à 3 paragraphes pour les scènes d'ouverture de milestone ou les moments de climax narratif fort. Jamais plus.",
       "- Propose toujours une voie narrative, même dans les impasses",
       "- Ne répète jamais la même situation narrative deux fois de suite",
     ].join("\n");
