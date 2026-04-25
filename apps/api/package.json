@@ -17,7 +17,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "tsx src/db/reset.ts",
-    "db:fresh": "pnpm db:reset && pnpm db:seed"
+    "db:fresh": "pnpm db:reset && pnpm db:seed",
+    "benchmark": "tsx src/modules/game/llm-benchmark.ts"
   },
   "dependencies": {
     "@jdrai/shared": "workspace:*",
