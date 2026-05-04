@@ -197,14 +197,15 @@ export function createSocketAdapter(adventureId: string) {
       resetIdleTimeout();
 
       // Submit player action — server will respond via socket events
-      const isMockLlm =
-        import.meta.env.DEV && localStorage.getItem("dev:mockLlm") === "true";
+      const isMockLlm    = import.meta.env.DEV && localStorage.getItem("dev:mockLlm")    === "true";
+      const isFreeModels = import.meta.env.DEV && localStorage.getItem("dev:freeModels") === "true";
       await withTimeout(
         api.post(`/api/v1/adventures/${adventureId}/action`, {
           action: actionContent,
-          ...(choiceId ? { choiceId } : {}),
-          ...(choiceType ? { choiceType } : {}),
-          ...(isMockLlm ? { mockLlm: true } : {}),
+          ...(choiceId      ? { choiceId }         : {}),
+          ...(choiceType    ? { choiceType }        : {}),
+          ...(isMockLlm    ? { mockLlm: true }     : {}),
+          ...(isFreeModels ? { freeModels: true }  : {}),
         }),
         ACTION_REQUEST_TIMEOUT_MS,
       );

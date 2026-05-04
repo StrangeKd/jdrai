@@ -27,6 +27,8 @@ const PlayerActionSchema = z.object({
   socketId: z.string().optional(),
   /** DEV only — bypasses LLM when true. Ignored in production. */
   mockLlm: z.boolean().optional(),
+  /** DEV only — routes to LLM_FREE_MODEL_KEY instead of primary provider. Ignored in production. */
+  freeModels: z.boolean().optional(),
 });
 
 const MessagesQuerySchema = z.object({
@@ -53,7 +55,7 @@ export async function postActionHandler(
       throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid body");
     }
 
-    const { action, choiceId, choiceType, socketId, mockLlm } = parsed.data;
+    const { action, choiceId, choiceType, socketId, mockLlm, freeModels } = parsed.data;
     const adventureId = req.params["id"]!;
     const userId = req.user!.id;
 
@@ -69,6 +71,7 @@ export async function postActionHandler(
       socketId,
       io,
       mockLlm,
+      freeModels,
     });
 
     res.json({

@@ -88,3 +88,6 @@ dev-debug.log
 *.sln
 *.sw?
 # OS specific
+
+# LLM benchmark results (local dev only)
+apps/api/benchmarks/
