@@ -1,5 +1,22 @@
 import type { Request } from "express";
 
+/**
+ * Returns the current UTC timestamp as an ISO 8601 string.
+ * Prefer this over `new Date().toISOString()` for consistency.
+ */
+export function getCurrentISOString(): string {
+  return new Date().toISOString();
+}
+
+/**
+ * Converts a nullable/undefined Date to an ISO 8601 string, or returns `undefined`.
+ * Prefer this over optional-chaining `.toISOString()` in DTO mappers.
+ */
+export function toISOStringOrUndefined(date: Date | null | undefined): string | undefined {
+  if (date == null) return undefined;
+  return date.toISOString();
+}
+
 export function toRecordStringHeaders(headers: Request["headers"]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {

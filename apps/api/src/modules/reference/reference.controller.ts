@@ -4,18 +4,14 @@
  */
 import type { Request, Response } from "express";
 
-import { db } from "@/db/index";
-import * as schema from "@/db/schema/index";
+import { getClasses as getClassesFromService, getRaces as getRacesFromService } from "./reference.service";
 
 export async function getRaces(req: Request, res: Response): Promise<void> {
-  const result = await db.select().from(schema.races).orderBy(schema.races.name);
-  res.json({ success: true, data: result });
+  const data = await getRacesFromService();
+  res.json({ success: true, data });
 }
 
 export async function getClasses(req: Request, res: Response): Promise<void> {
-  const result = await db
-    .select()
-    .from(schema.characterClasses)
-    .orderBy(schema.characterClasses.name);
-  res.json({ success: true, data: result });
+  const data = await getClassesFromService();
+  res.json({ success: true, data });
 }

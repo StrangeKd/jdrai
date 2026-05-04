@@ -1,12 +1,11 @@
 /**
  * game.socket.ts — Socket.io handlers for the game module.
  * Auth middleware verifies the Better Auth session cookie on connection.
+ *
+ * Ownership checks delegate to gameService.canUserJoinAdventure (Group C / Phase 3).
  */
-import { and, eq } from "drizzle-orm";
 import type { Server } from "socket.io";
 
-import { db } from "@/db";
-import { adventures } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/utils/logger";
 
@@ -41,13 +40,8 @@ export function registerGameSocket(io: Server): void {
           return;
         }
 
-        const [row] = await db
-          .select({ id: adventures.id })
-          .from(adventures)
-          .where(and(eq(adventures.id, adventureId), eq(adventures.userId, userId)))
-          .limit(1);
-
-        if (!row) {
+        const allowed = await gameService.canUserJoinAdventure(adventureId, userId);
+        if (!allowed) {
           logger.warn(`[Socket] Forbidden join: ${socket.id} → adventure:${adventureId}`);
           return;
         }

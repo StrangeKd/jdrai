@@ -1,6 +1,8 @@
 /**
  * Reference controller tests — GET /api/v1/reference/races + GET /api/v1/reference/classes
  * Story 8.2 Task 1 (AC: #5)
+ *
+ * The controller now delegates to reference.service, so we mock the service layer.
  */
 import express from "express";
 import request from "supertest";
@@ -8,16 +10,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { errorHandler } from "@/middleware/error.middleware";
 
-// Mock the db module
-vi.mock("@/db/index", () => ({
-  db: {
-    select: vi.fn(),
-  },
+// Mock the service module
+vi.mock("./reference.service", () => ({
+  getRaces: vi.fn(),
+  getClasses: vi.fn(),
 }));
 
-import { db } from "@/db/index";
-
-import { getClasses,getRaces } from "./reference.controller";
+import { getClasses, getRaces } from "./reference.controller";
+import { getClasses as getClassesSvc, getRaces as getRacesSvc } from "./reference.service";
 
 function buildApp() {
   const app = express();
@@ -47,8 +47,7 @@ describe("GET /reference/races", () => {
   });
 
   it("returns 200 with races array", async () => {
-    const mockChain = { from: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValueOnce(MOCK_RACES) };
-    vi.mocked(db.select).mockReturnValueOnce(mockChain as unknown as ReturnType<typeof db.select>);
+    vi.mocked(getRacesSvc).mockResolvedValueOnce(MOCK_RACES);
 
     const app = buildApp();
     const res = await request(app).get("/reference/races");
@@ -58,8 +57,7 @@ describe("GET /reference/races", () => {
   });
 
   it("returns empty array when no races seeded", async () => {
-    const mockChain = { from: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValueOnce([]) };
-    vi.mocked(db.select).mockReturnValueOnce(mockChain as unknown as ReturnType<typeof db.select>);
+    vi.mocked(getRacesSvc).mockResolvedValueOnce([]);
 
     const app = buildApp();
     const res = await request(app).get("/reference/races");
@@ -75,8 +73,7 @@ describe("GET /reference/classes", () => {
   });
 
   it("returns 200 with classes array", async () => {
-    const mockChain = { from: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValueOnce(MOCK_CLASSES) };
-    vi.mocked(db.select).mockReturnValueOnce(mockChain as unknown as ReturnType<typeof db.select>);
+    vi.mocked(getClassesSvc).mockResolvedValueOnce(MOCK_CLASSES);
 
     const app = buildApp();
     const res = await request(app).get("/reference/classes");
@@ -86,8 +83,7 @@ describe("GET /reference/classes", () => {
   });
 
   it("returns empty array when no classes seeded", async () => {
-    const mockChain = { from: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValueOnce([]) };
-    vi.mocked(db.select).mockReturnValueOnce(mockChain as unknown as ReturnType<typeof db.select>);
+    vi.mocked(getClassesSvc).mockResolvedValueOnce([]);
 
     const app = buildApp();
     const res = await request(app).get("/reference/classes");

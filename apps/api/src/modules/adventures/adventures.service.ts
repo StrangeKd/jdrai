@@ -10,7 +10,9 @@ import type {
 } from "@jdrai/shared";
 
 import { db } from "@/db";
-import { adventures, adventureTemplates, characterClasses, metaCharacters, milestones, races, users } from "@/db/schema";
+import { adventures, adventureTemplates, metaCharacters, milestones, users } from "@/db/schema";
+import { toAdventureCharacterDTO } from "@/modules/game/game.dto";
+import { findDefaultClass, findDefaultRace } from "@/modules/reference/reference.repository";
 import { AppError } from "@/utils/errors";
 import { toISOString } from "@/utils/http";
 
@@ -34,20 +36,10 @@ const MAX_ACTIVE_ADVENTURES = 5;
 function mapRowToDTO(row: AdventureRow): AdventureDTO {
   const { adventure, character, className, raceName, currentMilestoneName } = row;
 
-  const characterDTO: AdventureCharacterDTO = {
-    id: character?.id ?? "",
-    name: character?.name ?? "Aventurier",
-    className: className ?? "Aventurier",
-    raceName: raceName ?? "Humain",
-    stats: (character?.stats as AdventureCharacterDTO["stats"]) ?? {
-      strength: 10,
-      agility: 10,
-      charisma: 10,
-      karma: 10,
-    },
-    currentHp: character?.currentHp ?? 20,
-    maxHp: character?.maxHp ?? 20,
-  };
+  const characterDTO: AdventureCharacterDTO = toAdventureCharacterDTO(character, {
+    className,
+    raceName,
+  });
 
   const dto: AdventureDTO = {
     id: adventure.id,
@@ -164,17 +156,13 @@ export async function createAdventureForUser(
   });
 
   // 4. Fetch default class (Aventurier, isDefault=true)
-  const [defaultClass] = await db
-    .select()
-    .from(characterClasses)
-    .where(eq(characterClasses.isDefault, true))
-    .limit(1);
+  const defaultClass = await findDefaultClass();
   if (!defaultClass) {
     throw new AppError(500, "INTERNAL_ERROR", "Default character class not seeded");
   }
 
   // 5. Fetch default race (Humain, isDefault=true)
-  const [defaultRace] = await db.select().from(races).where(eq(races.isDefault, true)).limit(1);
+  const defaultRace = await findDefaultRace();
   if (!defaultRace) {
     throw new AppError(500, "INTERNAL_ERROR", "Default race not seeded");
   }
