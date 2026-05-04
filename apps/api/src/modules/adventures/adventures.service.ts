@@ -10,7 +10,8 @@ import type {
 } from "@jdrai/shared";
 
 import { db } from "@/db";
-import { adventures, adventureTemplates, characterClasses, metaCharacters, milestones, races, users } from "@/db/schema";
+import { adventures, adventureTemplates, metaCharacters, milestones, users } from "@/db/schema";
+import { findDefaultClass, findDefaultRace } from "@/modules/reference/reference.repository";
 import { AppError } from "@/utils/errors";
 import { toISOString } from "@/utils/http";
 
@@ -164,17 +165,13 @@ export async function createAdventureForUser(
   });
 
   // 4. Fetch default class (Aventurier, isDefault=true)
-  const [defaultClass] = await db
-    .select()
-    .from(characterClasses)
-    .where(eq(characterClasses.isDefault, true))
-    .limit(1);
+  const defaultClass = await findDefaultClass();
   if (!defaultClass) {
     throw new AppError(500, "INTERNAL_ERROR", "Default character class not seeded");
   }
 
   // 5. Fetch default race (Humain, isDefault=true)
-  const [defaultRace] = await db.select().from(races).where(eq(races.isDefault, true)).limit(1);
+  const defaultRace = await findDefaultRace();
   if (!defaultRace) {
     throw new AppError(500, "INTERNAL_ERROR", "Default race not seeded");
   }

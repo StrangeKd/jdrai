@@ -1,6 +1,6 @@
 /**
  * MetaCharacterService unit tests — Story 8.1 Task 10.2
- * Mocks the DB to test pure service logic.
+ * Mocks reference.repository and meta-character.repository to test pure service logic.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,29 +8,29 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/db", () => ({
-  db: {
-    query: {
-      metaCharacters: { findFirst: vi.fn() },
-      races: { findFirst: vi.fn() },
-      characterClasses: { findFirst: vi.fn() },
-    },
-    insert: vi.fn(),
-  },
+vi.mock("@/modules/reference/reference.repository", () => ({
+  getRaceById: vi.fn(),
+  findDefaultRace: vi.fn(),
+  getClassById: vi.fn(),
+  findDefaultClass: vi.fn(),
 }));
 
-vi.mock("@/db/schema", () => ({
-  metaCharacters: { userId: "userId" },
-  races: { id: "id", isDefault: "isDefault" },
-  characterClasses: { id: "id", isDefault: "isDefault" },
+vi.mock("./meta-character.repository", () => ({
+  getMetaCharacterByUserId: vi.fn(),
+  createOrUpdateMetaCharacter: vi.fn(),
 }));
 
-vi.mock("drizzle-orm", () => ({
-  eq: vi.fn((col, val) => ({ col, val })),
-}));
+import {
+  findDefaultClass,
+  findDefaultRace,
+  getClassById,
+  getRaceById,
+} from "@/modules/reference/reference.repository";
 
-import { db } from "@/db";
-
+import {
+  createOrUpdateMetaCharacter,
+  getMetaCharacterByUserId,
+} from "./meta-character.repository";
 import { MetaCharacterService } from "./meta-character.service";
 
 // ---------------------------------------------------------------------------
@@ -56,14 +56,6 @@ const MOCK_META_ROW = {
   createdAt: new Date("2026-04-03"),
 };
 
-function makeInsertMock(returning: unknown) {
-  const returningFn = vi.fn().mockResolvedValue([returning]);
-  const onConflictFn = vi.fn().mockReturnValue({ returning: returningFn });
-  const valuesFn = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictFn });
-  vi.mocked(db.insert).mockReturnValue({ values: valuesFn } as unknown as ReturnType<typeof db.insert>);
-  return { returningFn, onConflictFn, valuesFn };
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -77,9 +69,9 @@ describe("MetaCharacterService.createFromTutorial()", () => {
   });
 
   it("creates MetaCharacter with provided raceId and classId (AC #8)", async () => {
-    vi.mocked(db.query.races.findFirst).mockResolvedValueOnce(MOCK_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValueOnce(MOCK_CLASS);
-    makeInsertMock(MOCK_META_ROW);
+    vi.mocked(getRaceById).mockResolvedValueOnce(MOCK_RACE);
+    vi.mocked(getClassById).mockResolvedValueOnce(MOCK_CLASS);
+    vi.mocked(createOrUpdateMetaCharacter).mockResolvedValueOnce(MOCK_META_ROW);
 
     const result = await service.createFromTutorial({
       userId: "user-1",
@@ -98,10 +90,12 @@ describe("MetaCharacterService.createFromTutorial()", () => {
   });
 
   it("uses default race when no raceId provided (AC #8)", async () => {
-    // First call: no raceId → isDefault lookup
-    vi.mocked(db.query.races.findFirst).mockResolvedValueOnce(DEFAULT_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValueOnce(MOCK_CLASS);
-    makeInsertMock({ ...MOCK_META_ROW, raceId: DEFAULT_RACE.id });
+    vi.mocked(findDefaultRace).mockResolvedValueOnce(DEFAULT_RACE);
+    vi.mocked(getClassById).mockResolvedValueOnce(MOCK_CLASS);
+    vi.mocked(createOrUpdateMetaCharacter).mockResolvedValueOnce({
+      ...MOCK_META_ROW,
+      raceId: DEFAULT_RACE.id,
+    });
 
     const result = await service.createFromTutorial({
       userId: "user-1",
@@ -113,9 +107,12 @@ describe("MetaCharacterService.createFromTutorial()", () => {
   });
 
   it("uses default class when no classId provided (AC #8)", async () => {
-    vi.mocked(db.query.races.findFirst).mockResolvedValueOnce(MOCK_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValueOnce(DEFAULT_CLASS);
-    makeInsertMock({ ...MOCK_META_ROW, classId: DEFAULT_CLASS.id });
+    vi.mocked(getRaceById).mockResolvedValueOnce(MOCK_RACE);
+    vi.mocked(findDefaultClass).mockResolvedValueOnce(DEFAULT_CLASS);
+    vi.mocked(createOrUpdateMetaCharacter).mockResolvedValueOnce({
+      ...MOCK_META_ROW,
+      classId: DEFAULT_CLASS.id,
+    });
 
     const result = await service.createFromTutorial({
       userId: "user-1",
@@ -127,9 +124,13 @@ describe("MetaCharacterService.createFromTutorial()", () => {
   });
 
   it("uses both defaults when no choices provided (AC #8)", async () => {
-    vi.mocked(db.query.races.findFirst).mockResolvedValueOnce(DEFAULT_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValueOnce(DEFAULT_CLASS);
-    makeInsertMock({ ...MOCK_META_ROW, raceId: DEFAULT_RACE.id, classId: DEFAULT_CLASS.id });
+    vi.mocked(findDefaultRace).mockResolvedValueOnce(DEFAULT_RACE);
+    vi.mocked(findDefaultClass).mockResolvedValueOnce(DEFAULT_CLASS);
+    vi.mocked(createOrUpdateMetaCharacter).mockResolvedValueOnce({
+      ...MOCK_META_ROW,
+      raceId: DEFAULT_RACE.id,
+      classId: DEFAULT_CLASS.id,
+    });
 
     const result = await service.createFromTutorial({ userId: "user-1", username: "Héros" });
 
@@ -138,10 +139,9 @@ describe("MetaCharacterService.createFromTutorial()", () => {
   });
 
   it("upserts (does not throw) when called twice for same user (AC #8)", async () => {
-    // Both calls should succeed — insert uses onConflictDoUpdate
-    vi.mocked(db.query.races.findFirst).mockResolvedValue(DEFAULT_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValue(DEFAULT_CLASS);
-    makeInsertMock(MOCK_META_ROW);
+    vi.mocked(findDefaultRace).mockResolvedValue(DEFAULT_RACE);
+    vi.mocked(findDefaultClass).mockResolvedValue(DEFAULT_CLASS);
+    vi.mocked(createOrUpdateMetaCharacter).mockResolvedValue(MOCK_META_ROW);
 
     await expect(
       service.createFromTutorial({ userId: "user-1", username: "Héros" }),
@@ -158,7 +158,7 @@ describe("MetaCharacterService.getByUserId()", () => {
   });
 
   it("returns null when no MetaCharacter exists (AC #10)", async () => {
-    vi.mocked(db.query.metaCharacters.findFirst).mockResolvedValueOnce(undefined);
+    vi.mocked(getMetaCharacterByUserId).mockResolvedValueOnce(null);
 
     const result = await service.getByUserId("user-1");
 
@@ -166,9 +166,9 @@ describe("MetaCharacterService.getByUserId()", () => {
   });
 
   it("returns MetaCharacterDTO with resolved race/class names (AC #10)", async () => {
-    vi.mocked(db.query.metaCharacters.findFirst).mockResolvedValueOnce(MOCK_META_ROW);
-    vi.mocked(db.query.races.findFirst).mockResolvedValueOnce(MOCK_RACE);
-    vi.mocked(db.query.characterClasses.findFirst).mockResolvedValueOnce(MOCK_CLASS);
+    vi.mocked(getMetaCharacterByUserId).mockResolvedValueOnce(MOCK_META_ROW);
+    vi.mocked(getRaceById).mockResolvedValueOnce(MOCK_RACE);
+    vi.mocked(getClassById).mockResolvedValueOnce(MOCK_CLASS);
 
     const result = await service.getByUserId("user-1");
 
@@ -182,7 +182,7 @@ describe("MetaCharacterService.getByUserId()", () => {
 
   it("returns DTO without race/class names when IDs are null", async () => {
     const rowNoLinks = { ...MOCK_META_ROW, raceId: null, classId: null };
-    vi.mocked(db.query.metaCharacters.findFirst).mockResolvedValueOnce(rowNoLinks);
+    vi.mocked(getMetaCharacterByUserId).mockResolvedValueOnce(rowNoLinks);
 
     const result = await service.getByUserId("user-1");
 

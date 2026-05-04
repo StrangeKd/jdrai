@@ -2,12 +2,16 @@
  * MetaCharacterService — manages the persistent player identity created after tutorial completion.
  * Story 8.1 Tasks 7 + 8.
  */
-import { eq } from "drizzle-orm";
-
 import type { MetaCharacterDTO } from "@jdrai/shared";
 
-import { db } from "@/db";
-import { characterClasses, metaCharacters, races } from "@/db/schema";
+import type { ClassRow, RaceRow } from "@/modules/reference/reference.repository";
+import { findDefaultClass, findDefaultRace, getClassById, getRaceById } from "@/modules/reference/reference.repository";
+
+import type { MetaCharacterRow } from "./meta-character.repository";
+import {
+  createOrUpdateMetaCharacter,
+  getMetaCharacterByUserId,
+} from "./meta-character.repository";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,63 +36,37 @@ export class MetaCharacterService {
   async createFromTutorial(params: CreateFromTutorialParams): Promise<MetaCharacterDTO> {
     // Resolve race — use provided raceId or fall back to the default race
     const resolvedRace = params.raceId
-      ? await db.query.races.findFirst({ where: eq(races.id, params.raceId) })
-      : await db.query.races.findFirst({ where: eq(races.isDefault, true) });
+      ? await getRaceById(params.raceId)
+      : await findDefaultRace();
 
     // Resolve class — use provided classId or fall back to the default class
     const resolvedClass = params.classId
-      ? await db.query.characterClasses.findFirst({
-          where: eq(characterClasses.id, params.classId),
-        })
-      : await db.query.characterClasses.findFirst({
-          where: eq(characterClasses.isDefault, true),
-        });
+      ? await getClassById(params.classId)
+      : await findDefaultClass();
 
     // Upsert — handles tutorial replayed (userId has UNIQUE constraint)
-    const [metaChar] = await db
-      .insert(metaCharacters)
-      .values({
-        userId: params.userId,
-        name: params.username,
-        raceId: resolvedRace?.id ?? null,
-        classId: resolvedClass?.id ?? null,
-        level: 1,
-        xp: 0,
-        cosmetics: {},
-      })
-      .onConflictDoUpdate({
-        target: metaCharacters.userId,
-        set: {
-          name: params.username,
-          raceId: resolvedRace?.id ?? null,
-          classId: resolvedClass?.id ?? null,
-        },
-      })
-      .returning();
+    const metaChar = await createOrUpdateMetaCharacter({
+      userId: params.userId,
+      name: params.username,
+      raceId: resolvedRace?.id ?? null,
+      classId: resolvedClass?.id ?? null,
+    });
 
-    return this.toDTO(metaChar!, resolvedRace, resolvedClass);
+    return this.toDTO(metaChar, resolvedRace, resolvedClass);
   }
 
   /**
    * Returns the MetaCharacter for a given user, or null if none exists yet.
    */
   async getByUserId(userId: string): Promise<MetaCharacterDTO | null> {
-    const row = await db.query.metaCharacters.findFirst({
-      where: eq(metaCharacters.userId, userId),
-    });
+    const row = await getMetaCharacterByUserId(userId);
     if (!row) return null;
 
     // Resolve race/class names via separate lookups (Drizzle relations not configured yet in P1)
-    const race = row.raceId
-      ? await db.query.races.findFirst({ where: eq(races.id, row.raceId) })
-      : undefined;
-    const cls = row.classId
-      ? await db.query.characterClasses.findFirst({
-          where: eq(characterClasses.id, row.classId),
-        })
-      : undefined;
+    const race = row.raceId ? await getRaceById(row.raceId) : undefined;
+    const cls = row.classId ? await getClassById(row.classId) : undefined;
 
-    return this.toDTO(row, race, cls);
+    return this.toDTO(row, race ?? null, cls ?? null);
   }
 
   // ---------------------------------------------------------------------------
@@ -96,9 +74,9 @@ export class MetaCharacterService {
   // ---------------------------------------------------------------------------
 
   private toDTO(
-    row: typeof metaCharacters.$inferSelect,
-    race: typeof races.$inferSelect | undefined | null,
-    cls: typeof characterClasses.$inferSelect | undefined | null,
+    row: MetaCharacterRow,
+    race: RaceRow | undefined | null,
+    cls: ClassRow | undefined | null,
   ): MetaCharacterDTO {
     const dto: MetaCharacterDTO = {
       id: row.id,
