@@ -86,3 +86,56 @@ export interface GameStateDTO {
   milestones: MilestoneDTO[];
   isStreaming: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// GameEvent — discriminated union emitted by GameService.processAction()
+// ---------------------------------------------------------------------------
+
+/**
+ * Events produced by the game service during a turn. The transport layer
+ * (Socket.io for streaming, HTTP for sync) is responsible for translating
+ * these events into wire format. This decouples the service from any
+ * specific transport.
+ */
+export type GameEvent =
+  | { type: "response-start"; adventureId: string }
+  | { type: "chunk"; adventureId: string; chunk: string }
+  | {
+      type: "response-complete";
+      adventureId: string;
+      messageId: string;
+      cleanText: string;
+      choices: SuggestedAction[];
+      presetSelector?: "race" | "class";
+      stateChanges: {
+        hpChange?: number;
+        milestoneCompleted: string | null;
+        adventureComplete: boolean;
+        isGameOver: boolean;
+      };
+    }
+  | { type: "error"; adventureId: string; message: string }
+  | {
+      type: "state-update";
+      adventureId: string;
+      subtype: "hp_change";
+      currentHp: number;
+      maxHp: number;
+    }
+  | {
+      type: "state-update";
+      adventureId: string;
+      subtype: "milestone_complete";
+      completedMilestone: string;
+      nextMilestone: string | null;
+    }
+  | {
+      type: "state-update";
+      adventureId: string;
+      subtype: "adventure_complete";
+    }
+  | {
+      type: "state-update";
+      adventureId: string;
+      subtype: "game_over";
+    };

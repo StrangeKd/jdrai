@@ -11,6 +11,7 @@ import {
   milestones,
   races,
 } from "@/db/schema";
+import { toMilestoneDTO } from "@/modules/game/game.dto";
 import { AppError } from "@/utils/errors";
 
 type AdventureStatus = (typeof adventureStatusEnum.enumValues)[number];
@@ -184,18 +185,7 @@ export async function getAdventureMilestones(
     .where(eq(milestones.adventureId, adventureId))
     .orderBy(asc(milestones.sortOrder));
 
-  return rows.map((r) => {
-    const dto: MilestoneDTO = {
-      id: r.id,
-      name: r.name,
-      sortOrder: r.sortOrder,
-      status: r.status,
-    };
-    if (r.description) dto.description = r.description;
-    if (r.startedAt) dto.startedAt = r.startedAt.toISOString();
-    if (r.completedAt) dto.completedAt = r.completedAt.toISOString();
-    return dto;
-  });
+  return rows.map(toMilestoneDTO);
 }
 
 /**

@@ -13,14 +13,17 @@
  *
  * Use window.__devAdventureOps(adventureId) in the browser console for convenience.
  */
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import { type IRouter,Router } from "express";
 
 import { db } from "@/db";
 import { adventures } from "@/db/schema";
 import { requireAuth } from "@/middleware/auth.middleware";
-import { completeAdventure } from "@/modules/game/game.repository";
+import {
+  completeAdventure,
+  getAdventureByIdOrThrow,
+} from "@/modules/game/game.repository";
 import { gameService } from "@/modules/game/game.service";
 import { AppError } from "@/utils/errors";
 import { logger } from "@/utils/logger";
@@ -47,15 +50,8 @@ devRouter.post(
         );
       }
 
-      // Verify ownership
-      const [row] = await db
-        .select({ id: adventures.id, userId: adventures.userId })
-        .from(adventures)
-        .where(and(eq(adventures.id, adventureId)))
-        .limit(1);
-
-      if (!row) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-      if (row.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
+      // Verify ownership (404 + 403 in a single call)
+      await getAdventureByIdOrThrow(adventureId, userId);
 
       const io = req.app.locals["io"] as import("socket.io").Server | undefined;
 

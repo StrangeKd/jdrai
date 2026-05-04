@@ -1,39 +1,54 @@
 /**
  * GameService — orchestrates a full game turn (Story 6.3a Task 2).
  * Processes player action: D20 → prompt build → LLM stream → signal parse → DB persist.
+ *
+ * Transport-agnostic: emits typed `GameEvent`s via an optional `onEvent` callback
+ * (Group C / Phase 4). The Socket.io handler and HTTP controller adapt these
+ * events to their respective transports — the service no longer imports socket.io.
  */
 /* eslint-disable simple-import-sort/imports */
-import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import type {
   AdventureCharacterDTO,
   AdventureDTO,
   Difficulty,
-  ErrorCode,
+  GameEvent,
   GameMessageDTO,
   GameStateDTO,
   MilestoneDTO,
 } from "@jdrai/shared";
 
+import { ADVENTURE_STATUS, LIMITS } from "@/config/enums";
 import { db } from "@/db";
-import { adventureCharacters, adventures, characterClasses, messages, milestones, races, users } from "@/db/schema";
+import { milestones } from "@/db/schema";
 import { logger } from "@/utils/logger";
-import { AppError } from "@/utils/errors";
+import { AppErrors } from "@/utils/errors";
+import { getCurrentISOString } from "@/utils/http";
 
 import { D20Service, type ActionType, type D20Result } from "./d20.service";
+import { toAdventureCharacterDTO } from "./game.dto";
 import {
   completeAdventure,
+  getAdventureByIdOrThrow,
+  getAdventureCharacter,
+  getMessages,
   getMilestones,
+  getRecentMessages,
   insertMessage,
   transitionMilestone,
   updateAdventureState,
   updateCharacterHp,
   updateNarrativeSummary,
+  type AdventureCharacterRow,
+  type AdventureRow,
   type GameStateSnapshot,
+  type MessageRow,
 } from "./game.repository";
 import { LLMService, createLLMService } from "./llm/index";
 import { PromptBuilder } from "./prompt-builder";
+import { getRaceById, getClassById } from "@/modules/reference/reference.repository";
+import { usersRepository } from "@/modules/users/users.repository";
 /* eslint-enable simple-import-sort/imports */
 
 // ---------------------------------------------------------------------------
@@ -100,24 +115,11 @@ Règles :
 
 /** Builds an AdventureDTO from raw DB rows (used by getState). */
 function buildAdventureDTO(
-  adventureRow: typeof adventures.$inferSelect,
-  characterRow: typeof adventureCharacters.$inferSelect | undefined,
+  adventureRow: AdventureRow,
+  characterRow: AdventureCharacterRow | null,
   currentMilestoneName: string | null = null,
 ): AdventureDTO {
-  const characterDTO: AdventureCharacterDTO = {
-    id: characterRow?.id ?? "",
-    name: characterRow?.name ?? "Aventurier",
-    className: "Aventurier", // P1: always default
-    raceName: "Humain", // P1: always default
-    stats: (characterRow?.stats as AdventureCharacterDTO["stats"]) ?? {
-      strength: 10,
-      agility: 10,
-      charisma: 10,
-      karma: 10,
-    },
-    currentHp: characterRow?.currentHp ?? 20,
-    maxHp: characterRow?.maxHp ?? 20,
-  };
+  const characterDTO = toAdventureCharacterDTO(characterRow);
 
   const dto: AdventureDTO = {
     id: adventureRow.id,
@@ -143,6 +145,17 @@ function buildAdventureDTO(
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Transport-agnostic event sink. The HTTP controller passes a no-op for
+ * non-streaming requests; the Socket.io handler forwards events to a room.
+ *
+ * Design note (Phase 4): we chose a synchronous callback (Option B) over
+ * AsyncIterable because the LLM streaming loop already uses `for await` —
+ * a callback integrates with zero plumbing and avoids buffering / back-pressure
+ * concerns. Forwarding remains 1:1 with no ordering surprises.
+ */
+export type GameEventSink = (event: GameEvent) => void;
+
 export interface ProcessActionParams {
   adventureId: string;
   userId: string;
@@ -150,8 +163,11 @@ export interface ProcessActionParams {
   choiceId?: string | undefined;
   /** Distinguishes a tutorial preset selection (race/class) from a regular suggested choice. */
   choiceType?: "race" | "class" | undefined;
-  socketId?: string | undefined;
-  io?: import("socket.io").Server | undefined;
+  /** Sink for streaming/state events. When omitted, processAction runs in sync mode. */
+  onEvent?: GameEventSink | undefined;
+  /** When true, processAction streams chunk events via onEvent (otherwise the full
+   *  response is returned in the result). Default: derived from `Boolean(onEvent)`. */
+  stream?: boolean | undefined;
   /** DEV only — bypasses LLM and returns hardcoded text to save tokens during manual testing. */
   mockLlm?: boolean | undefined;
   /** DEV only — routes to LLM_FREE_MODEL_KEY (OpenRouter free tier) instead of primary provider. */
@@ -336,37 +352,71 @@ export class GameService {
   }
 
   /**
-   * Full turn orchestration — see Dev Notes for exact execution order.
+   * Lightweight check used by Socket.io game:join.
+   * Returns true iff the user owns the adventure.
    */
-  async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
-    const { adventureId, userId, action, io, choiceType, choiceId } = params;
-    // Stream whenever io is available — socketId is not needed since we emit to the room
-    const shouldStream = Boolean(io);
+  async canUserJoinAdventure(adventureId: string, userId: string): Promise<boolean> {
+    // Imported here to keep the call cheap (no JOIN, no full row).
+    const { verifyAdventureOwnership } = await import("./game.repository");
+    return verifyAdventureOwnership(adventureId, userId);
+  }
 
-    // 1. Load adventure + character + milestones + recent messages
-    const [adventureRow] = await db
-      .select()
-      .from(adventures)
-      .where(eq(adventures.id, adventureId))
-      .limit(1);
-
-    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
-    if (adventureRow.status !== "active") {
-      throw new AppError(
-        400,
-        "ADVENTURE_NOT_ACTIVE" as ErrorCode,
-        "Cannot act on a completed adventure",
-      );
+  /**
+   * Validates ownership + status for the save endpoint, then calls autoSave().
+   * Centralises the logic previously inlined in postSaveHandler.
+   */
+  async saveAdventure(adventureId: string, userId: string): Promise<{ savedAt: string }> {
+    const adventure = await getAdventureByIdOrThrow(adventureId, userId);
+    if (adventure.status !== ADVENTURE_STATUS.ACTIVE) {
+      throw AppErrors.adventureNotActive();
     }
 
-    const [characterRow] = await db
-      .select()
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
+    const character = await getAdventureCharacter(adventureId);
 
-    if (!characterRow) throw new AppError(404, "NOT_FOUND", "Character not found");
+    const previousState = (adventure.state ?? {}) as Record<string, unknown>;
+    const worldState =
+      typeof previousState["worldState"] === "object" &&
+      previousState["worldState"] !== null &&
+      !Array.isArray(previousState["worldState"])
+        ? (previousState["worldState"] as Record<string, unknown>)
+        : {};
+
+    await this.autoSave(adventureId, {
+      lastPlayerAction:
+        typeof previousState["lastPlayerAction"] === "string"
+          ? previousState["lastPlayerAction"]
+          : "",
+      currentHp:
+        character?.currentHp ??
+        (typeof previousState["currentHp"] === "number" ? previousState["currentHp"] : 0),
+      activeMilestoneId:
+        typeof previousState["activeMilestoneId"] === "string"
+          ? previousState["activeMilestoneId"]
+          : null,
+      worldState,
+      updatedAt: getCurrentISOString(),
+    });
+
+    return { savedAt: getCurrentISOString() };
+  }
+
+  /**
+   * Full turn orchestration — see Dev Notes for exact execution order.
+   * Emits typed GameEvents via params.onEvent (no Socket.io coupling).
+   */
+  async processAction(params: ProcessActionParams): Promise<ProcessActionResult> {
+    const { adventureId, userId, action, onEvent, choiceType, choiceId } = params;
+    const shouldStream = params.stream ?? Boolean(onEvent);
+    const emit: GameEventSink = onEvent ?? (() => {});
+
+    // 1. Load adventure + character + milestones + recent messages
+    const adventureRow = await getAdventureByIdOrThrow(adventureId, userId);
+    if (adventureRow.status !== ADVENTURE_STATUS.ACTIVE) {
+      throw AppErrors.adventureNotActive();
+    }
+
+    const characterRow = await getAdventureCharacter(adventureId);
+    if (!characterRow) throw AppErrors.characterNotFound();
 
     const character: AdventureCharacterDTO = {
       id: characterRow.id,
@@ -383,15 +433,8 @@ export class GameService {
     const allMilestones = await getMilestones(adventureId);
     const activeMilestone = allMilestones.find((m) => m.status === "active") ?? null;
 
-    const recentMessages = await db
-      .select({ role: messages.role, content: messages.content, metadata: messages.metadata })
-      .from(messages)
-      .where(eq(messages.adventureId, adventureId))
-      .orderBy(desc(messages.createdAt))
-      .limit(20);
-    recentMessages.reverse();
-
-    const recentHistory: GameMessageRow[] = recentMessages.map((m) => ({
+    const recentMessageRows = await getRecentMessages(adventureId);
+    const recentHistory: GameMessageRow[] = recentMessageRows.map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -426,7 +469,12 @@ export class GameService {
 
     // Handle tutorial preset choice capture (race/class) BEFORE building the prompt
     if (adventureRow.isTutorial && choiceType && choiceId) {
-      latestState = await this.captureTutorialPresetChoice(adventureRow.id, latestState, choiceType, choiceId);
+      latestState = await this.captureTutorialPresetChoice(
+        adventureRow.id,
+        latestState,
+        choiceType,
+        choiceId,
+      );
     }
 
     // 4–6. Build prompt context — tutorial uses a dedicated system prompt
@@ -463,9 +511,8 @@ export class GameService {
     });
 
     // 8. Emit response-start
-    const room = `adventure:${adventureId}`;
     if (shouldStream) {
-      io!.to(room).emit("game:response-start", { adventureId });
+      emit({ type: "response-start", adventureId });
     }
 
     // 9. Stream LLM response (or hardcoded mock in dev), emit chunks
@@ -484,7 +531,7 @@ export class GameService {
       for (let i = 0; i < mockText.length; i += chunkSize) {
         const chunk = mockText.slice(i, i + chunkSize);
         if (shouldStream) {
-          io!.to(room).emit("game:chunk", { adventureId, chunk });
+          emit({ type: "chunk", adventureId, chunk });
         }
         fullResponse += chunk;
       }
@@ -501,16 +548,17 @@ export class GameService {
           ...(freeModelKey ? { modelKey: freeModelKey } : {}),
         })) {
           if (shouldStream) {
-            io!.to(room).emit("game:chunk", { adventureId, chunk });
+            emit({ type: "chunk", adventureId, chunk });
           }
           fullResponse += chunk;
         }
       } catch (error) {
         logger.error("[GameService] LLM stream failed:", error);
         if (shouldStream) {
-          io!.to(room).emit("game:error", {
+          emit({
+            type: "error",
             adventureId,
-            error: "Le Chroniqueur est indisponible. Veuillez réessayer.",
+            message: "Le Chroniqueur est indisponible. Veuillez réessayer.",
           });
         }
         throw error;
@@ -545,24 +593,14 @@ export class GameService {
       metadata: assistantMetadata,
     });
 
-    // 12. Apply signals (DB side effects)
-    await this.applySignals(
-      signals,
-      adventureId,
-      shouldStream
-        ? ({ to: (r: string) => io!.to(r) } as unknown as import("socket.io").Server)
-        : undefined,
-    );
+    // 12. Apply signals (DB side effects + emit state-update events)
+    await this.applySignals(signals, adventureId, emit);
 
     // 12b. Tutorial completion — create MetaCharacter when [ADVENTURE_COMPLETE] on a tutorial
     if (adventureRow.isTutorial && signals.adventureComplete) {
       const choices = (latestState["tutorialChoices"] ?? {}) as Record<string, string>;
 
-      const [userRow] = await db
-        .select({ username: users.username })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+      const userRow = await usersRepository.findById(userId);
 
       const { metaCharacterService } = await import("@/modules/meta-character/meta-character.service");
       await metaCharacterService.createFromTutorial({
@@ -573,22 +611,18 @@ export class GameService {
       });
 
       // Set user onboarding as completed
-      await db.update(users).set({ onboardingCompleted: true }).where(eq(users.id, userId));
+      await usersRepository.updateOnboardingStatus(userId, true);
     }
 
     // 13. Auto-save state
-    const [updatedCharacter] = await db
-      .select({ currentHp: adventureCharacters.currentHp })
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
+    const updatedCharacter = await getAdventureCharacter(adventureId);
 
     await this.autoSave(adventureId, {
       lastPlayerAction: action,
       currentHp: updatedCharacter?.currentHp ?? character.currentHp,
       activeMilestoneId: activeMilestone?.id ?? null,
       worldState,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentISOString(),
     });
 
     // 14. Emit response-complete
@@ -600,7 +634,8 @@ export class GameService {
     };
 
     if (shouldStream) {
-      io!.to(room).emit("game:response-complete", {
+      emit({
+        type: "response-complete",
         adventureId,
         messageId: assistantMessageId,
         cleanText,
@@ -625,18 +660,32 @@ export class GameService {
 
   /**
    * Applies DB side effects for all 4 signal types and emits state-update events.
+   *
+   * The third parameter accepts either:
+   *  - a `GameEventSink` callback (preferred, decoupled), or
+   *  - a Socket.io-shaped object `{ to: (room) => { emit: ... } }` for backwards compatibility
+   *    with `dev.router.ts` and existing integration tests.
    */
   async applySignals(
     signals: ParsedSignals,
     adventureId: string,
-    io?: Pick<import("socket.io").Server, "to">,
+    sinkOrIo?:
+      | GameEventSink
+      | Pick<import("socket.io").Server, "to">
+      | undefined,
   ): Promise<void> {
-    const room = `adventure:${adventureId}`;
+    const emit = toEventSink(sinkOrIo, adventureId);
 
     // 1. HP change
     if (signals.hpChange !== undefined) {
       const { currentHp, maxHp } = await updateCharacterHp(adventureId, signals.hpChange);
-      io?.to(room).emit("game:state-update", { adventureId, type: "hp_change", currentHp, maxHp });
+      emit({
+        type: "state-update",
+        adventureId,
+        subtype: "hp_change",
+        currentHp,
+        maxHp,
+      });
     }
 
     // 2. Milestone transition
@@ -648,9 +697,10 @@ export class GameService {
       );
       if (active) {
         await transitionMilestone(active.id, next?.id);
-        io?.to(room).emit("game:state-update", {
+        emit({
+          type: "state-update",
           adventureId,
-          type: "milestone_complete",
+          subtype: "milestone_complete",
           completedMilestone: active.name,
           nextMilestone: next?.name ?? null,
         });
@@ -660,9 +710,10 @@ export class GameService {
     // 3. Adventure completion — AFTER other signals
     if (signals.adventureComplete || signals.isGameOver) {
       await this.handleAdventureEnd(adventureId, signals.isGameOver);
-      io?.to(room).emit("game:state-update", {
+      emit({
+        type: "state-update",
         adventureId,
-        type: signals.isGameOver ? "game_over" : "adventure_complete",
+        subtype: signals.isGameOver ? "game_over" : "adventure_complete",
       });
     }
   }
@@ -680,14 +731,12 @@ export class GameService {
     const tutorialChoices = (currentState["tutorialChoices"] ?? {}) as Record<string, string>;
 
     if (choiceType === "race") {
-      const race = await db.query.races.findFirst({ where: eq(races.id, choiceId) });
+      const race = await getRaceById(choiceId);
       if (!race) return currentState;
       tutorialChoices["raceId"] = choiceId;
       tutorialChoices["raceName"] = race.name;
     } else {
-      const cls = await db.query.characterClasses.findFirst({
-        where: eq(characterClasses.id, choiceId),
-      });
+      const cls = await getClassById(choiceId);
       if (!cls) return currentState;
       tutorialChoices["classId"] = choiceId;
       tutorialChoices["className"] = cls.name;
@@ -695,10 +744,7 @@ export class GameService {
 
     const nextState = { ...currentState, tutorialChoices };
 
-    await db
-      .update(adventures)
-      .set({ state: nextState })
-      .where(eq(adventures.id, adventureId));
+    await updateAdventureState(adventureId, nextState, { patch: true });
 
     return nextState;
   }
@@ -722,12 +768,7 @@ export class GameService {
    */
   private async generateNarrativeSummary(adventureId: string, isGameOver: boolean): Promise<void> {
     // Load character + milestones for prompt context
-    const [characterRow] = await db
-      .select()
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
-
+    const characterRow = await getAdventureCharacter(adventureId);
     const allMilestones = await getMilestones(adventureId);
 
     const characterName = characterRow?.name ?? "Aventurier";
@@ -787,6 +828,7 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
       }
     }
 
+    // Insertion stays inline here — adventure-scoped seed, not reused elsewhere.
     const rows = await db
       .insert(milestones)
       .values(
@@ -818,30 +860,17 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
    */
   async getState(adventureId: string, userId: string, mockLlm = false): Promise<GameStateDTO> {
     // 1. Load adventure — 404/403 guards
-    const [adventureRow] = await db
-      .select()
-      .from(adventures)
-      .where(eq(adventures.id, adventureId))
-      .limit(1);
-
-    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
+    const adventureRow = await getAdventureByIdOrThrow(adventureId, userId);
 
     // 2. Load character
-    const [characterRow] = await db
-      .select()
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
+    const characterRow = await getAdventureCharacter(adventureId);
 
-    // 3. Load last 50 messages ordered createdAt ASC
-    const messageRows = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.adventureId, adventureId))
-      .orderBy(desc(messages.createdAt))
-      .limit(50);
-    messageRows.reverse();
+    // 3. Load last 50 messages ordered createdAt ASC (DESC + reverse for index usage)
+    const messageRowsDesc = await getMessages(adventureId, {
+      limit: LIMITS.STATE_RESYNC_MESSAGE_COUNT,
+      order: "desc",
+    });
+    const messageRows = [...messageRowsDesc].reverse();
 
     // 4. Load milestones — initialize if empty (tutorial milestones are pre-seeded; skip LLM)
     let allMilestones = await getMilestones(adventureId);
@@ -859,24 +888,9 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
       activeMilestone?.name ?? null,
     );
 
-    const gameMessages: GameMessageDTO[] = messageRows.map((m) => {
-      const meta = m.metadata as Record<string, unknown> | null;
-      const dto: GameMessageDTO = {
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        milestoneId: m.milestoneId ?? null,
-        createdAt: m.createdAt.toISOString(),
-      };
-      if (Array.isArray(meta?.choices) && meta.choices.length > 0) {
-        dto.choices = meta.choices as SuggestedAction[];
-      }
-      return dto;
-    });
-
     return {
       adventure: adventureDTO,
-      messages: gameMessages,
+      messages: messageRows.map(messageRowToDTO),
       milestones: allMilestones,
       isStreaming: false,
     };
@@ -891,44 +905,87 @@ Règles : jamais humiliant, toujours épique, en français, à la 2ème personne
     userId: string,
     milestoneId?: string,
   ): Promise<{ messages: GameMessageDTO[]; total: number }> {
-    // Single query — applicative 404/403 check (mirrors processAction pattern)
-    const [adventureRow] = await db
-      .select({ id: adventures.id, userId: adventures.userId })
-      .from(adventures)
-      .where(eq(adventures.id, adventureId))
-      .limit(1);
+    await getAdventureByIdOrThrow(adventureId, userId);
 
-    if (!adventureRow) throw new AppError(404, "NOT_FOUND", "Adventure not found");
-    if (adventureRow.userId !== userId) throw new AppError(403, "FORBIDDEN", "Not your adventure");
-
-    const rows = await db
-      .select()
-      .from(messages)
-      .where(
-        milestoneId
-          ? and(eq(messages.adventureId, adventureId), eq(messages.milestoneId, milestoneId))
-          : eq(messages.adventureId, adventureId),
-      )
-      .orderBy(asc(messages.createdAt))
-      .limit(100);
-
-    const gameMsgs: GameMessageDTO[] = rows.map((m) => {
-      const meta = m.metadata as Record<string, unknown> | null;
-      const dto: GameMessageDTO = {
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        milestoneId: m.milestoneId ?? null,
-        createdAt: m.createdAt.toISOString(),
-      };
-      if (Array.isArray(meta?.choices) && meta.choices.length > 0) {
-        dto.choices = meta.choices as SuggestedAction[];
-      }
-      return dto;
+    const rows = await getMessages(adventureId, {
+      ...(milestoneId ? { milestoneId } : {}),
+      limit: LIMITS.GET_MESSAGES_PAGE_SIZE,
+      order: "asc",
     });
 
+    const gameMsgs = rows.map(messageRowToDTO);
     return { messages: gameMsgs, total: gameMsgs.length };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Adapts the legacy `Pick<Server, "to">` shape used by integration tests and
+ * dev.router.ts into a `GameEventSink`. When the caller already provides a
+ * sink, returns it unchanged. When undefined, returns a no-op.
+ *
+ * State-update events are mapped to `game:state-update` Socket.io events with
+ * a `type` field equal to the event subtype (preserves wire format).
+ */
+function toEventSink(
+  sinkOrIo: GameEventSink | Pick<import("socket.io").Server, "to"> | undefined,
+  adventureId: string,
+): GameEventSink {
+  if (!sinkOrIo) return () => {};
+  if (typeof sinkOrIo === "function") return sinkOrIo;
+
+  const room = `adventure:${adventureId}`;
+  return (event: GameEvent) => {
+    if (event.type === "state-update") {
+      // Preserve historical wire format: { type: <subtype>, ...payload }
+      const { type: _t, subtype, adventureId: aid, ...rest } = event;
+      sinkOrIo.to(room).emit("game:state-update", {
+        adventureId: aid,
+        type: subtype,
+        ...rest,
+      });
+      return;
+    }
+    if (event.type === "response-start") {
+      sinkOrIo.to(room).emit("game:response-start", { adventureId: event.adventureId });
+      return;
+    }
+    if (event.type === "chunk") {
+      sinkOrIo.to(room).emit("game:chunk", { adventureId: event.adventureId, chunk: event.chunk });
+      return;
+    }
+    if (event.type === "response-complete") {
+      const { type: _t2, ...payload } = event;
+      sinkOrIo.to(room).emit("game:response-complete", payload);
+      return;
+    }
+    if (event.type === "error") {
+      sinkOrIo.to(room).emit("game:error", {
+        adventureId: event.adventureId,
+        error: event.message,
+      });
+      return;
+    }
+  };
+}
+
+/** Maps a message row to a GameMessageDTO; preserves the persisted `choices` array. */
+function messageRowToDTO(m: MessageRow): GameMessageDTO {
+  const meta = m.metadata as Record<string, unknown> | null;
+  const dto: GameMessageDTO = {
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    milestoneId: m.milestoneId ?? null,
+    createdAt: m.createdAt.toISOString(),
+  };
+  if (Array.isArray(meta?.choices) && meta.choices.length > 0) {
+    dto.choices = meta.choices as SuggestedAction[];
+  }
+  return dto;
 }
 
 export const gameService = new GameService();

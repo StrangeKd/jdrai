@@ -14,6 +14,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { GameEvent } from "@jdrai/shared";
+
 import { db } from "@/db";
 import {
   adventureCharacters,
@@ -850,5 +852,87 @@ describe("applySignals() — Story 7.1 (isGameOver column + narrative summary)",
 
     expect(row!.status).toBe("completed");
     expect(row!.narrativeSummary).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group C / Phase 4 — processAction emits typed GameEvents (no Socket.io)
+// ---------------------------------------------------------------------------
+
+describe("processAction() — transport-agnostic event emission (Phase 4)", () => {
+  it("invokes onEvent with response-start, chunks, state-update and response-complete", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, [
+      "Vous prenez un coup. ",
+      "[HP_CHANGE:-3]",
+      "\nQue faites-vous ?",
+      "\n[CHOIX]\n1. Reculer\n2. Attaquer\n[/CHOIX]",
+    ]);
+
+    const events: GameEvent[] = [];
+    const onEvent = (e: GameEvent) => {
+      events.push(e);
+    };
+
+    const result = await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'attaque le garde",
+      onEvent,
+    });
+
+    expect(result.messageId).toBeDefined();
+
+    const types = events.map((e) => e.type);
+    expect(types[0]).toBe("response-start");
+    expect(types).toContain("chunk");
+    expect(types).toContain("state-update");
+    expect(types[types.length - 1]).toBe("response-complete");
+
+    // Chunk events carry the streamed text
+    const chunkEvents = events.filter((e): e is Extract<GameEvent, { type: "chunk" }> => e.type === "chunk");
+    expect(chunkEvents.length).toBeGreaterThan(0);
+    expect(chunkEvents.every((e) => e.adventureId === adventureId)).toBe(true);
+
+    // state-update for hp_change
+    const hpUpdate = events.find(
+      (e): e is Extract<GameEvent, { type: "state-update"; subtype: "hp_change" }> =>
+        e.type === "state-update" && e.subtype === "hp_change",
+    );
+    expect(hpUpdate).toBeDefined();
+    expect(hpUpdate!.currentHp).toBe(17);
+    expect(hpUpdate!.maxHp).toBe(20);
+
+    // response-complete carries cleanText + choices + stateChanges
+    const complete = events.find(
+      (e): e is Extract<GameEvent, { type: "response-complete" }> => e.type === "response-complete",
+    );
+    expect(complete).toBeDefined();
+    expect(complete!.cleanText).not.toContain("[HP_CHANGE");
+    expect(complete!.choices.length).toBe(2);
+    expect(complete!.stateChanges.hpChange).toBe(-3);
+  });
+
+  it("does not emit chunks when stream=false (sync mode)", async () => {
+    const svc = new GameService();
+    injectStreamLLM(svc, ["Tu réfléchis et avances."]);
+
+    const events: GameEvent[] = [];
+    const result = await svc.processAction({
+      adventureId,
+      userId: TEST_USER_ID,
+      action: "J'avance",
+      onEvent: (e) => events.push(e),
+      stream: false,
+    });
+
+    // In sync mode no streaming events should fire — only state-update from applySignals (none here)
+    expect(events.find((e) => e.type === "response-start")).toBeUndefined();
+    expect(events.find((e) => e.type === "chunk")).toBeUndefined();
+    expect(events.find((e) => e.type === "response-complete")).toBeUndefined();
+
+    // The full response is returned synchronously
+    expect(result.response).toBeDefined();
+    expect(result.response!.cleanText).toContain("Tu réfléchis");
   });
 });

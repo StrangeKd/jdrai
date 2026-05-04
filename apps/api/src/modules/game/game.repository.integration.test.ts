@@ -23,13 +23,20 @@ import {
   races,
   users,
 } from "@/db/schema";
+import { AppError } from "@/utils/errors";
 
 import {
   completeAdventure,
+  getAdventureById,
+  getAdventureByIdOrThrow,
+  getAdventureCharacter,
+  getMessages,
   getMilestones,
+  getRecentMessages,
   insertMessage,
   transitionMilestone,
   updateCharacterHp,
+  verifyAdventureOwnership,
 } from "./game.repository";
 
 // ---------------------------------------------------------------------------
@@ -314,5 +321,136 @@ describe("completeAdventure()", () => {
 
     const state = row!.state as { completion?: { isGameOver: boolean } };
     expect(state.completion?.isGameOver).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group C / Phase 3 — adventure / character / messages reads + ownership
+// ---------------------------------------------------------------------------
+
+describe("getAdventureById()", () => {
+  it("returns the adventure row when it exists", async () => {
+    const row = await getAdventureById(adventureId);
+    expect(row).not.toBeNull();
+    expect(row!.id).toBe(adventureId);
+  });
+
+  it("returns null for a missing id", async () => {
+    const row = await getAdventureById("00000000-0000-0000-0000-000000000000");
+    expect(row).toBeNull();
+  });
+});
+
+describe("getAdventureByIdOrThrow()", () => {
+  it("returns the adventure when owned by the user", async () => {
+    const row = await getAdventureByIdOrThrow(adventureId, TEST_USER_ID);
+    expect(row.id).toBe(adventureId);
+  });
+
+  it("throws 404 NOT_FOUND when the adventure does not exist", async () => {
+    await expect(
+      getAdventureByIdOrThrow("00000000-0000-0000-0000-000000000000", TEST_USER_ID),
+    ).rejects.toMatchObject({
+      statusCode: 404,
+      code: "NOT_FOUND",
+    } satisfies Partial<AppError>);
+  });
+
+  it("throws 403 FORBIDDEN when the adventure is owned by another user", async () => {
+    await expect(
+      getAdventureByIdOrThrow(adventureId, "some-other-user"),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: "FORBIDDEN",
+    } satisfies Partial<AppError>);
+  });
+});
+
+describe("verifyAdventureOwnership()", () => {
+  it("returns true when the user owns the adventure", async () => {
+    expect(await verifyAdventureOwnership(adventureId, TEST_USER_ID)).toBe(true);
+  });
+
+  it("returns false for a different user", async () => {
+    expect(await verifyAdventureOwnership(adventureId, "another-user")).toBe(false);
+  });
+
+  it("returns false for an unknown adventure id", async () => {
+    expect(
+      await verifyAdventureOwnership("00000000-0000-0000-0000-000000000000", TEST_USER_ID),
+    ).toBe(false);
+  });
+});
+
+describe("getAdventureCharacter()", () => {
+  it("returns the character row for the given adventure", async () => {
+    const row = await getAdventureCharacter(adventureId);
+    expect(row).not.toBeNull();
+    expect(row!.id).toBe(characterId);
+  });
+
+  it("returns null when no character exists for the adventure", async () => {
+    // Empty adventure (no character)
+    const [bareAdv] = await db
+      .insert(adventures)
+      .values({
+        userId: TEST_USER_ID,
+        title: "Bare adventure",
+        difficulty: "normal",
+        estimatedDuration: "short",
+      })
+      .returning({ id: adventures.id });
+
+    const row = await getAdventureCharacter(bareAdv!.id);
+    expect(row).toBeNull();
+
+    await db.delete(adventures).where(eq(adventures.id, bareAdv!.id));
+  });
+});
+
+describe("getMessages() / getRecentMessages()", () => {
+  beforeEach(async () => {
+    // Seed 5 messages with predictable content + small async gaps so createdAt is monotonic
+    for (let i = 0; i < 5; i++) {
+      await insertMessage({
+        adventureId,
+        milestoneId: milestone1Id,
+        role: i % 2 === 0 ? "user" : "assistant",
+        content: `msg-${i}`,
+      });
+      await new Promise((r) => setTimeout(r, 5));
+    }
+  });
+
+  it("returns messages in ASC order by default", async () => {
+    const rows = await getMessages(adventureId);
+    expect(rows).toHaveLength(5);
+    expect(rows.map((r) => r.content)).toEqual(["msg-0", "msg-1", "msg-2", "msg-3", "msg-4"]);
+  });
+
+  it("respects limit option", async () => {
+    const rows = await getMessages(adventureId, { limit: 2, order: "desc" });
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.content).toBe("msg-4");
+  });
+
+  it("filters by milestoneId", async () => {
+    // Insert one message tied to a different milestone
+    await insertMessage({
+      adventureId,
+      milestoneId: milestone2Id,
+      role: "user",
+      content: "other-milestone",
+    });
+
+    const rows = await getMessages(adventureId, { milestoneId: milestone1Id });
+    expect(rows.every((r) => r.milestoneId === milestone1Id)).toBe(true);
+    expect(rows).toHaveLength(5);
+  });
+
+  it("getRecentMessages returns the N most recent messages in chronological order", async () => {
+    const rows = await getRecentMessages(adventureId, 3);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.content)).toEqual(["msg-2", "msg-3", "msg-4"]);
   });
 });

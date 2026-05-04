@@ -4,14 +4,17 @@
  * GET  /api/v1/adventures/:id/state
  * GET  /api/v1/adventures/:id/messages
  * POST /api/v1/adventures/:id/save   (Story 6.5)
+ *
+ * The controller is purely HTTP plumbing — all DB access and ownership checks
+ * live in the service / repository layers (Group C / Phase 3).
  */
-import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
+import type { Server } from "socket.io";
 import { z } from "zod";
 
-import { db } from "@/db";
-import { adventureCharacters, adventures } from "@/db/schema";
-import { AppError } from "@/utils/errors";
+import type { GameEvent } from "@jdrai/shared";
+
+import { AppErrors } from "@/utils/errors";
 
 import { gameService } from "./game.service";
 
@@ -36,6 +39,53 @@ const MessagesQuerySchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Event → Socket.io adapter (used by the action endpoint)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a GameEventSink that fans events out to the Socket.io room for an
+ * adventure. Mirrors the wire format previously produced inline by the service:
+ *  - response-start / chunk / error / response-complete → game:<type>
+ *  - state-update                                       → game:state-update
+ */
+function makeIoEventSink(io: Server, adventureId: string): (event: GameEvent) => void {
+  const room = `adventure:${adventureId}`;
+  return (event) => {
+    switch (event.type) {
+      case "response-start":
+        io.to(room).emit("game:response-start", { adventureId: event.adventureId });
+        return;
+      case "chunk":
+        io.to(room).emit("game:chunk", {
+          adventureId: event.adventureId,
+          chunk: event.chunk,
+        });
+        return;
+      case "error":
+        io.to(room).emit("game:error", {
+          adventureId: event.adventureId,
+          error: event.message,
+        });
+        return;
+      case "response-complete": {
+        const { type: _t, ...payload } = event;
+        io.to(room).emit("game:response-complete", payload);
+        return;
+      }
+      case "state-update": {
+        const { type: _t, subtype, adventureId: aid, ...rest } = event;
+        io.to(room).emit("game:state-update", {
+          adventureId: aid,
+          type: subtype,
+          ...rest,
+        });
+        return;
+      }
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -52,15 +102,15 @@ export async function postActionHandler(
   try {
     const parsed = PlayerActionSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid body");
+      throw AppErrors.validationFailed(parsed.error.issues[0]?.message ?? "Invalid body");
     }
 
-    const { action, choiceId, choiceType, socketId, mockLlm, freeModels } = parsed.data;
+    const { action, choiceId, choiceType, mockLlm, freeModels } = parsed.data;
     const adventureId = req.params["id"]!;
     const userId = req.user!.id;
 
-    // Retrieve the io instance attached by index.ts (via app.locals or injected)
-    const io = req.app.locals["io"] as import("socket.io").Server | undefined;
+    const io = req.app.locals["io"] as Server | undefined;
+    const onEvent = io ? makeIoEventSink(io, adventureId) : undefined;
 
     const result = await gameService.processAction({
       adventureId,
@@ -68,8 +118,8 @@ export async function postActionHandler(
       action,
       choiceId,
       choiceType,
-      socketId,
-      io,
+      onEvent,
+      stream: Boolean(io),
       mockLlm,
       freeModels,
     });
@@ -120,51 +170,8 @@ export async function postSaveHandler(
     const adventureId = req.params["id"]!;
     const userId = req.user!.id;
 
-    const adventure = await db.query.adventures.findFirst({
-      where: eq(adventures.id, adventureId),
-    });
-
-    if (!adventure) {
-      throw new AppError(404, "NOT_FOUND", "Adventure not found");
-    }
-    if (adventure.userId !== userId) {
-      throw new AppError(403, "FORBIDDEN", "Not your adventure");
-    }
-    if (adventure.status !== "active") {
-      throw new AppError(400, "ADVENTURE_NOT_ACTIVE", "Cannot save a non-active adventure");
-    }
-
-    const [character] = await db
-      .select({ currentHp: adventureCharacters.currentHp })
-      .from(adventureCharacters)
-      .where(eq(adventureCharacters.adventureId, adventureId))
-      .limit(1);
-
-    const previousState = (adventure.state ?? {}) as Record<string, unknown>;
-    const worldState =
-      typeof previousState["worldState"] === "object" &&
-      previousState["worldState"] !== null &&
-      !Array.isArray(previousState["worldState"])
-        ? (previousState["worldState"] as Record<string, unknown>)
-        : {};
-
-    await gameService.autoSave(adventureId, {
-      lastPlayerAction:
-        typeof previousState["lastPlayerAction"] === "string" ? previousState["lastPlayerAction"] : "",
-      currentHp:
-        character?.currentHp ??
-        (typeof previousState["currentHp"] === "number" ? previousState["currentHp"] : 0),
-      activeMilestoneId:
-        typeof previousState["activeMilestoneId"] === "string"
-          ? previousState["activeMilestoneId"]
-          : null,
-      worldState,
-      updatedAt: new Date().toISOString(),
-    });
-
-    const savedAt = new Date();
-
-    res.json({ success: true, data: { savedAt: savedAt.toISOString() } });
+    const { savedAt } = await gameService.saveAdventure(adventureId, userId);
+    res.json({ success: true, data: { savedAt } });
   } catch (error) {
     next(error);
   }
@@ -185,7 +192,9 @@ export async function getMessagesHandler(
 
     const parsed = MessagesQuerySchema.safeParse(req.query);
     if (!parsed.success) {
-      throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid query params");
+      throw AppErrors.validationFailed(
+        parsed.error.issues[0]?.message ?? "Invalid query params",
+      );
     }
 
     const result = await gameService.getMessages(adventureId, userId, parsed.data.milestoneId);

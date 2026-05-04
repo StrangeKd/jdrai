@@ -11,6 +11,7 @@ import type {
 
 import { db } from "@/db";
 import { adventures, adventureTemplates, metaCharacters, milestones, users } from "@/db/schema";
+import { toAdventureCharacterDTO } from "@/modules/game/game.dto";
 import { findDefaultClass, findDefaultRace } from "@/modules/reference/reference.repository";
 import { AppError } from "@/utils/errors";
 import { toISOString } from "@/utils/http";
@@ -35,20 +36,10 @@ const MAX_ACTIVE_ADVENTURES = 5;
 function mapRowToDTO(row: AdventureRow): AdventureDTO {
   const { adventure, character, className, raceName, currentMilestoneName } = row;
 
-  const characterDTO: AdventureCharacterDTO = {
-    id: character?.id ?? "",
-    name: character?.name ?? "Aventurier",
-    className: className ?? "Aventurier",
-    raceName: raceName ?? "Humain",
-    stats: (character?.stats as AdventureCharacterDTO["stats"]) ?? {
-      strength: 10,
-      agility: 10,
-      charisma: 10,
-      karma: 10,
-    },
-    currentHp: character?.currentHp ?? 20,
-    maxHp: character?.maxHp ?? 20,
-  };
+  const characterDTO: AdventureCharacterDTO = toAdventureCharacterDTO(character, {
+    className,
+    raceName,
+  });
 
   const dto: AdventureDTO = {
     id: adventure.id,
